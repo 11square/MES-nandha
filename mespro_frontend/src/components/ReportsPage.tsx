@@ -253,7 +253,8 @@ export default function ReportsPage({ userRole, language = 'en' }: ReportsPagePr
     // Fetch leads separately for funnel + overview
     (async () => {
       try {
-        const leadsResp = await fetch(`http://localhost:3000/api/v1/leads`, {
+        const apiBase = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+        const leadsResp = await fetch(`${apiBase}/leads`, {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'application/json',
