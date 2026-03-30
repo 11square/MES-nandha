@@ -541,7 +541,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             >
               {t('viewOrders')}
             </Button>
-            {(canApprove) && (
+            {activeTab === 'leads' && (canApprove) && (
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
                 onClick={() => setShowCreateLead(true)}
