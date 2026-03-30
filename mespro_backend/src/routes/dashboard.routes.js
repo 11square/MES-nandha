@@ -12,5 +12,10 @@ router.get('/production-status', dashboardController.getProductionStatus);
 router.get('/attendance-today', dashboardController.getAttendanceToday);
 router.get('/low-stock', dashboardController.getLowStock);
 router.get('/pending-leads', dashboardController.getPendingLeads);
+router.get('/revenue-trend', dashboardController.getRevenueTrend);
+router.get('/order-stats', dashboardController.getOrderStats);
+router.get('/monthly-orders', dashboardController.getMonthlyOrders);
+router.get('/payment-overview', dashboardController.getPaymentOverview);
+router.get('/top-clients', dashboardController.getTopClients);
 
 module.exports = router;

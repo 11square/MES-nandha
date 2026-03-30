@@ -29,6 +29,26 @@ class DashboardService {
   async getPendingLeads(): Promise<any[]> {
     return apiService.get<any[]>('/dashboard/pending-leads');
   }
+
+  async getRevenueTrend(): Promise<any[]> {
+    return apiService.get<any[]>('/dashboard/revenue-trend');
+  }
+
+  async getOrderStats(): Promise<any[]> {
+    return apiService.get<any[]>('/dashboard/order-stats');
+  }
+
+  async getMonthlyOrders(): Promise<any[]> {
+    return apiService.get<any[]>('/dashboard/monthly-orders');
+  }
+
+  async getPaymentOverview(): Promise<any[]> {
+    return apiService.get<any[]>('/dashboard/payment-overview');
+  }
+
+  async getTopClients(): Promise<any[]> {
+    return apiService.get<any[]>('/dashboard/top-clients');
+  }
 }
 
 export const dashboardService = new DashboardService();

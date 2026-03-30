@@ -2,7 +2,7 @@ const {
   Order, Client, Lead, ProductionOrder, Bill, Payment,
   Sale, StaffMember, AttendanceRecord, Dispatch,
   RawMaterial, FinishedGood, CreditOutstanding, StockItem,
-  OrderProduct, LeadProduct,
+  OrderProduct, LeadProduct, Transaction, Vendor, PurchaseOrder,
   sequelize,
 } = require('../models');
 const { Op, fn, col, literal } = require('sequelize');
@@ -252,6 +252,170 @@ module.exports = {
       }
 
       return ApiResponse.success(res, { records, summary: { total, present: presentCount, absent: absentCount } });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /dashboard/revenue-trend — Monthly revenue for last 6 months
+  getRevenueTrend: async (req, res, next) => {
+    try {
+      const businessId = req.currentBusiness || null;
+      const [rows] = await sequelize.query(
+        `SELECT 
+          DATE_FORMAT(date, '%Y-%m') as month,
+          COALESCE(SUM(CASE WHEN payment_status = 'paid' THEN grand_total ELSE paid_amount END), 0) as revenue,
+          COALESCE(SUM(grand_total), 0) as billed
+        FROM bills
+        WHERE date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND (:businessId IS NULL OR business_id = :businessId)
+        GROUP BY DATE_FORMAT(date, '%Y-%m')
+        ORDER BY month ASC`,
+        { replacements: { businessId } }
+      );
+      // Fill in missing months
+      const result = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = d.toISOString().slice(0, 7);
+        const label = d.toLocaleString('en', { month: 'short' });
+        const found = rows.find(r => r.month === key);
+        result.push({
+          month: label,
+          revenue: parseFloat(found?.revenue || 0),
+          billed: parseFloat(found?.billed || 0),
+        });
+      }
+      return ApiResponse.success(res, result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /dashboard/order-stats — Order status distribution
+  getOrderStats: async (req, res, next) => {
+    try {
+      const orders = await Order.findAll({
+        where: applyBusinessScope(req),
+        attributes: ['status', [fn('COUNT', col('id')), 'count']],
+        group: ['status'],
+        raw: true,
+      });
+      const colorMap = {
+        'Pending': '#f59e0b',
+        'Confirmed': '#3b82f6',
+        'In Production': '#8b5cf6',
+        'Ready': '#10b981',
+        'Dispatched': '#06b6d4',
+        'Delivered': '#22c55e',
+        'Bill': '#6366f1',
+        'Cancelled': '#ef4444',
+      };
+      const mapped = orders.map(o => ({
+        name: o.status || 'Unknown',
+        value: parseInt(o.count, 10),
+        color: colorMap[o.status] || '#94a3b8',
+      }));
+      return ApiResponse.success(res, mapped);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /dashboard/monthly-orders — Order counts per month (last 6 months)
+  getMonthlyOrders: async (req, res, next) => {
+    try {
+      const businessId = req.currentBusiness || null;
+      const [rows] = await sequelize.query(
+        `SELECT 
+          DATE_FORMAT(created_at, '%Y-%m') as month,
+          COUNT(*) as total,
+          SUM(CASE WHEN status IN ('Delivered','completed') THEN 1 ELSE 0 END) as completed,
+          SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled
+        FROM orders
+        WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+          AND (:businessId IS NULL OR business_id = :businessId)
+        GROUP BY DATE_FORMAT(created_at, '%Y-%m')
+        ORDER BY month ASC`,
+        { replacements: { businessId } }
+      );
+      const result = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const key = d.toISOString().slice(0, 7);
+        const label = d.toLocaleString('en', { month: 'short' });
+        const found = rows.find(r => r.month === key);
+        result.push({
+          month: label,
+          total: parseInt(found?.total || 0),
+          completed: parseInt(found?.completed || 0),
+          cancelled: parseInt(found?.cancelled || 0),
+        });
+      }
+      return ApiResponse.success(res, result);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /dashboard/payment-overview — Payment status breakdown
+  getPaymentOverview: async (req, res, next) => {
+    try {
+      const businessId = req.currentBusiness || null;
+      const [rows] = await sequelize.query(
+        `SELECT 
+          payment_status as status,
+          COUNT(*) as count,
+          COALESCE(SUM(grand_total), 0) as amount
+        FROM bills
+        WHERE (:businessId IS NULL OR business_id = :businessId)
+        GROUP BY payment_status`,
+        { replacements: { businessId } }
+      );
+      const colorMap = {
+        'paid': '#22c55e',
+        'partial': '#f59e0b',
+        'pending': '#3b82f6',
+        'overdue': '#ef4444',
+      };
+      const mapped = rows.map(r => ({
+        name: (r.status || 'unknown').charAt(0).toUpperCase() + (r.status || 'unknown').slice(1),
+        value: parseFloat(r.amount || 0),
+        count: parseInt(r.count, 10),
+        color: colorMap[r.status] || '#94a3b8',
+      }));
+      return ApiResponse.success(res, mapped);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /dashboard/top-clients — Top 5 clients by revenue
+  getTopClients: async (req, res, next) => {
+    try {
+      const businessId = req.currentBusiness || null;
+      const [rows] = await sequelize.query(
+        `SELECT 
+          c.name,
+          c.total_orders,
+          COALESCE(SUM(b.grand_total), 0) as total_revenue,
+          COALESCE(SUM(CASE WHEN b.payment_status != 'paid' THEN b.grand_total - b.paid_amount ELSE 0 END), 0) as outstanding
+        FROM clients c
+        LEFT JOIN bills b ON b.client_id = c.id
+        WHERE (:businessId IS NULL OR c.business_id = :businessId)
+        GROUP BY c.id, c.name, c.total_orders
+        ORDER BY total_revenue DESC
+        LIMIT 5`,
+        { replacements: { businessId } }
+      );
+      return ApiResponse.success(res, rows.map(r => ({
+        name: r.name,
+        orders: parseInt(r.total_orders || 0),
+        revenue: parseFloat(r.total_revenue || 0),
+        outstanding: parseFloat(r.outstanding || 0),
+      })));
     } catch (error) {
       next(error);
     }

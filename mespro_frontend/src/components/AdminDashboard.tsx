@@ -1,73 +1,106 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { useI18n } from '../contexts/I18nContext';
-import { 
-  Users, 
-  ClipboardList, 
-  Package, 
-  Truck, 
+import {
+  Users,
+  ClipboardList,
+  Truck,
   AlertTriangle,
   TrendingUp,
   Clock,
   CheckCircle2,
   ArrowRight,
-  MoreVertical,
-  ArrowUpRight,
-  ArrowDownRight
+  IndianRupee,
+  ShoppingCart,
+  UserCheck,
+  Briefcase,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Activity,
+  CreditCard,
+  Target,
+  Zap,
+  CalendarDays,
+  Factory,
+  CircleDollarSign,
 } from 'lucide-react';
 import { Badge } from './ui/badge';
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 
 import { dashboardService } from '../services/dashboard.service';
 
-const defaultStats = [
-  { title_key: 'newLeads', value: '0', change: '', trend: 'up' as const, icon_type: 'users' as const, bg_color: 'bg-blue-500', light_bg: 'bg-blue-50', text_color: 'text-blue-600', navigate_to: 'leads' as const },
-  { title_key: 'inProduction', value: '0', change: '', trend: 'up' as const, icon_type: 'clipboard' as const, bg_color: 'bg-emerald-500', light_bg: 'bg-emerald-50', text_color: 'text-emerald-600', navigate_to: 'production' as const },
-  { title_key: 'stockAlerts', value: '0', change: '', trend: 'down' as const, icon_type: 'alert' as const, bg_color: 'bg-amber-500', light_bg: 'bg-amber-50', text_color: 'text-amber-600', navigate_to: 'inventory' as const },
-  { title_key: 'dispatches', value: '0', change: '', trend: 'up' as const, icon_type: 'truck' as const, bg_color: 'bg-violet-500', light_bg: 'bg-violet-50', text_color: 'text-violet-600', navigate_to: 'dispatch' as const },
-];
 interface AdminDashboardProps {
   onNavigate: (view: string) => void;
   onViewOrder: (orderId: string) => void;
 }
 
+function formatCurrency(val: number): string {
+  if (val >= 10000000) return '\u20B9' + (val / 10000000).toFixed(1) + 'Cr';
+  if (val >= 100000) return '\u20B9' + (val / 100000).toFixed(1) + 'L';
+  if (val >= 1000) return '\u20B9' + (val / 1000).toFixed(1) + 'K';
+  return '\u20B9' + val.toFixed(0);
+}
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-semibold text-slate-900 mb-1">{label}</p>
+        {payload.map((entry: any, idx: number) => (
+          <p key={idx} style={{ color: entry.color }}>
+            {entry.name}: {typeof entry.value === 'number' && entry.value > 100 ? formatCurrency(entry.value) : entry.value}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboardProps) {
   const { t } = useI18n();
 
-  const [stats, setStats] = useState(defaultStats);
+  const [summary, setSummary] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [lowStockItems, setLowStockItems] = useState<any[]>([]);
   const [pendingLeads, setPendingLeads] = useState<any[]>([]);
-  const [quickStats, setQuickStats] = useState({ completedThisWeek: 0, avgProductionTime: 0, productionEfficiency: 0 });
+  const [revenueTrend, setRevenueTrend] = useState<any[]>([]);
+  const [orderStats, setOrderStats] = useState<any[]>([]);
+  const [monthlyOrders, setMonthlyOrders] = useState<any[]>([]);
+  const [paymentOverview, setPaymentOverview] = useState<any[]>([]);
+  const [topClients, setTopClients] = useState<any[]>([]);
+  const [attendanceData, setAttendanceData] = useState<any>(null);
+  const [productionStatus, setProductionStatus] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    dashboardService.getSummary()
-      .then(data => {
-        if (data) {
-          // Map API flat object to stats array format
-          const mapped = [
-            { ...defaultStats[0], value: String(data.activeLeads ?? '0') },
-            { ...defaultStats[1], value: String(data.activeProduction ?? '0') },
-            { ...defaultStats[2], value: String(data.stockAlerts ?? '0') },
-            { ...defaultStats[3], value: String(data.pendingDispatches ?? '0') },
-          ];
-          setStats(mapped);
-          // Set quick stats from DB summary
-          if (data.completedThisWeek !== undefined || data.avgProductionTime !== undefined || data.productionEfficiency !== undefined) {
-            setQuickStats({
-              completedThisWeek: data.completedThisWeek ?? 0,
-              avgProductionTime: data.avgProductionTime ?? 0,
-              productionEfficiency: data.productionEfficiency ?? 0,
-            });
-          }
-        }
-      })
-      .catch(() => {});
-    dashboardService.getRecentOrders()
-      .then(data => {
-        if (data && Array.isArray(data)) {
-          const mapped = data.map((order: any) => {
+    const fetchAll = async () => {
+      setLoading(true);
+      try {
+        const [
+          summaryData, orders, lowStock, leads, revenue,
+          oStats, mOrders, payOverview, clients, attendance, prodStatus,
+        ] = await Promise.allSettled([
+          dashboardService.getSummary(),
+          dashboardService.getRecentOrders(),
+          dashboardService.getLowStock(),
+          dashboardService.getPendingLeads(),
+          dashboardService.getRevenueTrend(),
+          dashboardService.getOrderStats(),
+          dashboardService.getMonthlyOrders(),
+          dashboardService.getPaymentOverview(),
+          dashboardService.getTopClients(),
+          dashboardService.getAttendanceToday(),
+          dashboardService.getProductionStatus(),
+        ]);
+
+        if (summaryData.status === 'fulfilled' && summaryData.value) setSummary(summaryData.value);
+        if (orders.status === 'fulfilled' && Array.isArray(orders.value)) {
+          setRecentOrders(orders.value.map((order: any) => {
             const p = (order.priority || '').toLowerCase();
             return {
               ...order,
@@ -77,206 +110,182 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
               priority_color: p === 'high' ? 'bg-red-100 text-red-700'
                 : p === 'low' ? 'bg-slate-100 text-slate-600'
                 : 'bg-amber-100 text-amber-700',
-              bar_color: 'bg-blue-600',
             };
-          });
-          setRecentOrders(mapped);
+          }));
         }
-      })
-      .catch(() => {});
-    // Fetch low stock items for Inventory Alerts section
-    dashboardService.getLowStock()
-      .then(data => {
-        if (data && Array.isArray(data)) {
-          setLowStockItems(data);
-        }
-      })
-      .catch(() => {});
-    // Fetch pending leads
-    dashboardService.getPendingLeads()
-      .then(data => {
-        if (data && Array.isArray(data)) {
-          setPendingLeads(data);
-        }
-      })
-      .catch(() => {});
+        if (lowStock.status === 'fulfilled' && Array.isArray(lowStock.value)) setLowStockItems(lowStock.value);
+        if (leads.status === 'fulfilled' && Array.isArray(leads.value)) setPendingLeads(leads.value);
+        if (revenue.status === 'fulfilled' && Array.isArray(revenue.value)) setRevenueTrend(revenue.value);
+        if (oStats.status === 'fulfilled' && Array.isArray(oStats.value)) setOrderStats(oStats.value);
+        if (mOrders.status === 'fulfilled' && Array.isArray(mOrders.value)) setMonthlyOrders(mOrders.value);
+        if (payOverview.status === 'fulfilled' && Array.isArray(payOverview.value)) setPaymentOverview(payOverview.value);
+        if (clients.status === 'fulfilled' && Array.isArray(clients.value)) setTopClients(clients.value);
+        if (attendance.status === 'fulfilled' && attendance.value) setAttendanceData(attendance.value);
+        if (prodStatus.status === 'fulfilled' && Array.isArray(prodStatus.value)) setProductionStatus(prodStatus.value);
+      } catch (_e) {
+        // silent
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAll();
   }, []);
 
+  const kpiCards = useMemo(() => {
+    if (!summary) return [];
+    return [
+      { title: 'Total Revenue', value: formatCurrency(summary.totalRevenue || 0), icon: IndianRupee, bg: 'from-emerald-500 to-emerald-600', nav: 'finance' },
+      { title: 'Outstanding', value: formatCurrency(summary.totalOutstanding || 0), icon: CreditCard, bg: 'from-rose-500 to-rose-600', nav: 'billing' },
+      { title: 'Total Orders', value: String(summary.totalOrders ?? 0), icon: ShoppingCart, bg: 'from-blue-500 to-blue-600', nav: 'orders' },
+      { title: 'Active Orders', value: String(summary.activeOrders ?? 0), icon: ClipboardList, bg: 'from-violet-500 to-violet-600', nav: 'orders' },
+      { title: 'Total Clients', value: String(summary.totalClients ?? 0), icon: Users, bg: 'from-cyan-500 to-cyan-600', nav: 'clients' },
+      { title: 'Active Leads', value: String(summary.activeLeads ?? 0), icon: Target, bg: 'from-amber-500 to-amber-600', nav: 'leads' },
+      { title: 'Total Staff', value: String(summary.totalStaff ?? 0), icon: UserCheck, bg: 'from-indigo-500 to-indigo-600', nav: 'staff' },
+      { title: 'Stock Alerts', value: String(summary.stockAlerts ?? 0), icon: AlertTriangle, bg: 'from-orange-500 to-orange-600', nav: 'stock' },
+    ];
+  }, [summary]);
+
+  const attendanceGauge = useMemo(() => {
+    if (!attendanceData?.summary) return null;
+    const { total, present } = attendanceData.summary;
+    const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+    return { total, present, pct };
+  }, [attendanceData]);
+
+  if (loading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[...Array(8)].map((_, i) => (
+            <div key={i} className="h-28 rounded-xl bg-slate-200/60" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-80 rounded-xl bg-slate-200/60" />
+          <div className="h-80 rounded-xl bg-slate-200/60" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-8">
-      {/* Professional stats grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
-          const iconMap = { users: Users, clipboard: ClipboardList, alert: AlertTriangle, truck: Truck };
-          const Icon = iconMap[stat.icon_type];
-          const TrendIcon = stat.trend === 'up' ? ArrowUpRight : ArrowDownRight;
+    <div className="space-y-6">
+      {/* ===== ROW 1: KPI Cards ===== */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {kpiCards.map((kpi, index) => {
+          const Icon = kpi.icon;
           return (
             <motion.div
               key={index}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => onNavigate(stat.navigate_to)}
-              whileHover={{ y: -4, scale: 1.02 }}
+              transition={{ delay: index * 0.05 }}
+              onClick={() => onNavigate(kpi.nav)}
+              whileHover={{ y: -2, scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
-              className="relative overflow-hidden rounded-xl bg-white border border-slate-200 shadow-sm hover:shadow-md p-6 cursor-pointer group transition-all"
+              className="relative overflow-hidden rounded-xl bg-white border border-slate-200/80 shadow-sm hover:shadow-lg p-5 cursor-pointer group transition-all duration-200"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 ${stat.bg_color} rounded-lg flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow`}>
-                  <Icon className="w-6 h-6 text-white" />
+              <div className="flex items-center justify-between mb-3">
+                <div className={`w-10 h-10 bg-gradient-to-br ${kpi.bg} rounded-lg flex items-center justify-center shadow-sm`}>
+                  <Icon className="w-5 h-5 text-white" />
                 </div>
-                <motion.button 
-                  whileHover={{ rotate: 90 }}
-                  transition={{ duration: 0.2 }}
-                  className="w-8 h-8 rounded-lg hover:bg-slate-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <MoreVertical className="w-4 h-4 text-slate-600" />
-                </motion.button>
+                <ArrowRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all" />
               </div>
-              
-              <h3 className="text-sm text-slate-600 mb-2 font-medium">{t(stat.title_key as any)}</h3>
-              <div className="flex items-end gap-3 mb-2">
-                <p className="text-3xl text-slate-900 font-bold">{stat.value}</p>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-md ${stat.trend === 'up' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'} mb-1`}>
-                  <TrendIcon className="w-3.5 h-3.5" />
-                  <span className="text-xs font-semibold">{stat.change}</span>
-                </div>
-              </div>
-              <p className="text-xs text-slate-500">{t('fromLastMonth')}</p>
+              <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">{kpi.title}</p>
+              <p className="text-2xl font-bold text-slate-900">{kpi.value}</p>
+              <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${kpi.bg} opacity-0 group-hover:opacity-100 transition-opacity`} />
             </motion.div>
           );
         })}
       </div>
 
+      {/* ===== ROW 2: Revenue Trend + Order Status Donut ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Orders */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+          transition={{ delay: 0.3 }}
           className="lg:col-span-2"
         >
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-                <h2 className="text-base text-slate-900 font-semibold">{t('ordersInProduction')}</h2>
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Revenue Trend</h2>
+                  <p className="text-xs text-slate-500">Last 6 months</p>
+                </div>
               </div>
-              <Button
-                onClick={() => onNavigate('production')}
-                variant="ghost"
-                className="text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium flex items-center gap-1.5 rounded-lg h-9"
-              >
-                {t('viewAll')}
-                <ArrowRight className="w-4 h-4" />
+              <Button onClick={() => onNavigate('finance')} variant="ghost" className="text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 font-medium rounded-lg h-8">
+                View Finance <ArrowRight className="w-3.5 h-3.5 ml-1" />
               </Button>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {recentOrders.map((order, idx) => (
-                  <motion.div
-                    key={order.order_number}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5 + idx * 0.1 }}
-                    whileHover={{ x: 4 }}
-                    className="p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md hover:bg-blue-50/30 cursor-pointer transition-all group"
-                    onClick={() => onViewOrder(order.order_number)}
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="text-sm text-blue-600 font-semibold">{order.order_number}</span>
-                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${order.priority_color}`}>
-                            {t(order.priority_key as any)}
-                          </span>
-                        </div>
-                        <p className="text-slate-900 font-medium mb-1">{order.customer}</p>
-                        <p className="text-sm text-slate-600">{order.product}</p>
-                      </div>
-                      <ArrowRight className="w-5 h-5 text-slate-400 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
-                    </div>
-                    
-                    <div className="flex items-center gap-2 mb-2">
-                      <p className="text-xs text-slate-600 font-medium">{order.status}</p>
-                      <span className="text-xs text-slate-400">•</span>
-                      <p className="text-xs text-blue-600 font-semibold">{order.progress}% {t('complete')}</p>
-                    </div>
-                    
-                    <div className="relative w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${order.progress}%` }}
-                        transition={{ duration: 1, delay: 0.5 + idx * 0.1, ease: "easeOut" }}
-                        className={`${order.bar_color} h-2 rounded-full`}
-                      />
-                    </div>
-                  </motion.div>
-                ))}
+              <ResponsiveContainer width="100%" height={280}>
+                <AreaChart data={revenueTrend} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+                    </linearGradient>
+                    <linearGradient id="billedGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.2} />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} tickFormatter={(v) => formatCurrency(v)} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Area type="monotone" dataKey="billed" name="Billed" stroke="#6366f1" strokeWidth={2} fill="url(#billedGrad)" />
+                  <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#10b981" strokeWidth={2.5} fill="url(#revenueGrad)" />
+                </AreaChart>
+              </ResponsiveContainer>
+              <div className="flex items-center justify-center gap-6 mt-2">
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /><span className="text-xs text-slate-600">Revenue (Paid)</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-indigo-500" /><span className="text-xs text-slate-600">Total Billed</span></div>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* Inventory Alerts */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="lg:col-span-1"
+          transition={{ delay: 0.35 }}
         >
-          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden h-full">
-            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden h-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
-                <h2 className="text-base text-slate-900 font-semibold">{t('inventoryAlerts')}</h2>
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <PieChartIcon className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Order Status</h2>
+                  <p className="text-xs text-slate-500">Distribution</p>
+                </div>
               </div>
-              <Button
-                onClick={() => onNavigate('inventory')}
-                variant="ghost"
-                className="text-sm text-amber-600 hover:text-amber-700 hover:bg-amber-50 font-medium rounded-lg h-9"
-              >
-                {t('manage')}
-              </Button>
             </div>
-            <div className="p-6">
-              <div className="space-y-4">
-                {lowStockItems.map((item, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.6 + idx * 0.1 }}
-                    whileHover={{ scale: 1.02 }}
-                    className="p-4 rounded-lg border border-slate-200 hover:border-amber-300 hover:shadow-md hover:bg-amber-50/30 transition-all"
-                  >
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-lg ${item.status === 'critical' ? 'bg-red-500' : 'bg-amber-500'} flex items-center justify-center shadow-sm`}>
-                        <AlertTriangle className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-slate-900 font-medium truncate">{item.material}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{t('reorderAt')} {item.reorder}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-600 font-medium">{t('currentStockLabel')}</span>
-                        <span className={`font-semibold ${item.status === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>
-                          {item.current} {t('units')}
-                        </span>
-                      </div>
-                      <div className="relative w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${item.percentage}%` }}
-                          transition={{ duration: 1, delay: 0.6 + idx * 0.1 }}
-                          className={`h-2 rounded-full ${item.status === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
+            <div className="p-4 flex flex-col items-center">
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie data={orderStats} cx="50%" cy="50%" innerRadius={55} outerRadius={85} paddingAngle={3} dataKey="value">
+                    {orderStats.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => [value, 'Orders']} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 mt-2 w-full px-2">
+                {orderStats.map((s, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
+                    <span className="text-xs text-slate-600 truncate">{s.name}</span>
+                    <span className="text-xs font-semibold text-slate-900 ml-auto">{s.value}</span>
+                  </div>
                 ))}
               </div>
             </div>
@@ -284,106 +293,561 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
         </motion.div>
       </div>
 
-      {/* Pending Leads */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-        className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
-      >
-        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
-            <h2 className="text-base text-slate-900 font-semibold">{t('pendingLeads')}</h2>
-          </div>
-          <Button
-            onClick={() => onNavigate('leads')}
-            variant="ghost"
-            className="text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium flex items-center gap-1.5 rounded-lg h-9"
-          >
-            {t('viewAllLeads')}
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {pendingLeads.map((lead, idx) => (
-              <motion.div
-                key={lead.id}
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.7 + idx * 0.1 }}
-                whileHover={{ y: -4 }}
-                className="p-5 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md hover:bg-blue-50/30 cursor-pointer transition-all"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-sm text-blue-600 font-semibold">{lead.id}</span>
-                  <span className="text-xs px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">
-                    {lead.source}
-                  </span>
+      {/* ===== ROW 3: Monthly Orders + Payment Overview ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="lg:col-span-2"
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-violet-600" />
                 </div>
-                <p className="text-slate-900 font-medium mb-1">{lead.customer}</p>
-                <p className="text-sm text-slate-600 mb-3">{lead.product}</p>
-                <span className="inline-flex text-xs px-3 py-1.5 rounded-full bg-blue-100 text-blue-700 font-medium">
-                  {lead.status}
-                </span>
-              </motion.div>
-            ))}
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Monthly Orders</h2>
+                  <p className="text-xs text-slate-500">Last 6 months</p>
+                </div>
+              </div>
+              <Button onClick={() => onNavigate('orders')} variant="ghost" className="text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 font-medium rounded-lg h-8">
+                View Orders <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={monthlyOrders} margin={{ top: 5, right: 10, left: 0, bottom: 0 }} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Bar dataKey="total" name="Total" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="completed" name="Completed" fill="#22c55e" radius={[4, 4, 0, 0]} barSize={24} />
+                  <Bar dataKey="cancelled" name="Cancelled" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={24} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="flex items-center justify-center gap-6 mt-2">
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-violet-500" /><span className="text-xs text-slate-600">Total</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-green-500" /><span className="text-xs text-slate-600">Completed</span></div>
+                <div className="flex items-center gap-2"><div className="w-3 h-3 rounded bg-red-500" /><span className="text-xs text-slate-600">Cancelled</span></div>
+              </div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      {/* Quick Stats - Professional cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden h-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <CircleDollarSign className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Payment Overview</h2>
+                  <p className="text-xs text-slate-500">Bill status breakdown</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 space-y-3">
+              {paymentOverview.map((item, idx) => {
+                const total = paymentOverview.reduce((s, i) => s + i.value, 0);
+                const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + idx * 0.05 }}
+                    className="p-3 rounded-lg border border-slate-100 hover:border-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                        <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{item.count} bills</Badge>
+                      </div>
+                      <span className="text-sm font-bold text-slate-900">{formatCurrency(item.value)}</span>
+                    </div>
+                    <div className="relative w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, delay: 0.5 + idx * 0.05 }}
+                        className="h-1.5 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {paymentOverview.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-6">No billing data yet</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ===== ROW 4: Quick Stats (Attendance, Efficiency, Completed, Avg Time) ===== */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          whileHover={{ y: -2 }}
+          onClick={() => onNavigate('attendance')}
+          className="bg-gradient-to-br from-cyan-50 to-cyan-100/50 rounded-xl p-5 border border-cyan-200/60 cursor-pointer group transition-all hover:shadow-md"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-cyan-500 rounded-lg flex items-center justify-center shadow-sm">
+              <CalendarDays className="w-5 h-5 text-white" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-cyan-300 group-hover:text-cyan-500 ml-auto group-hover:translate-x-1 transition-all" />
+          </div>
+          <p className="text-xs font-medium text-cyan-600/80 uppercase tracking-wider mb-1">Today's Attendance</p>
+          <p className="text-2xl font-bold text-cyan-800">
+            {attendanceGauge ? `${attendanceGauge.present}/${attendanceGauge.total}` : '\u2014'}
+          </p>
+          {attendanceGauge && (
+            <div className="mt-2">
+              <div className="relative w-full bg-cyan-200/50 rounded-full h-1.5 overflow-hidden">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${attendanceGauge.pct}%` }} transition={{ duration: 1 }} className="h-1.5 rounded-full bg-cyan-600" />
+              </div>
+              <p className="text-[10px] text-cyan-600/70 mt-1">{attendanceGauge.pct}% present</p>
+            </div>
+          )}
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          whileHover={{ y: -2 }}
+          onClick={() => onNavigate('production')}
+          className="bg-gradient-to-br from-violet-50 to-violet-100/50 rounded-xl p-5 border border-violet-200/60 cursor-pointer group transition-all hover:shadow-md"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-violet-500 rounded-lg flex items-center justify-center shadow-sm">
+              <Zap className="w-5 h-5 text-white" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-violet-300 group-hover:text-violet-500 ml-auto group-hover:translate-x-1 transition-all" />
+          </div>
+          <p className="text-xs font-medium text-violet-600/80 uppercase tracking-wider mb-1">{t('productionEfficiency')}</p>
+          <p className="text-2xl font-bold text-violet-800">{summary?.productionEfficiency ?? 0}%</p>
+          <div className="mt-2">
+            <div className="relative w-full bg-violet-200/50 rounded-full h-1.5 overflow-hidden">
+              <motion.div initial={{ width: 0 }} animate={{ width: `${summary?.productionEfficiency ?? 0}%` }} transition={{ duration: 1 }} className="h-1.5 rounded-full bg-violet-600" />
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          whileHover={{ y: -2 }}
+          onClick={() => onNavigate('orders')}
+          className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 rounded-xl p-5 border border-emerald-200/60 cursor-pointer group transition-all hover:shadow-md"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-emerald-500 rounded-lg flex items-center justify-center shadow-sm">
+              <CheckCircle2 className="w-5 h-5 text-white" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-emerald-300 group-hover:text-emerald-500 ml-auto group-hover:translate-x-1 transition-all" />
+          </div>
+          <p className="text-xs font-medium text-emerald-600/80 uppercase tracking-wider mb-1">{t('completedThisWeek')}</p>
+          <p className="text-2xl font-bold text-emerald-800">{summary?.completedThisWeek ?? 0} <span className="text-sm font-medium text-emerald-600/70">{t('ordersLabel')}</span></p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+          whileHover={{ y: -2 }}
+          onClick={() => onNavigate('production')}
+          className="bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl p-5 border border-blue-200/60 cursor-pointer group transition-all hover:shadow-md"
+        >
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center shadow-sm">
+              <Clock className="w-5 h-5 text-white" />
+            </div>
+            <ArrowRight className="w-4 h-4 text-blue-300 group-hover:text-blue-500 ml-auto group-hover:translate-x-1 transition-all" />
+          </div>
+          <p className="text-xs font-medium text-blue-600/80 uppercase tracking-wider mb-1">{t('avgProductionTime')}</p>
+          <p className="text-2xl font-bold text-blue-800">{summary?.avgProductionTime ?? 0} <span className="text-sm font-medium text-blue-600/70">{t('days')}</span></p>
+        </motion.div>
+      </div>
+
+      {/* ===== ROW 5: Orders in Production + Inventory Alerts ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="lg:col-span-2"
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Factory className="w-4 h-4 text-blue-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">{t('ordersInProduction')}</h2>
+                  <p className="text-xs text-slate-500">{recentOrders.length} active orders</p>
+                </div>
+              </div>
+              <Button onClick={() => onNavigate('production')} variant="ghost" className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-medium rounded-lg h-8">
+                {t('viewAll')} <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+            <div className="divide-y divide-slate-100">
+              {recentOrders.slice(0, 6).map((order, idx) => (
+                <motion.div
+                  key={order.order_number}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.55 + idx * 0.05 }}
+                  className="px-6 py-3.5 hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                  onClick={() => onViewOrder(order.order_number)}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-blue-600 font-semibold">{order.order_number}</span>
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${order.priority_color}`}>
+                        {t(order.priority_key as any)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-500">{order.status}</span>
+                      <span className="text-xs font-semibold text-blue-600">{order.progress}%</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-slate-700 font-medium truncate max-w-[200px]">{order.customer}</p>
+                    <p className="text-xs text-slate-500 truncate max-w-[180px]">{order.product}</p>
+                  </div>
+                  <div className="relative w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${order.progress}%` }}
+                      transition={{ duration: 0.8, delay: 0.55 + idx * 0.05 }}
+                      className="bg-blue-500 h-1.5 rounded-full"
+                    />
+                  </div>
+                </motion.div>
+              ))}
+              {recentOrders.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">No orders in production</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden h-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">{t('inventoryAlerts')}</h2>
+                  <p className="text-xs text-slate-500">{lowStockItems.length} items low</p>
+                </div>
+              </div>
+              <Button onClick={() => onNavigate('inventory')} variant="ghost" className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 font-medium rounded-lg h-8">
+                {t('manage')}
+              </Button>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {lowStockItems.slice(0, 6).map((item, idx) => (
+                <motion.div
+                  key={idx}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 + idx * 0.05 }}
+                  className="px-6 py-3 hover:bg-amber-50/30 transition-colors"
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-sm text-slate-800 font-medium truncate max-w-[160px]">{item.material}</p>
+                    <Badge variant={item.status === 'critical' ? 'destructive' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                      {item.status}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-500 mb-1.5">
+                    <span>{item.current} / {item.reorder} {t('units')}</span>
+                    <span className={`font-semibold ${item.status === 'critical' ? 'text-red-600' : 'text-amber-600'}`}>
+                      {item.percentage}%
+                    </span>
+                  </div>
+                  <div className="relative w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${item.percentage}%` }}
+                      transition={{ duration: 0.8, delay: 0.6 + idx * 0.05 }}
+                      className={`h-1.5 rounded-full ${item.status === 'critical' ? 'bg-red-500' : 'bg-amber-500'}`}
+                    />
+                  </div>
+                </motion.div>
+              ))}
+              {lowStockItems.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">All stock levels healthy</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ===== ROW 6: Top Clients + Pending Leads ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+                  <Briefcase className="w-4 h-4 text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Top Clients</h2>
+                  <p className="text-xs text-slate-500">By revenue</p>
+                </div>
+              </div>
+              <Button onClick={() => onNavigate('clients')} variant="ghost" className="text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 font-medium rounded-lg h-8">
+                View All <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {topClients.map((client, idx) => {
+                const maxRev = topClients[0]?.revenue || 1;
+                const pct = Math.round((client.revenue / maxRev) * 100);
+                return (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.65 + idx * 0.05 }}
+                    className="px-6 py-3.5 hover:bg-indigo-50/30 transition-colors"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center text-xs font-bold text-indigo-600">
+                          {(client.name || '?')[0].toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-slate-800 truncate max-w-[160px]">{client.name}</p>
+                          <p className="text-[10px] text-slate-500">{client.orders} orders</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-slate-900">{formatCurrency(client.revenue)}</p>
+                        {client.outstanding > 0 && (
+                          <p className="text-[10px] text-rose-500">Due: {formatCurrency(client.outstanding)}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="relative w-full bg-slate-100 rounded-full h-1 overflow-hidden mt-2">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.8, delay: 0.65 + idx * 0.05 }}
+                        className="h-1 rounded-full bg-indigo-500"
+                      />
+                    </div>
+                  </motion.div>
+                );
+              })}
+              {topClients.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">No client data yet</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden h-full">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <Target className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">{t('pendingLeads')}</h2>
+                  <p className="text-xs text-slate-500">{pendingLeads.length} pending</p>
+                </div>
+              </div>
+              <Button onClick={() => onNavigate('leads')} variant="ghost" className="text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 font-medium rounded-lg h-8">
+                {t('viewAllLeads')} <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {pendingLeads.map((lead, idx) => {
+                const statusColors: Record<string, string> = {
+                  'New': 'bg-blue-100 text-blue-700',
+                  'Contacted': 'bg-cyan-100 text-cyan-700',
+                  'Qualified': 'bg-emerald-100 text-emerald-700',
+                  'Negotiation': 'bg-amber-100 text-amber-700',
+                };
+                return (
+                  <motion.div
+                    key={lead.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.7 + idx * 0.05 }}
+                    className="px-6 py-3.5 hover:bg-amber-50/30 cursor-pointer transition-colors"
+                    onClick={() => onNavigate('leads')}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-amber-600 font-semibold">{lead.id}</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${statusColors[lead.status] || 'bg-slate-100 text-slate-600'}`}>
+                          {lead.status}
+                        </span>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] px-1.5">{lead.source}</Badge>
+                    </div>
+                    <p className="text-sm text-slate-700 font-medium">{lead.customer}</p>
+                    <p className="text-xs text-slate-500">{lead.product}</p>
+                  </motion.div>
+                );
+              })}
+              {pendingLeads.length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-8">No pending leads</p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* ===== ROW 7: Active Production Status ===== */}
+      {productionStatus.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+        >
+          <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <Activity className="w-4 h-4 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-slate-900">Active Production</h2>
+                  <p className="text-xs text-slate-500">{productionStatus.length} in progress</p>
+                </div>
+              </div>
+              <Button onClick={() => onNavigate('production')} variant="ghost" className="text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 font-medium rounded-lg h-8">
+                View Board <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </Button>
+            </div>
+            <div className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {productionStatus.slice(0, 6).map((prod: any, idx: number) => {
+                  const progress = prod.progress ?? 0;
+                  const riskColor = prod.delay_risk === 'high' ? 'border-red-200 bg-red-50/30'
+                    : prod.delay_risk === 'medium' ? 'border-amber-200 bg-amber-50/30'
+                    : 'border-slate-200 bg-slate-50/30';
+                  return (
+                    <motion.div
+                      key={prod.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.75 + idx * 0.05 }}
+                      className={`p-4 rounded-lg border ${riskColor} transition-all hover:shadow-sm`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-semibold text-purple-600">
+                          {prod.order?.order_number || prod.order_number || `PO-${prod.id}`}
+                        </span>
+                        <Badge variant={prod.status === 'In Progress' ? 'default' : 'secondary'} className="text-[10px] px-1.5 py-0">
+                          {prod.status}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-slate-700 font-medium mb-1 truncate">{prod.customer || prod.product}</p>
+                      {prod.stage_name && (
+                        <p className="text-xs text-slate-500 mb-2">Stage: {prod.stage_name}</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 bg-slate-200/60 rounded-full h-1.5 overflow-hidden">
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${progress}%` }}
+                            transition={{ duration: 0.8 }}
+                            className="h-1.5 rounded-full bg-purple-500"
+                          />
+                        </div>
+                        <span className="text-[10px] font-semibold text-slate-600">{progress}%</span>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
+      {/* ===== ROW 8: Bottom Summary Strip ===== */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.7 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        transition={{ delay: 0.75 }}
+        className="grid grid-cols-2 md:grid-cols-4 gap-4"
       >
-        <motion.div
-          whileHover={{ y: -4 }}
-          className="bg-emerald-500/10 backdrop-blur-sm rounded-xl p-6 border border-emerald-200/50 shadow-sm hover:shadow-md transition-all"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-500/20 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-sm text-emerald-700/80 mb-1 font-medium">{t('completedThisWeek')}</p>
-              <p className="text-2xl font-bold text-emerald-700">{quickStats.completedThisWeek} {t('orders')}</p>
-            </div>
+        <div onClick={() => onNavigate('dispatch')} className="bg-gradient-to-br from-teal-50 to-teal-100/50 rounded-xl p-5 border border-teal-200/60 cursor-pointer hover:shadow-md transition-all group">
+          <div className="flex items-center gap-3 mb-2">
+            <Truck className="w-5 h-5 text-teal-600" />
+            <ArrowRight className="w-3.5 h-3.5 text-teal-300 group-hover:text-teal-500 ml-auto group-hover:translate-x-1 transition-all" />
           </div>
-        </motion.div>
+          <p className="text-xs font-medium text-teal-600/80 uppercase tracking-wider">Pending Dispatches</p>
+          <p className="text-2xl font-bold text-teal-800">{summary?.pendingDispatches ?? 0}</p>
+        </div>
 
-        <motion.div
-          whileHover={{ y: -4 }}
-          className="bg-blue-500/10 backdrop-blur-sm rounded-xl p-6 border border-blue-200/50 shadow-sm hover:shadow-md transition-all"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <Clock className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-sm text-blue-700/80 mb-1 font-medium">{t('avgProductionTime')}</p>
-              <p className="text-2xl font-bold text-blue-700">{quickStats.avgProductionTime} {t('days')}</p>
-            </div>
+        <div onClick={() => onNavigate('production')} className="bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl p-5 border border-purple-200/60 cursor-pointer hover:shadow-md transition-all group">
+          <div className="flex items-center gap-3 mb-2">
+            <Factory className="w-5 h-5 text-purple-600" />
+            <ArrowRight className="w-3.5 h-3.5 text-purple-300 group-hover:text-purple-500 ml-auto group-hover:translate-x-1 transition-all" />
           </div>
-        </motion.div>
+          <p className="text-xs font-medium text-purple-600/80 uppercase tracking-wider">In Production</p>
+          <p className="text-2xl font-bold text-purple-800">{summary?.activeProduction ?? 0}</p>
+        </div>
 
-        <motion.div
-          whileHover={{ y: -4 }}
-          className="bg-violet-500/10 backdrop-blur-sm rounded-xl p-6 border border-violet-200/50 shadow-sm hover:shadow-md transition-all"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-violet-500/20 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-violet-600" />
-            </div>
-            <div>
-              <p className="text-sm text-violet-700/80 mb-1 font-medium">{t('productionEfficiency')}</p>
-              <p className="text-2xl font-bold text-violet-700">{quickStats.productionEfficiency}%</p>
-            </div>
+        <div onClick={() => onNavigate('billing')} className="bg-gradient-to-br from-green-50 to-green-100/50 rounded-xl p-5 border border-green-200/60 cursor-pointer hover:shadow-md transition-all group">
+          <div className="flex items-center gap-3 mb-2">
+            <IndianRupee className="w-5 h-5 text-green-600" />
+            <ArrowRight className="w-3.5 h-3.5 text-green-300 group-hover:text-green-500 ml-auto group-hover:translate-x-1 transition-all" />
           </div>
-        </motion.div>
+          <p className="text-xs font-medium text-green-600/80 uppercase tracking-wider">{t('totalRevenue')}</p>
+          <p className="text-2xl font-bold text-green-800">{formatCurrency(summary?.totalRevenue ?? 0)}</p>
+        </div>
+
+        <div onClick={() => onNavigate('billing')} className="bg-gradient-to-br from-rose-50 to-rose-100/50 rounded-xl p-5 border border-rose-200/60 cursor-pointer hover:shadow-md transition-all group">
+          <div className="flex items-center gap-3 mb-2">
+            <CreditCard className="w-5 h-5 text-rose-600" />
+            <ArrowRight className="w-3.5 h-3.5 text-rose-300 group-hover:text-rose-500 ml-auto group-hover:translate-x-1 transition-all" />
+          </div>
+          <p className="text-xs font-medium text-rose-600/80 uppercase tracking-wider">Outstanding</p>
+          <p className="text-2xl font-bold text-rose-800">{formatCurrency(summary?.totalOutstanding ?? 0)}</p>
+        </div>
       </motion.div>
     </div>
   );
