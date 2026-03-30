@@ -13,6 +13,9 @@ const db = require('./models');
 
 const app = express();
 
+// Trust proxy (nginx reverse proxy)
+app.set('trust proxy', 1);
+
 // ---------------------
 // Security Middleware
 // ---------------------
