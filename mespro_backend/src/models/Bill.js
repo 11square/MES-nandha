@@ -90,6 +90,14 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true,
     },
+    state: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    district: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     business_id: {
       type: DataTypes.INTEGER,
       allowNull: true,

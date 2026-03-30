@@ -138,6 +138,18 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    gst_number: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    state: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    district: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     business_id: {
       type: DataTypes.INTEGER,
       allowNull: true,
