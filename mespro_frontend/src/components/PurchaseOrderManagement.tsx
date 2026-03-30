@@ -105,9 +105,12 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 
   const handleAddPO = async (newPO: Omit<PurchaseOrder, 'id' | 'total_amount'>) => {
     try {
+      const { gstNumber, addedItems, ...poPayload } = newPO as any;
       await purchaseOrdersService.createPurchaseOrder({
-        ...newPO,
-        total_amount: newPO.quantity * newPO.unit_price,
+        ...poPayload,
+        total_amount: poPayload.quantity * poPayload.unit_price,
+        vendor_gst: poPayload.vendor_gst || gstNumber || '',
+        is_gst: poPayload.is_gst ?? !!gstNumber,
       });
       toast.success('Purchase order created successfully');
       await refreshPOs();
@@ -122,7 +125,8 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
       const { id, quantity, unit_price, gstNumber, ...rest } = updatedPO as any;
       const payload = {
         ...rest,
-        vendor_gst: gstNumber || rest.vendor_gst || '',
+        vendor_gst: rest.vendor_gst || gstNumber || '',
+        is_gst: rest.is_gst ?? !!gstNumber,
       };
       await purchaseOrdersService.updatePurchaseOrder(id, payload);
       toast.success('Purchase order updated successfully');
@@ -689,7 +693,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     category: '',
     subcategory: '',
     product: '',
-    quantity: 1,
+    quantity: 0,
     unitPrice: 0,
   });
 
@@ -736,7 +740,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     };
 
     setAddedItems([...addedItems, newPOItem]);
-    setNewItem({ category: '', subcategory: '', product: '', quantity: 1, unitPrice: 0 });
+    setNewItem({ category: '', subcategory: '', product: '', quantity: 0, unitPrice: 0 });
     setErrors(prev => { const {items: _, ...rest} = prev; return rest; });
   };
 
@@ -831,6 +835,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       vendor_email: vendor.email,
       vendor_address: vendor.address,
     });
+    setGstNumber(vendor.gst_number || '');
+    setGstError('');
     setShowVendorDropdown(false);
     setVendorSearchQuery('');
     setErrors(prev => { const {vendor: _, ...rest} = prev; return rest; });
@@ -863,6 +869,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       total_amount: totalAmount,
       created_by: selectedStaffMember?.name || formData.created_by,
       addedItems: addedItems,
+      vendor_gst: gstNumber || '',
+      is_gst: !!gstNumber,
     });
   };
 
@@ -1007,15 +1015,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
             {errors.status && <FieldError message={errors.status} />}
           </div>
 
-          <div className="space-y-2">
-            <Label>{t('gstNumber')}</Label>
-            <Input
-              value={formData.gstNumber}
-              onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
-              placeholder={t('enterGstNumber')}
-              className="border border-gray-300"
-            />
-          </div>
         </div>
 
         {/* Items Section */}
@@ -1102,9 +1101,10 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                   <Label>{t('quantity')} *</Label>
                   <Input
                     type="number"
-                    min="1"
+                    min="0"
                     value={newItem.quantity}
-                    onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 1 })}
+                    onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 0 })}
+                    onFocus={(e) => e.target.select()}
                     onKeyDown={blockInvalidNumberKeys}
                     className="border border-gray-300"
                   />
@@ -1321,6 +1321,8 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       vendor_email: vendor.email,
       vendor_address: vendor.address,
     });
+    setGstNumber(vendor.gst_number || '');
+    setGstError('');
     setShowVendorDropdown(false);
     setVendorSearchQuery('');
     setErrors(prev => { const {vendor: _, ...rest} = prev; return rest; });
@@ -1388,7 +1390,8 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       quantity: formData.quantity,
       unit_price: formData.unit_price,
       total_amount: newTotal,
-      is_gst: po.is_gst ?? false,
+      vendor_gst: gstNumber || '',
+      is_gst: !!gstNumber,
       created_by: selectedStaffMember?.name || formData.created_by,
     });
   };
@@ -1534,16 +1537,6 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
               <option value="cancelled">{t('cancelled')}</option>
             </select>
             {errors.status && <FieldError message={errors.status} />}
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t('gstNumber')}</Label>
-            <Input
-              value={formData.gstNumber}
-              onChange={(e) => setFormData({ ...formData, gstNumber: e.target.value })}
-              placeholder={t('enterGstNumber')}
-              className="border border-gray-300"
-            />
           </div>
         </div>
 

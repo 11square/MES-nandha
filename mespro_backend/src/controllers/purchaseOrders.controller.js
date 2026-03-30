@@ -1,4 +1,4 @@
-const { PurchaseOrder, PurchaseOrderItem, Vendor } = require('../models');
+const { PurchaseOrder, PurchaseOrderItem, Vendor, StockItem } = require('../models');
 const createCrudController = require('./base.controller');
 const ApiResponse = require('../utils/ApiResponse');
 const { sequelize } = require('../models');
@@ -18,7 +18,7 @@ module.exports = {
   create: async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
-      const { items, ...poData } = req.body;
+      const { items, add_to_stock, addedItems, ...poData } = req.body;
 
       // Auto-generate PO number
       const lastPO = await PurchaseOrder.findOne({
@@ -36,6 +36,52 @@ module.exports = {
           items.map((item) => ({ ...item, purchase_order_id: po.id, business_id: req.currentBusiness })),
           { transaction: t }
         );
+      }
+
+      // Add items to stock inventory if requested
+      if (add_to_stock && items && items.length > 0) {
+        for (const item of items) {
+          const itemName = (item.name || '').trim();
+          if (!itemName) continue;
+
+          // Check if stock item with same name already exists
+          const existing = await StockItem.findOne({
+            where: { name: itemName, business_id: req.currentBusiness },
+            transaction: t,
+          });
+
+          if (existing) {
+            // Update existing stock: increase current_stock and update prices
+            const newStock = Number(existing.current_stock || 0) + Number(item.quantity || 0);
+            const updateData = { current_stock: newStock, last_restocked: new Date() };
+            if (item.rate) updateData.buying_price = item.rate;
+            if (poData.vendor_name) updateData.supplier = poData.vendor_name;
+            // Update status based on new stock level
+            if (newStock <= 0) updateData.status = 'Out of Stock';
+            else if (newStock <= Number(existing.reorder_level || 10)) updateData.status = 'Low Stock';
+            else updateData.status = 'In Stock';
+            await existing.update(updateData, { transaction: t });
+          } else {
+            // Create new stock item
+            const sku = `PO-${po.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            await StockItem.create({
+              name: itemName,
+              category: item.category || 'General',
+              subcategory: item.subcategory || 'General',
+              sku,
+              current_stock: Number(item.quantity || 0),
+              reorder_level: 10,
+              unit: item.unit || 'pcs',
+              unit_price: Number(item.rate || 0),
+              buying_price: Number(item.rate || 0),
+              selling_price: Number(item.rate || 0),
+              supplier: poData.vendor_name || '',
+              last_restocked: new Date(),
+              status: Number(item.quantity || 0) > 0 ? 'In Stock' : 'Out of Stock',
+              business_id: req.currentBusiness,
+            }, { transaction: t });
+          }
+        }
       }
 
       await t.commit();
@@ -63,7 +109,7 @@ module.exports = {
         return ApiResponse.notFound(res, 'Purchase Order not found');
       }
 
-      const { items, ...poData } = req.body;
+      const { items, add_to_stock, addedItems, ...poData } = req.body;
 
       // Update the parent purchase order fields
       await record.update(poData, { transaction: t });
