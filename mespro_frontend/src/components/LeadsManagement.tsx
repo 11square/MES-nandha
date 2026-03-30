@@ -535,12 +535,14 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             </TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-3">
-            <Button 
-              variant="outline"
-              onClick={() => onNavigate('orders')}
-            >
-              {t('viewOrders')}
-            </Button>
+            {activeTab === 'leads' && (
+              <Button 
+                variant="outline"
+                onClick={() => onNavigate('orders')}
+              >
+                {t('viewOrders')}
+              </Button>
+            )}
             {activeTab === 'leads' && (canApprove) && (
               <Button 
                 className="bg-blue-600 hover:bg-blue-700"
@@ -549,6 +551,9 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
                 <Plus className="w-4 h-4 mr-2" />
                 {t('createLead')}
               </Button>
+            )}
+            {activeTab === 'followups' && (
+              <AddActivityDialog leads={leads} onSuccess={refreshLeads} />
             )}
           </div>
         </div>
@@ -762,14 +767,11 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
 
         {/* Follow-ups Tab Content */}
         <TabsContent value="followups" className="space-y-6">
-          {/* Header with Add Follow-up Button */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800">
-              {t('allFollowups')} 
-              <span className="text-gray-500 font-normal ml-2">({allFollowUps.length})</span>
-            </h2>
-            <AddActivityDialog leads={leads} onSuccess={refreshLeads} />
-          </div>
+          {/* Follow-ups Header */}
+          <h2 className="text-xl font-semibold text-gray-800">
+            {t('allFollowups')} 
+            <span className="text-gray-500 font-normal ml-2">({allFollowUps.length})</span>
+          </h2>
           <EditActivityDialog
             open={showEditActivity}
             onOpenChange={(open) => {
