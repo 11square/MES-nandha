@@ -1522,7 +1522,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
       quantity: leadSummary.quantity,
       status: (form.elements.namedItem('leadStatus') as HTMLSelectElement)?.value || 'Contacted',
       gst_number: gstNumber || '',
-      required_date: formData.required_date || '',
+      required_date: formData.required_date || undefined,
       address: (form.elements.namedItem('address') as HTMLTextAreaElement)?.value || '',
       state: stateValue || '',
       district: districtValue || '',
@@ -2450,8 +2450,6 @@ function EditLeadForm({ lead, categories = [], allProducts = [], onClose, onSucc
   const initialCategoryId = categories.find(
     c => c.name.toLowerCase() === String(lead.category || '').toLowerCase()
   )?.id || String(lead.category || '').toLowerCase().replace(/\s+/g, '-');
-  const [editingItemId, setEditingItemId] = useState<number | null>(null);
-  const [editingQty, setEditingQty] = useState(0);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editingQty, setEditingQty] = useState(0);
   const [addedProducts, setAddedProducts] = useState<Array<{ id: number; category: string; subcategory: string; product: string; quantity: number; unit_price?: number }>>(
