@@ -94,6 +94,24 @@ module.exports = {
     }
   },
 
+  // GET /clients/:id/bills
+  getClientBills: async (req, res, next) => {
+    try {
+      const { page, limit, offset } = getPagination(req.query);
+      const data = await Bill.findAndCountAll({
+        where: applyBusinessScope(req, { client_id: req.params.id }),
+        order: [['date', 'DESC']],
+        limit,
+        offset,
+        distinct: true,
+      });
+      const { items, pagination } = getPagingData(data, page, limit);
+      return ApiResponse.paginated(res, items, pagination);
+    } catch (error) {
+      next(error);
+    }
+  },
+
   // POST /clients/:id/followups
   createFollowup: async (req, res, next) => {
     try {

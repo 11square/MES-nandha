@@ -1333,6 +1333,15 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     setCustomerValue(String(client.name || client.customer_name || client.client_name || ''));
     setContactValue(String(client.contact_person || client.contactPerson || client.contact || ''));
     setEmailValue(String(client.email || ''));
+    // Auto-fill GST, state, district, address from selected client
+    const clientGst = String(client.gst_number || client.gstNumber || '');
+    setGstNumber(clientGst);
+    setGstError(clientGst ? validateGstNumber(clientGst) : '');
+    setStateValue(String(client.state || ''));
+    setDistrictValue(String(client.district || ''));
+    // Auto-fill address field
+    const addressEl = document.getElementById('address') as HTMLTextAreaElement;
+    if (addressEl) addressEl.value = String(client.address || '');
     setShowMobileDropdown(false);
     setMobileSearchQuery('');
     if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
@@ -2574,6 +2583,13 @@ function EditLeadForm({ lead, categories = [], allProducts = [], onClose, onSucc
     setCustomerName(String(client.name || client.customer_name || client.client_name || ''));
     setContactPerson(String(client.contact_person || client.contactPerson || client.contact || ''));
     setEmail(String(client.email || ''));
+    // Auto-fill GST, state, district, address from selected client
+    const clientGst = String(client.gst_number || client.gstNumber || '');
+    setGstNumber(clientGst);
+    setGstError(clientGst ? validateGstNumber(clientGst) : '');
+    setStateValue(String(client.state || ''));
+    setDistrictValue(String(client.district || ''));
+    setAddress(String(client.address || ''));
     setShowMobileDropdown(false);
     if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
     if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; });

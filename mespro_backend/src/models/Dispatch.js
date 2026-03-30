@@ -13,9 +13,9 @@ module.exports = (sequelize) => {
       references: { model: 'orders', key: 'id' },
     },
     dispatch_type: {
-      type: DataTypes.ENUM('production', 'stock'),
+      type: DataTypes.ENUM('stock'),
       allowNull: false,
-      defaultValue: 'production',
+      defaultValue: 'stock',
     },
     customer: {
       type: DataTypes.STRING(150),
@@ -68,6 +68,14 @@ module.exports = (sequelize) => {
     },
     address: {
       type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    lr_image: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    invoice_no: {
+      type: DataTypes.STRING(50),
       allowNull: true,
     },
     business_id: {

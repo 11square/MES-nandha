@@ -6,12 +6,60 @@ const { applyBusinessScope } = require('../middleware/businessScope');
 
 const baseController = createCrudController(Dispatch, {
   resourceName: 'Dispatch',
-  searchFields: ['dispatch_number', 'vehicle_number', 'driver_name', 'tracking_number'],
+  searchFields: ['customer', 'lr_number', 'driver_name', 'vehicle_no'],
   defaultOrder: [['dispatch_date', 'DESC']],
 });
 
 module.exports = {
   ...baseController,
+
+  // POST /dispatch — override create with validation + file upload
+  create: async (req, res, next) => {
+    try {
+      const { customer, product, lr_number, transporter, dispatch_date } = req.body;
+      const missing = [];
+      if (!customer) missing.push('customer');
+      if (!product) missing.push('product');
+      // lr_number is optional if LR image is uploaded
+      if (!lr_number && !req.file) missing.push('lr_number or lr_image');
+      if (!transporter) missing.push('transporter');
+      if (!dispatch_date) missing.push('dispatch_date');
+      if (missing.length) {
+        return ApiResponse.error(res, `Missing required fields: ${missing.join(', ')}`, 400);
+      }
+      req.body.dispatch_type = 'stock';
+      if (req.currentBusiness) req.body.business_id = req.currentBusiness;
+      if (req.file) {
+        req.body.lr_image = `/uploads/dispatch/${req.file.filename}`;
+      }
+      const record = await Dispatch.create(req.body);
+      return ApiResponse.created(res, record, 'Dispatch created successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // PUT /dispatch/:id — override update with file upload
+  update: async (req, res, next) => {
+    try {
+      const where = { id: req.params.id };
+      applyBusinessScope(req, where);
+      const record = await Dispatch.findOne({ where });
+      if (!record) return ApiResponse.notFound(res, 'Dispatch not found');
+
+      if (req.file) {
+        req.body.lr_image = `/uploads/dispatch/${req.file.filename}`;
+      } else if (req.body.lr_image === '') {
+        req.body.lr_image = null;
+      }
+      req.body.dispatch_type = 'stock';
+      await record.update(req.body);
+      await record.reload();
+      return ApiResponse.success(res, record, 'Dispatch updated successfully');
+    } catch (error) {
+      next(error);
+    }
+  },
 
   getAll: async (req, res, next) => {
     try {
@@ -21,10 +69,10 @@ module.exports = {
 
       if (search) {
         where[Op.or] = [
-          { dispatch_number: { [Op.like]: `%${search}%` } },
-          { vehicle_number: { [Op.like]: `%${search}%` } },
+          { customer: { [Op.like]: `%${search}%` } },
+          { lr_number: { [Op.like]: `%${search}%` } },
           { driver_name: { [Op.like]: `%${search}%` } },
-          { tracking_number: { [Op.like]: `%${search}%` } },
+          { vehicle_no: { [Op.like]: `%${search}%` } },
         ];
       }
       if (status) where.status = status;
@@ -82,8 +130,7 @@ module.exports = {
 
       await dispatch.update({
         status,
-        notes: notes || dispatch.notes,
-        ...(status === 'delivered' ? { delivery_date: new Date() } : {}),
+        ...(status === 'Delivered' ? { delivered_date: new Date() } : {}),
       });
 
       return ApiResponse.success(res, dispatch, 'Dispatch status updated');

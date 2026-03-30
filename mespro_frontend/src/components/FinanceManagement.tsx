@@ -404,7 +404,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         payment_method: tx.payment_method || 'Cash',
         gst_number: tx.gst_number || '',
         mobile_number: tx.mobile_number || '',
-        client: tx.client || '',
+        client: tx.client_name || tx.client || '',
         address: tx.address || '',
         payment_type: ((tx as any).payment_type || '') as '' | 'cash' | 'credit',
         status: (tx.status as any) || 'completed',
@@ -420,7 +420,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         payment_method: transaction.payment_method || 'Cash',
         gst_number: transaction.gst_number || '',
         mobile_number: transaction.mobile_number || '',
-        client: transaction.client || '',
+        client: transaction.client_name || transaction.client || '',
         address: transaction.address || '',
         payment_type: (transaction.payment_type || '') as '' | 'cash' | 'credit',
         status: (transaction.status as any) || 'completed',
@@ -659,7 +659,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-700 font-medium">{transaction.client || '—'}</div>
+                        <div className="text-sm text-gray-700 font-medium">{transaction.client_name || transaction.client || '—'}</div>
                         {transaction.address && <div className="text-xs text-gray-500 truncate max-w-[150px]">{transaction.address}</div>}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{transaction.category}</td>
@@ -826,7 +826,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
               </div>
               <div>
                 <p className="text-xs text-gray-500">Client</p>
-                <p className="text-sm font-medium">{selectedTransaction.client || '—'}</p>
+                <p className="text-sm font-medium">{selectedTransaction.client_name || selectedTransaction.client || '—'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Category</p>
@@ -1026,7 +1026,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   placeholder="Search or enter client name"
                   autoComplete="off"
                 />
-                {showEditClientDropdown && editTransactionForm.client && filteredEditClientsList.length > 0 && (
+                {showEditClientDropdown && filteredEditClientsList.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {filteredEditClientsList.map(c => (
                       <button
@@ -1034,12 +1034,14 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                         type="button"
                         className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-100 last:border-b-0"
                         onClick={() => {
+                          const cBal = getClientCreditBalance(c.name);
                           setEditTransactionForm(prev => ({
                             ...prev,
                             client: c.name,
                             address: c.address || prev.address,
                             mobile_number: c.phone || prev.mobile_number,
                             gst_number: c.gst_number || prev.gst_number,
+                            payment_type: cBal > 0 ? 'credit' : 'cash',
                           }));
                           setShowEditClientDropdown(false);
                         }}
@@ -1243,7 +1245,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   placeholder="Search or enter client name"
                   autoComplete="off"
                 />
-                {showClientDropdown && transactionForm.client && filteredClientsList.length > 0 && (
+                {showClientDropdown && filteredClientsList.length > 0 && (
                   <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
                     {filteredClientsList.map(c => {
                       const cBal = getClientCreditBalance(c.name);
@@ -1259,6 +1261,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                               address: c.address || prev.address,
                               mobile_number: c.phone || prev.mobile_number,
                               gst_number: c.gst_number || prev.gst_number,
+                              payment_type: cBal > 0 ? 'credit' : 'cash',
                             }));
                             setShowClientDropdown(false);
                           }}

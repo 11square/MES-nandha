@@ -14,6 +14,7 @@ router.post('/', clientsController.create);
 router.put('/:id', clientsController.update);
 router.delete('/:id', clientsController.delete);
 router.get('/:id/payments', clientsController.getClientPayments);
+router.get('/:id/bills', clientsController.getClientBills);
 router.get('/:id/sales', clientsController.getClientSales);
 router.get('/:id/outstandings', clientsController.getOutstandings);
 router.get('/:id/followups', clientsController.getFollowups);

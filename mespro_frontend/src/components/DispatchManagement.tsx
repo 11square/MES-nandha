@@ -47,7 +47,7 @@ interface DispatchManagementProps {
 export default function DispatchManagement({ onViewOrder, language = 'en', billForDispatch, onClearBillForDispatch }: DispatchManagementProps) {
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'production' | 'stock'>('stock');
+  const [activeTab, setActiveTab] = useState<'stock'>('stock');
   const [showAddDispatch, setShowAddDispatch] = useState(false);
   const [isBillPrefilledDispatch, setIsBillPrefilledDispatch] = useState(false);
   const [billOrderNumber, setBillOrderNumber] = useState('');
@@ -243,7 +243,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
   const [editDispatch, setEditDispatch] = useState<any | null>(null);
   const [showEditDispatch, setShowEditDispatch] = useState(false);
   const [editForm, setEditForm] = useState({
-    dispatch_type: 'stock' as 'production' | 'stock',
+    dispatch_type: 'stock' as 'stock',
     order_id: '',
     invoice_no: '',
     customer: '',
@@ -278,7 +278,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
       localStorage.setItem('dispatch_transporters', JSON.stringify(updated));
     }
     setEditForm({
-      dispatch_type: dispatch.type || dispatch.dispatch_type || 'production',
+      dispatch_type: dispatch.type || dispatch.dispatch_type || 'stock',
       order_id: String(dispatch.order_id || ''),
       invoice_no: dispatch.invoice_no || dispatch.bill_no || '',
       customer: dispatch.customer || '',
@@ -310,13 +310,19 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
 
   const handleUpdateDispatch = async () => {
     const validationErrors = validateFields(editForm, {
-      lr_number: { required: true, label: 'LR Number' },
+      customer: { required: true, label: 'Customer' },
+      product: { required: true, label: 'Product' },
+      dispatch_date: { required: true, label: 'Dispatch Date' },
       transporter: { required: true, label: 'Transporter' },
     });
+    // LR number required only if no LR image
+    if (!editForm.lr_number && !editLrImageFile && !editLrImagePreview) {
+      validationErrors.lr_number = 'LR Number or LR Image is required';
+    }
     if (Object.keys(validationErrors).length) { setEditErrors(validationErrors); return; }
     if (!editDispatch) return;
     const parsedOrderId = parseOrderIdForApi(editForm.order_id);
-    if (editForm.dispatch_type === 'production' && parsedOrderId === null) {
+    if (parsedOrderId === null && editForm.order_id) {
       setEditErrors(prev => ({ ...prev, order_id: 'Valid order id is required for production dispatch' }));
       return;
     }
@@ -355,12 +361,18 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
 
   const handleCreateDispatch = async () => {
     const validationErrors = validateFields(dispatchForm, {
-      lr_number: { required: true, label: 'LR Number' },
+      customer: { required: true, label: 'Customer' },
+      product: { required: true, label: 'Product' },
+      dispatch_date: { required: true, label: 'Dispatch Date' },
       transporter: { required: true, label: 'Transporter' },
     });
+    // LR number required only if no LR image
+    if (!dispatchForm.lr_number && !lrImageFile) {
+      validationErrors.lr_number = 'LR Number or LR Image is required';
+    }
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
     const parsedOrderId = parseOrderIdForApi(dispatchForm.order_id);
-    if (dispatchForm.dispatch_type === 'production' && parsedOrderId === null) {
+    if (parsedOrderId === null && dispatchForm.order_id) {
       setErrors(prev => ({ ...prev, order_id: 'Valid order id is required for production dispatch' }));
       return;
     }
@@ -1177,15 +1189,16 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('lrNumber')} *</Label>
+                <Label>{t('lrNumber')} <span className="text-xs text-muted-foreground font-normal">{language === 'en' ? '(or upload LR image below)' : '(அல்லது கீழே LR படம் பதிவேற்றவும்)'}</span></Label>
                 <Input 
                   value={dispatchForm.lr_number}
                   onChange={(e) => { setDispatchForm({...dispatchForm, lr_number: e.target.value}); setErrors(prev => ({...prev, lr_number: ''})); }}
                   placeholder="LR-2024-XXX"
                 />
+                <FieldError message={errors.lr_number} />
                 {/* LR Image Upload */}
                 <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">{language === 'en' ? 'LR Image (optional)' : 'LR படம் (விருப்பம்)'}</Label>
+                  <Label className="text-xs text-muted-foreground">{language === 'en' ? 'LR Image' : 'LR படம்'}</Label>
                   {lrImagePreview ? (
                     <div className="relative inline-block">
                       <img src={lrImagePreview} alt="LR" className="w-32 h-24 object-cover rounded-lg border" />
@@ -1582,11 +1595,12 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('lrNumber')} *</Label>
+                <Label>{t('lrNumber')} <span className="text-xs text-muted-foreground font-normal">{language === 'en' ? '(or upload LR image below)' : '(அல்லது கீழே LR படம் பதிவேற்றவும்)'}</span></Label>
                 <Input
                   value={editForm.lr_number}
                   onChange={(e) => { setEditForm({ ...editForm, lr_number: e.target.value }); setEditErrors(prev => ({...prev, lr_number: ''})); }}
                 />
+                <FieldError message={editErrors.lr_number} />
                 {/* LR Image Upload for Edit */}
                 <div className="space-y-2">
                   <Label className="text-xs text-muted-foreground">{language === 'en' ? 'LR Image' : 'LR படம்'}</Label>

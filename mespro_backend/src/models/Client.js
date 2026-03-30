@@ -32,6 +32,14 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    state: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
+    district: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+    },
     total_orders: {
       type: DataTypes.INTEGER,
       allowNull: false,

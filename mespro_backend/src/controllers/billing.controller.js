@@ -1,4 +1,4 @@
-const { Bill, BillItem, Payment, Client, CreditOutstanding } = require('../models');
+const { Bill, BillItem, Payment, Client, CreditOutstanding, Transaction } = require('../models');
 const createCrudController = require('./base.controller');
 const ApiResponse = require('../utils/ApiResponse');
 const { sequelize } = require('../models');
@@ -130,8 +130,44 @@ module.exports = {
         );
       }
 
-      // Create credit outstanding if credit payment
-      if (billData.payment_type === 'credit') {
+      // Handle payment based on payment type
+      if (billData.payment_type === 'cash') {
+        // Cash bill: auto-create payment record and mark as paid
+        const cashAmount = parseFloat(billData.grand_total || 0);
+        await Payment.create({
+          bill_id: bill.id,
+          bill_no: bill.bill_no,
+          client_name: billData.client_name,
+          date: billData.date,
+          amount: cashAmount,
+          method: billData.payment_method || 'cash',
+          reference: `Cash payment for ${bill.bill_no}`,
+          received_by: billData.created_by || null,
+          status: 'completed',
+          business_id: req.currentBusiness,
+        }, { transaction: t });
+
+        // Create finance transaction for cash bill
+        await Transaction.create({
+          date: billData.date,
+          type: 'income',
+          category: 'Sales',
+          description: `Cash payment received for invoice ${bill.bill_no} - ${billData.client_name}`,
+          amount: cashAmount,
+          payment_method: billData.payment_method || 'cash',
+          reference: bill.bill_no,
+          status: 'completed',
+          business_id: req.currentBusiness,
+        }, { transaction: t });
+
+        // Mark bill as paid
+        await bill.update({
+          payment_status: 'paid',
+          paid_amount: cashAmount,
+        }, { transaction: t });
+
+      } else if (billData.payment_type === 'credit') {
+        // Credit bill: create outstanding record
         await CreditOutstanding.create({
           bill_id: bill.id,
           bill_no: bill.bill_no,

@@ -378,11 +378,13 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
       phone: '',
       email: '',
       address: '',
+      gst_number: '',
       state: '',
       district: '',
       status: 'Active',
       rating: 1 as 1 | 2 | 3
     });
+    setGstError('');
   };
 
   const handleAddClient = async () => {

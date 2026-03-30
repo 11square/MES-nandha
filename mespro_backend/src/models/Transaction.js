@@ -36,6 +36,31 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true,
     },
+    client_name: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+    },
+    client_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'clients', key: 'id' },
+    },
+    gst_number: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    mobile_number: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    address: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    payment_type: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     status: {
       type: DataTypes.ENUM('completed', 'pending', 'cancelled'),
       allowNull: false,
