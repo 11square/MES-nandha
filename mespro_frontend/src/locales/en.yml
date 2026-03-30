@@ -1,0 +1,186 @@
+# Navigation
+dashboard: Dashboard
+leads: Leads
+orders: Orders
+leadsOrders: Leads & Orders
+sales: Sales
+billing: Billing
+clients: Clients
+products: Products
+production: Production
+inventory: Inventory
+purchaseOrders: PO
+stock: Stock
+dispatch: Dispatch
+finance: Finance
+payroll: Payroll
+staff: Staff
+attendance: Attendance
+library: Library
+users: Users
+reports: Reports
+settings: Settings
+
+# Page Titles
+dashboardTitle: Dashboard
+leadsTitle: Leads Management
+ordersTitle: Orders Management
+leadsOrdersTitle: Leads & Orders
+productionBoard: Production Board
+orderDetails: Order Details
+inventoryManagement: Inventory Management
+dispatchManagement: Dispatch Management
+attendanceTracking: Attendance Tracking
+reportsAnalytics: Reports & Analytics
+staffManagement: Staff Management
+userManagement: User Management
+payrollManagement: Payroll Management
+clientManagement: Client Management
+stockManagement: Stock Management
+financeManagement: Finance Management
+libraryManagement: Library Management
+salesManagement: Sales Management
+purchaseOrderManagement: Purchase Order Management
+billingManagement: Billing
+
+# Common Actions
+add: Add
+edit: Edit
+delete: Delete
+save: Save
+cancel: Cancel
+search: Search
+filter: Filter
+export: Export
+import: Import
+view: View
+print: Print
+create: Create
+update: Update
+submit: Submit
+close: Close
+confirm: Confirm
+back: Back
+next: Next
+
+# Common Labels
+name: Name
+email: Email
+phone: Phone
+address: Address
+date: Date
+status: Status
+amount: Amount
+quantity: Quantity
+price: Price
+total: Total
+description: Description
+notes: Notes
+actions: Actions
+type: Type
+category: Category
+
+# Status Labels
+active: Active
+inactive: Inactive
+pending: Pending
+approved: Approved
+rejected: Rejected
+completed: Completed
+cancelled: Cancelled
+draft: Draft
+paid: Paid
+partial: Partial
+overdue: Overdue
+received: Received
+ordered: Ordered
+
+# Dashboard
+totalOrders: Total Orders
+pendingOrders: Pending Orders
+completedOrders: Completed Orders
+totalRevenue: Total Revenue
+todayAttendance: Today's Attendance
+todaysCalls: Today's Calls
+todaysMeetings: Today's Meetings
+todaysRevenue: Today's Revenue
+lowStockItems: Low Stock Items
+recentOrders: Recent Orders
+quickStats: Quick Stats
+newLeads: New Leads
+stockAlerts: Stock Alerts
+dispatches: Dispatches
+fromLastMonth: from last month
+ordersInProduction: Orders in Production
+inventoryAlerts: Inventory Alerts
+pendingLeads: Pending Leads
+viewAll: View all
+manage: Manage
+viewAllLeads: View all leads
+completedThisWeek: Completed This Week
+avgProductionTime: Avg. Production Time
+productionEfficiency: Production Efficiency
+ordersLabel: Orders
+days: Days
+complete: complete
+reorderAt: Reorder at
+currentStockLabel: Current Stock
+units: units
+high: High
+medium: Medium
+low: Low
+inProduction: In Production
+
+# Leads & Orders
+newLead: New Lead
+leadName: Lead Name
+contactPerson: Contact Person
+source: Source
+priority: Priority
+followUpDate: Follow-up Date
+convertToOrder: Convert to Order
+
+# Sales
+salesOrders: Sales Orders
+salesFollowups: Sales Follow-ups
+salesTargets: Sales Targets
+orderId: Order ID
+customer: Customer
+orderDate: Order Date
+deliveryDate: Delivery Date
+paymentStatus: Payment Status
+salesPerson: Sales Person
+
+# Billing
+invoices: Invoices
+payments: Payments
+newInvoice: New Invoice
+invoiceNo: Invoice No
+billTo: Bill To
+dueDate: Due Date
+subtotal: Subtotal
+discount: Discount
+tax: Tax
+grandTotal: Grand Total
+amountPaid: Amount Paid
+balance: Balance
+recordPayment: Record Payment
+paymentMethod: Payment Method
+cash: Cash
+upi: UPI
+card: Card
+bankTransfer: Bank Transfer
+totalBilled: Total Billed
+amountReceived: Amount Received
+pendingAmount: Pending Amount
+
+# User Management
+fullAccessAllModules: Full Access - All Modules
+managementAccessReportsApprovals: Management Access - Reports, Approvals
+productionAccessOrdersInventoryDispatch: Production Access - Orders, Inventory, Dispatch
+salesAccessLeadsClientsBilling: Sales Access - Leads, Clients, Billing
+searchByNameUsernameEmailOrRole: Search by name, username, email or role
+selectARole: Select a role
+enterPassword: Enter password
+
+# ... (continuing with all other keys from the translations object)

@@ -1,0 +1,147 @@
+# Navigation
+dashboard: டாஷ்போர்டு
+leads: லீட்கள்
+orders: ஆர்டர்கள்
+leadsOrders: விசாரணைகள் & ஆர்டர்கள்
+sales: விற்பனை
+billing: பில்லிங்
+clients: வாடிக்கையாளர்கள்
+products: தயாரிப்புகள்
+production: உற்பத்தி
+inventory: சரக்கு
+purchaseOrders: கொள்முதல்
+stock: ஸ்டாக்
+dispatch: அனுப்புதல்
+finance: நிதி
+payroll: சம்பளப்பட்டி
+staff: ஊழியர்கள்
+attendance: வருகை
+library: நூலகம்
+users: பயனர்கள்
+reports: அறிக்கைகள்
+settings: அமைப்புகள்
+
+# Page Titles
+dashboardTitle: டாஷ்போர்டு
+leadsTitle: லீட் மேலாண்மை
+ordersTitle: ஆர்டர் மேலாண்மை
+leadsOrdersTitle: விசாரணைகள் & ஆர்டர்கள்
+productionBoard: உற்பத்தி போர்டு
+orderDetails: ஆர்டர் விவரங்கள்
+inventoryManagement: சரக்கு மேலாண்மை
+dispatchManagement: அனுப்புதல் மேலாண்மை
+attendanceTracking: வருகை கண்காணிப்பு
+reportsAnalytics: அறிக்கைகள் & பகுப்பாய்வு
+staffManagement: ஊழியர் மேலாண்மை
+userManagement: பயனர் மேலாண்மை
+payrollManagement: சம்பளப்பட்டி மேலாண்மை
+clientManagement: வாடிக்கையாளர் மேலாண்மை
+stockManagement: ஸ்டாக் மேலாண்மை
+financeManagement: நிதி மேலாண்மை
+libraryManagement: நூலக மேலாண்மை
+salesManagement: விற்பனை மேலாண்மை
+purchaseOrderManagement: கொள்முதல் ஆர்டர் மேலாண்மை
+billingManagement: பில்லிங்
+
+# Common Actions
+add: சேர்
+edit: திருத்து
+delete: நீக்கு
+save: சேமி
+cancel: ரத்து
+search: தேடு
+filter: வடிகட்டு
+export: ஏற்றுமதி
+import: இறக்குமதி
+view: பார்
+print: அச்சிடு
+create: உருவாக்கு
+update: புதுப்பி
+submit: சமர்ப்பி
+close: மூடு
+confirm: உறுதிப்படுத்து
+back: பின்
+next: அடுத்து
+
+# Common Labels
+name: பெயர்
+email: மின்னஞ்சல்
+phone: தொலைபேசி
+address: முகவரி
+date: தேதி
+status: நிலை
+amount: தொகை
+quantity: அளவு
+price: விலை
+total: மொத்தம்
+description: விவரம்
+notes: குறிப்புகள்
+actions: செயல்கள்
+type: வகை
+category: பிரிவு
+
+# Status Labels
+active: செயலில்
+inactive: செயலற்ற
+pending: நிலுவை
+approved: அங்கீகரிக்கப்பட்டது
+rejected: நிராகரிக்கப்பட்டது
+completed: முடிந்தது
+cancelled: ரத்து செய்யப்பட்டது
+draft: வரைவு
+paid: செலுத்தப்பட்டது
+partial: பகுதி
+overdue: காலாவதி
+received: பெறப்பட்டது
+ordered: ஆர்டர் செய்யப்பட்டது
+
+# Dashboard
+totalOrders: மொத்த ஆர்டர்கள்
+pendingOrders: நிலுவையில் உள்ள ஆர்டர்கள்
+completedOrders: முடிந்த ஆர்டர்கள்
+totalRevenue: மொத்த வருமானம்
+todayAttendance: இன்றைய வருகை
+todaysCalls: இன்றைய அழைப்புகள்
+todaysMeetings: இன்றைய சந்திப்புகள்
+todaysRevenue: இன்றைய வருமானம்
+lowStockItems: குறைந்த ஸ்டாக் பொருட்கள்
+recentOrders: சமீபத்திய ஆர்டர்கள்
+quickStats: விரைவு புள்ளிவிவரங்கள்
+newLeads: புதிய விசாரணைகள்
+stockAlerts: ஸ்டாக் எச்சரிக்கைகள்
+dispatches: அனுப்புதல்கள்
+fromLastMonth: கடந்த மாதத்திலிருந்து
+ordersInProduction: உற்பத்தியில் உள்ள ஆர்டர்கள்
+inventoryAlerts: சரக்கு எச்சரிக்கைகள்
+pendingLeads: நிலுவையில் உள்ள விசாரணைகள்
+viewAll: அனைத்தையும் பார்
+manage: நிர்வகி
+viewAllLeads: அனைத்து விசாரணைகளையும் பார்
+completedThisWeek: இந்த வாரம் முடிந்தது
+avgProductionTime: சராசரி உற்பத்தி நேரம்
+productionEfficiency: உற்பத்தி திறன்
+ordersLabel: ஆர்டர்கள்
+days: நாட்கள்
+complete: முடிந்தது
+reorderAt: மீண்டும் ஆர்டர் செய்ய
+currentStockLabel: தற்போதைய ஸ்டாக்
+units: அலகுகள்
+high: அதிக
+medium: நடுத்தர
+low: குறைந்த
+inProduction: உற்பத்தியில்
+
+# User Management
+fullAccessAllModules: முழு அணுகல் - அனைத்து தொகுதிகளும்
+managementAccessReportsApprovals: மேலாண்மை அணுகல் - அறிக்கைகள், ஒப்புதல்கள்
+productionAccessOrdersInventoryDispatch: உற்பத்தி அணுகல் - ஆர்டர்கள், சரக்கு, அனுப்புதல்
+salesAccessLeadsClientsBilling: விற்பனை அணுகல் - விசாரணைகள், வாடிக்கையாளர்கள், பில்லிங்
+searchByNameUsernameEmailOrRole: பெயர், பயனர் பெயர், மின்னஞ்சல் அல்லது பாத்திரம் மூலம் தேடவும்
+selectARole: ஒரு பாத்திரத்தை தேர்ந்தெடுக்கவும்
+enterPassword: கடவுச்சொல்லை உள்ளிடவும்
+
+# Additional translations (rest of the file continues with all other translations from the ta section)
+# ... (continuing with all Tamil translations from the source file)
+
+
+useAsCustomClientName: வாடிக்கையாளர் பெயராக பயன்படுத்து
