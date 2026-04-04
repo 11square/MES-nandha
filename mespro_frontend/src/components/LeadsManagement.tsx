@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -254,7 +255,13 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   };
 
   useEffect(() => {
+    const hasPending = consumePendingDraft('/leads');
     refreshLeads();
+    if (hasPending) {
+      const t1 = setTimeout(() => refreshLeads(), 800);
+      const t2 = setTimeout(() => refreshLeads(), 2000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
   }, []);
 
   // Fetch stock items to merge with products (products table may be empty)
@@ -461,6 +468,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
+      'Draft': 'bg-gray-100 text-gray-700',
       'New': 'bg-blue-100 text-blue-700',
       'Contacted': 'bg-yellow-100 text-yellow-700',
       'Qualified': 'bg-purple-100 text-purple-700',
@@ -637,6 +645,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('allStatus')}</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
             <SelectItem value="new">{t('new')}</SelectItem>
             <SelectItem value="contacted">{t('contacted')}</SelectItem>
             <SelectItem value="qualified">{t('qualified')}</SelectItem>
@@ -1280,6 +1289,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
   };
 
   // Controlled form fields for auto-fill
+  const [countryCode, setCountryCode] = useState('+91');
   const [mobileValue, setMobileValue] = useState('');
   const [customerValue, setCustomerValue] = useState('');
   const [contactValue, setContactValue] = useState('');
@@ -1321,7 +1331,14 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
 
   const handleClientSelect = (client: any) => {
     const phone = String(client.phone || client.mobile || '');
-    setMobileValue(phone);
+    // Parse country code from phone if present
+    const codeMatch = phone.match(/^(\+\d{1,3})\s*(.*)$/);
+    if (codeMatch) {
+      setCountryCode(codeMatch[1]);
+      setMobileValue(codeMatch[2].trim());
+    } else {
+      setMobileValue(phone);
+    }
     setCustomerValue(String(client.name || client.customer_name || client.client_name || ''));
     setContactValue(String(client.contact_person || client.contactPerson || client.contact || ''));
     setEmailValue(String(client.email || ''));
@@ -1480,29 +1497,40 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     };
   };
 
+  const savingAsDraftRef = useRef(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isDraft = savingAsDraftRef.current;
+    savingAsDraftRef.current = false;
     const form = e.target as HTMLFormElement;
     const formData: Record<string, string> = {
       customer: customerValue || (form.elements.namedItem('customer') as HTMLInputElement)?.value || '',
       contact: contactValue || (form.elements.namedItem('contact') as HTMLInputElement)?.value || '',
-      mobile: mobileValue || '',
+      mobile: mobileValue ? `${countryCode} ${mobileValue}` : '',
       email: emailValue || (form.elements.namedItem('email') as HTMLInputElement)?.value || '',
       source: (form.elements.namedItem('source') as HTMLSelectElement)?.value || '',
       required_date: (form.elements.namedItem('required_date') as HTMLInputElement)?.value || '',
     };
     formData.gst_number = gstNumber || '';
-    formData.status = (form.elements.namedItem('leadStatus') as HTMLSelectElement)?.value || '';
-    const validationErrors = validateFields(formData, {
-      customer: { required: true, min: 2, label: 'Business Name' },
-      contact: { required: true, label: 'Contact Person' },
-      mobile: { required: true, phone: true, label: 'Mobile' },
-      status: { required: true, label: 'Status' },
-    });
-    if (addedProducts.length === 0) {
-      validationErrors.products = 'At least one item must be added';
+    formData.status = 'New';
+    if (!isDraft) {
+      const validationErrors = validateFields(formData, {
+        customer: { required: true, min: 2, label: 'Business Name' },
+        contact: { required: true, label: 'Contact Person' },
+        mobile: { required: true, phone: true, label: 'Mobile' },
+      });
+      if (addedProducts.length === 0) {
+        validationErrors.products = 'At least one item must be added';
+      }
+      if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
+    } else {
+      // Draft only requires a customer name
+      const validationErrors = validateFields(formData, {
+        customer: { required: true, min: 2, label: 'Business Name' },
+      });
+      if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
     }
-    if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
     setErrors({});
     const leadSummary = getLeadSummaryFromProducts();
     const serializedProducts = addedProducts.map(p => ({
@@ -1523,7 +1551,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
       product: leadSummary.product,
       size: leadSummary.size,
       quantity: leadSummary.quantity,
-      status: (form.elements.namedItem('leadStatus') as HTMLSelectElement)?.value || 'Contacted',
+      status: isDraft ? 'Draft' : 'New',
       gst_number: gstNumber || '',
       required_date: formData.required_date || undefined,
       address: (form.elements.namedItem('address') as HTMLTextAreaElement)?.value || '',
@@ -1537,7 +1565,8 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
       const created = await leadsService.createLead(payload);
       const leadKey = getLeadCacheKey(created) || getLeadCacheKey(payload);
       if (leadKey) saveLeadProductsToCache(leadKey, serializedProducts);
-      toast.success('Lead created successfully!');
+      formSubmittedRef.current = true;
+      toast.success(isDraft ? 'Lead saved as draft!' : 'Lead created successfully!');
       onSuccess?.();
       onClose();
     } catch (err: any) {
@@ -1545,26 +1574,90 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     }
   };
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const formSubmittedRef = useRef(false);
+  const draftPayloadRef = useRef<any>(null);
+
+  // Sync draft payload ref on every render (synchronous — never stale on unmount)
+  const serializedProductsForDraft = addedProducts.map(p => ({
+    product: p.product,
+    category: p.category,
+    subcategory: p.subcategory,
+    size: p.subcategory || '',
+    quantity: p.quantity,
+    unit_price: Number(allProducts.find(ap => String(ap.id) === String(p.product))?.selling_price) || Number(allProducts.find(ap => String(ap.id) === String(p.product))?.unit_price) || 0,
+  }));
+  draftPayloadRef.current = customerValue ? {
+    customer: customerValue,
+    contact: contactValue,
+    mobile: mobileValue ? `${countryCode} ${mobileValue}` : '',
+    email: emailValue,
+    source: '',
+    category: '',
+    product: '',
+    size: '',
+    quantity: addedProducts.reduce((sum, p) => sum + p.quantity, 0),
+    status: 'Draft',
+    gst_number: gstNumber,
+    state: stateValue,
+    district: districtValue,
+    notes: '',
+    description: '',
+    products: serializedProductsForDraft,
+  } : null;
+
+  // Auto-save as draft on unmount (navigation away)
+  useEffect(() => {
+    return () => {
+      if (!formSubmittedRef.current && draftPayloadRef.current) {
+        beaconPost('/leads', draftPayloadRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} noValidate>
       <div className="grid gap-4 py-2">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="mobile">{t('mobile')} *</Label>
             <div className="relative">
-              <Input
-                id="mobile"
-                placeholder="+91 XXXXX XXXXX"
-                className="border border-gray-300"
-                value={mobileValue}
-                onChange={(e) => {
-                  setMobileValue(e.target.value);
-                  setMobileSearchQuery(e.target.value);
-                  setShowMobileDropdown(true);
-                  if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
-                }}
-                onFocus={() => setShowMobileDropdown(true)}
-              />
+              <div className="flex gap-2">
+                <select
+                  value={countryCode}
+                  onChange={(e) => setCountryCode(e.target.value)}
+                  className="w-24 px-2 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
+                >
+                  <option value="+91">+91</option>
+                  <option value="+1">+1</option>
+                  <option value="+44">+44</option>
+                  <option value="+61">+61</option>
+                  <option value="+81">+81</option>
+                  <option value="+86">+86</option>
+                  <option value="+971">+971</option>
+                  <option value="+65">+65</option>
+                  <option value="+60">+60</option>
+                  <option value="+49">+49</option>
+                  <option value="+33">+33</option>
+                  <option value="+39">+39</option>
+                  <option value="+55">+55</option>
+                  <option value="+82">+82</option>
+                  <option value="+27">+27</option>
+                </select>
+                <Input
+                  id="mobile"
+                  placeholder="XXXXX XXXXX"
+                  className="border border-gray-300 flex-1"
+                  value={mobileValue}
+                  onChange={(e) => {
+                    setMobileValue(e.target.value);
+                    setMobileSearchQuery(e.target.value);
+                    setShowMobileDropdown(true);
+                    if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
+                  }}
+                  onFocus={() => setShowMobileDropdown(true)}
+                />
+              </div>
               {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                   {filteredClients.map(client => (
@@ -1647,19 +1740,74 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
             />
             <FieldError message={errors.required_date} />
           </div>
+        </div>
 
+        <div className="space-y-2 grid grid-flow-col gap-4 md:grid-cols-2">
+          <div className='space-y-2 mt-2'>
+          <Label htmlFor="address">{t('address')}</Label>
+          <Textarea id="address" placeholder={t('enterCustomerAddress')} className="border border-gray-300" />
+          </div>
+          <div className='space-y-2'>
+          <Label htmlFor="notes">{t('notesSpecialRequirements')}</Label>
+          <Textarea id="notes" placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')} className="border border-gray-300" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="leadStatus">{t('status')} *</Label>
-            <select
-              id="leadStatus"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onChange={() => errors.status && setErrors(prev => { const { status, ...rest } = prev; return rest; })}
-            >
-              <option value="">{t('selectStatus')}</option>
-              <option value="Contacted">{t('contacted')}</option>
-              <option value="Qualified">{t('qualified')}</option>
-            </select>
-            <FieldError message={errors.status} />
+            <Label htmlFor="state">{t('state')}</Label>
+            <Popover open={stateOpen} onOpenChange={setStateOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full justify-between border border-gray-300 font-normal">
+                  {stateValue || t('enterState')}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder={t('searchState')} />
+                  <CommandList>
+                    <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
+                    <CommandGroup>
+                      {getAllStates().map(s => (
+                        <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
+                          <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
+                          {s}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            {stateValue && gstNumber && <p className="text-xs text-green-600">Auto-filled from GST</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="district">{t('district')}</Label>
+            <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+              <PopoverTrigger asChild>
+                <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full justify-between border border-gray-300 font-normal">
+                  {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder={t('searchDistrict')} />
+                  <CommandList>
+                    <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
+                    <CommandGroup>
+                      {availableDistricts.map(d => (
+                        <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
+                          <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
+                          {d}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -1803,13 +1951,26 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                         <TableRow key={product.id}>
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{productName}</TableCell>
-                          <TableCell className="text-center">{product.quantity}</TableCell>
+                          <TableCell className="text-center">
+                            {editingItemId === product.id ? (
+                              <Input type="number" min="1" value={editingQty} onChange={(e) => setEditingQty(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 h-8 text-center" />
+                            ) : product.quantity}
+                          </TableCell>
                           <TableCell className="text-right">₹{unitPrice.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-semibold">₹{total.toLocaleString()}</TableCell>
+                          <TableCell className="text-right font-semibold">₹{(editingItemId === product.id ? unitPrice * editingQty : total).toLocaleString()}</TableCell>
                           <TableCell>
                             <div className="flex gap-1 justify-center">
-                              <Button type="button" size="sm" variant="ghost" onClick={() => {}}><Edit className="h-4 w-4 text-blue-500" /></Button>
-                              <Button type="button" size="sm" variant="ghost" onClick={() => removeProduct(product.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                              {editingItemId === product.id ? (
+                                <>
+                                  <Button type="button" size="sm" variant="ghost" onClick={() => { setAddedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: editingQty } : p)); setEditingItemId(null); }}><Check className="h-4 w-4 text-green-600" /></Button>
+                                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditingItemId(null)}><XCircle className="h-4 w-4 text-gray-400" /></Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingItemId(product.id); setEditingQty(product.quantity); }}><Edit className="h-4 w-4 text-blue-500" /></Button>
+                                  <Button type="button" size="sm" variant="ghost" onClick={() => removeProduct(product.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -1821,17 +1982,9 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                 {/* Totals Section */}
                 <div className="flex justify-end">
                   <div className="w-64 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{t('subtotal')}</span>
-                      <span>₹{addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>{t('gst18')}</span>
-                      <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0) * 0.18).toLocaleString()}</span>
-                    </div>
                     <div className="flex justify-between font-bold border-t pt-2">
                       <span>{t('grandTotal')}</span>
-                      <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0) * 1.18).toLocaleString()}</span>
+                      <span>₹{addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
@@ -1839,80 +1992,14 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
             )}
           </CardContent>
         </Card>
-
-        <div className="space-y-2 grid grid-flow-col gap-4 md:grid-cols-2">
-          <div className='space-y-2 mt-2'>
-          <Label htmlFor="address">{t('address')}</Label>
-          <Textarea id="address" placeholder={t('enterCustomerAddress')} className="border border-gray-300" />
-          </div>
-          <div className='space-y-2'>
-          <Label htmlFor="notes">{t('notesSpecialRequirements')}</Label>
-          <Textarea id="notes" placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')} className="border border-gray-300" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="state">{t('state')}</Label>
-            <Popover open={stateOpen} onOpenChange={setStateOpen}>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full justify-between border border-gray-300 font-normal">
-                  {stateValue || t('enterState')}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder={t('searchState')} />
-                  <CommandList>
-                    <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
-                    <CommandGroup>
-                      {getAllStates().map(s => (
-                        <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
-                          <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
-                          {s}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-            {stateValue && gstNumber && <p className="text-xs text-green-600">Auto-filled from GST</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="district">{t('district')}</Label>
-            <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
-              <PopoverTrigger asChild>
-                <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full justify-between border border-gray-300 font-normal">
-                  {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder={t('searchDistrict')} />
-                  <CommandList>
-                    <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
-                    <CommandGroup>
-                      {availableDistricts.map(d => (
-                        <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
-                          <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
-                          {d}
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
           {t('cancel')}
+        </Button>
+        <Button type="button" variant="outline" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>
+          Save as Draft
         </Button>
         <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
           {t('createLead')}
@@ -3122,17 +3209,9 @@ function EditLeadForm({ lead, categories = [], allProducts = [], onClose, onSucc
                 {/* Totals Section */}
                 <div className="flex justify-end">
                   <div className="w-64 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{t('subtotal')}</span>
-                      <span>₹{addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>{t('gst18')}</span>
-                      <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0) * 0.18).toLocaleString()}</span>
-                    </div>
                     <div className="flex justify-between font-bold border-t pt-2">
                       <span>{t('grandTotal')}</span>
-                      <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0) * 1.18).toLocaleString()}</span>
+                      <span>₹{addedProducts.reduce((sum, p) => sum + (getProductUnitPrice(p) * p.quantity), 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>

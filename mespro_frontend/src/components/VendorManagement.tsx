@@ -260,6 +260,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                               id="vendor-name"
                               value={vendorForm.name}
                               onChange={(e) => { setVendorForm({ ...vendorForm, name: e.target.value }); setFormErrors(prev => ({ ...prev, name: '' })); }}
+                              placeholder={t('vendorName')}
                             />
                             <FieldError message={formErrors.name} />
                           </div>
@@ -269,6 +270,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                               id="vendor-contact"
                               value={vendorForm.contact_person}
                               onChange={(e) => { setVendorForm({ ...vendorForm, contact_person: e.target.value }); setFormErrors(prev => ({ ...prev, contact_person: '' })); }}
+                              placeholder={t('contactPerson')}
                             />
                             <FieldError message={formErrors.contact_person} />
                           </div>
@@ -281,6 +283,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                               type="email"
                               value={vendorForm.email}
                               onChange={(e) => { setVendorForm({ ...vendorForm, email: e.target.value }); setFormErrors(prev => ({ ...prev, email: '' })); }}
+                              placeholder={t('email')}
                             />
                             <FieldError message={formErrors.email} />
                           </div>
@@ -290,6 +293,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                               id="vendor-phone"
                               value={vendorForm.phone}
                               onChange={(e) => { setVendorForm({ ...vendorForm, phone: e.target.value }); setFormErrors(prev => ({ ...prev, phone: '' })); }}
+                              placeholder={t('phone')}
                             />
                             <FieldError message={formErrors.phone} />
                           </div>

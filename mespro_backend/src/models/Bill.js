@@ -63,6 +63,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 0,
     },
+    status: {
+      type: DataTypes.ENUM('draft', 'final'),
+      allowNull: false,
+      defaultValue: 'final',
+    },
     payment_status: {
       type: DataTypes.ENUM('paid', 'partial', 'pending', 'overdue'),
       allowNull: false,

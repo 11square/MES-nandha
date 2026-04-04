@@ -328,7 +328,7 @@ export default function StaffManagement({ language = 'en' }: StaffManagementProp
             </div>
           </div>
           <p className="text-3xl text-slate-900 font-bold">{activeStaff}</p>
-          <p className="text-xs text-slate-600 mt-1">{activeRate.toFixed(1)}% {t('active')}</p>
+          <p className="text-xs text-slate-600 mt-1">{totalStaff > 0 ? `${activeRate.toFixed(1)}% ${t('active')}` : t('noDataFound')}</p>
         </motion.div>
 
         <motion.div

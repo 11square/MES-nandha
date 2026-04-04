@@ -261,7 +261,7 @@ export default function UserManagement({}: UserManagementProps) {
             </div>
           </div>
           <p className="text-3xl text-slate-900 font-bold">{users.length}</p>
-          <p className="text-xs text-emerald-600 mt-1">+2 {t('thisMonth')}</p>
+          <p className="text-xs text-slate-500 mt-1">{t('totalUsers')}</p>
         </motion.div>
 
         <motion.div

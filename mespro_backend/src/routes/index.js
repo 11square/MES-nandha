@@ -26,6 +26,7 @@ const salesRoutes = require('./sales.routes');
 const dashboardRoutes = require('./dashboard.routes');
 const reportsRoutes = require('./reports.routes');
 const documentsRoutes = require('./documents.routes');
+const settingsRoutes = require('./settings.routes');
 const superadminRoutes = require('./superadmin.routes');
 
 // Mount routes
@@ -56,6 +57,7 @@ router.use('/sales', authenticate, requireModule('sales'), salesRoutes);
 router.use('/dashboard', authenticate, requireModule('dashboard'), dashboardRoutes);
 router.use('/reports', authenticate, requireModule('reports'), reportsRoutes);
 router.use('/documents', authenticate, documentsRoutes);
+router.use('/settings', authenticate, requireModule('settings'), settingsRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

@@ -938,7 +938,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
         </div>
 
         {/* Stock Dispatch Stats & Cards */}
-        <div className="space-y-6">
+        <div className="space-y-6 mt-6">
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <motion.div

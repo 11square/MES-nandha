@@ -130,8 +130,8 @@ module.exports = {
         );
       }
 
-      // Handle payment based on payment type
-      if (billData.payment_type === 'cash') {
+      // Handle payment based on payment type (skip for drafts)
+      if (billData.status !== 'draft' && billData.payment_type === 'cash') {
         // Cash bill: auto-create payment record and mark as paid
         const cashAmount = parseFloat(billData.grand_total || 0);
         await Payment.create({
@@ -166,7 +166,7 @@ module.exports = {
           paid_amount: cashAmount,
         }, { transaction: t });
 
-      } else if (billData.payment_type === 'credit') {
+      } else if (billData.status !== 'draft' && billData.payment_type === 'credit') {
         // Credit bill: create outstanding record
         await CreditOutstanding.create({
           bill_id: bill.id,

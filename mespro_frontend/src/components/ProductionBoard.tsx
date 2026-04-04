@@ -256,7 +256,7 @@ export default function ProductionBoard({ onViewOrder, language = 'en', orderFor
                 <Input
                   value={productionForm.order_id}
                   onChange={(e) => { setProductionForm({...productionForm, order_id: e.target.value}); setErrors(prev => ({...prev, order_id: ''})); }}
-                  placeholder="ORD-2024-XXX"
+                  placeholder="e.g. 1001"
                 />
                 <FieldError message={errors.order_id} />
               </div>
@@ -274,33 +274,39 @@ export default function ProductionBoard({ onViewOrder, language = 'en', orderFor
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>{t('product')} *</Label>
-                <select
+                <Select
                   value={productionForm.product}
-                  onChange={(e) => { setProductionForm({...productionForm, product: e.target.value}); setErrors(prev => ({...prev, product: ''})); }}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-md"
+                  onValueChange={(value) => { setProductionForm({...productionForm, product: value}); setErrors(prev => ({...prev, product: ''})); }}
                 >
-                  <option value="">Select Product</option>
-                  <option value="White Board">White Board</option>
-                  <option value="Black Board">Black Board</option>
-                  <option value="Green Board">Green Board</option>
-                  <option value="Custom Board">Custom Board</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="White Board">White Board</SelectItem>
+                    <SelectItem value="Black Board">Black Board</SelectItem>
+                    <SelectItem value="Green Board">Green Board</SelectItem>
+                    <SelectItem value="Custom Board">Custom Board</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FieldError message={errors.product} />
               </div>
               <div className="space-y-2">
                 <Label>{t('size')} *</Label>
-                <select
+                <Select
                   value={productionForm.size}
-                  onChange={(e) => { setProductionForm({...productionForm, size: e.target.value}); setErrors(prev => ({...prev, size: ''})); }}
-                  className="w-full h-10 px-3 border border-gray-300 rounded-md"
+                  onValueChange={(value) => { setProductionForm({...productionForm, size: value}); setErrors(prev => ({...prev, size: ''})); }}
                 >
-                  <option value="">Select Size</option>
-                  <option value="3x4 ft">3x4 ft</option>
-                  <option value="4x5 ft">4x5 ft</option>
-                  <option value="4x6 ft">4x6 ft</option>
-                  <option value="5x8 ft">5x8 ft</option>
-                  <option value="6x10 ft">6x10 ft</option>
-                </select>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select Size" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="3x4 ft">3x4 ft</SelectItem>
+                    <SelectItem value="4x5 ft">4x5 ft</SelectItem>
+                    <SelectItem value="4x6 ft">4x6 ft</SelectItem>
+                    <SelectItem value="5x8 ft">5x8 ft</SelectItem>
+                    <SelectItem value="6x10 ft">6x10 ft</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FieldError message={errors.size} />
               </div>
               <div className="space-y-2">
@@ -551,7 +557,7 @@ export default function ProductionBoard({ onViewOrder, language = 'en', orderFor
           <CardContent className="p-4">
             <p className="text-gray-600">Avg. Progress</p>
             <p className="text-blue-600">
-              {Math.round(productionOrders.reduce((acc, o) => acc + o.progress, 0) / productionOrders.length)}%
+              {productionOrders.length > 0 ? Math.round(productionOrders.reduce((acc, o) => acc + o.progress, 0) / productionOrders.length) : 0}%
             </p>
           </CardContent>
         </Card>

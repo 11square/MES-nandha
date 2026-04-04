@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
+import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -80,7 +81,15 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => { refreshPOs(); }, [refreshPOs]);
+  useEffect(() => {
+    const hasPending = consumePendingDraft('/purchase-orders');
+    refreshPOs();
+    if (hasPending) {
+      const t1 = setTimeout(() => refreshPOs(), 800);
+      const t2 = setTimeout(() => refreshPOs(), 2000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
+  }, [refreshPOs]);
 
   const [showAddPO, setShowAddPO] = useState(false);
   const [showEditPO, setShowEditPO] = useState(false);
@@ -112,7 +121,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
         vendor_gst: poPayload.vendor_gst || gstNumber || '',
         is_gst: poPayload.is_gst ?? !!gstNumber,
       });
-      toast.success('Purchase order created successfully');
+      toast.success((newPO as any).status === 'draft' ? 'Purchase order saved as draft!' : 'Purchase order created successfully');
       await refreshPOs();
       setShowAddPO(false);
     } catch (err: any) {
@@ -548,6 +557,8 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 // Add PO Form Component - Full page like Create Order
 function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose: () => void; onSubmit: (po: PurchaseOrder) => void; language?: string; stockItem?: any }) {
   const t = (key: keyof typeof translations.en) => translations[language]?.[key] || translations.en[key];
+  const savingAsDraftRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     vendor_name: '',
@@ -576,6 +587,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
   // Vendor search state
   const [selectedVendorId, setSelectedVendorId] = useState('');
   const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
 
   // Use shared state for categories and products (same data as ProductManagement)
@@ -824,7 +836,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     staff.role.toLowerCase().includes(staffSearchQuery.toLowerCase())
   );
 
-  const selectedStaffMember = staffMembers.find(s => s.id === assignedStaff);
+  const selectedStaffMember = staffMembers.find(s => s.id === formData.created_by || s.name === formData.created_by);
 
   const handleVendorSelect = (vendor: typeof vendors[0]) => {
     setSelectedVendorId(vendor.id);
@@ -844,12 +856,16 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const isDraft = savingAsDraftRef.current;
+    savingAsDraftRef.current = false;
     const validationErrors: ValidationErrors = {};
     if (!selectedVendorId) validationErrors.vendor = 'Vendor is required';
-    if (!formData.date) validationErrors.date = 'Date is required';
-    if (!formData.expected_delivery) validationErrors.expected_delivery = 'Expected Delivery is required';
-    if (!formData.status) validationErrors.status = 'Status is required';
-    if (addedItems.length === 0) validationErrors.items = 'At least one item with product and quantity is required';
+    if (!isDraft) {
+      if (!formData.date) validationErrors.date = 'Date is required';
+      if (!formData.expected_delivery) validationErrors.expected_delivery = 'Expected Delivery is required';
+      if (!formData.status) validationErrors.status = 'Status is required';
+      if (addedItems.length === 0) validationErrors.items = 'At least one item with product and quantity is required';
+    }
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
     setErrors({});
     const totalAmount = getTotalAmount();
@@ -863,6 +879,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     }));
     onSubmit({
       ...formData,
+      status: isDraft ? 'draft' : (formData.status || 'pending'),
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
       unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,
@@ -872,10 +889,49 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       vendor_gst: gstNumber || '',
       is_gst: !!gstNumber,
     });
+    formSubmittedRef.current = true;
   };
 
+  const formSubmittedRef = useRef(false);
+  const draftPayloadRef = useRef<any>(null);
+
+  // Sync draft payload ref on every render (synchronous — never stale on unmount)
+  if (selectedVendorId) {
+    const totalAmount = getTotalAmount();
+    const totalQty = addedItems.reduce((sum, item) => sum + item.quantity, 0);
+    draftPayloadRef.current = {
+      ...formData,
+      status: 'draft',
+      items: addedItems.map((item, index) => ({
+        id: index + 1,
+        name: item.productName,
+        quantity: item.quantity,
+        unit: item.subcategory || 'pcs',
+        rate: item.unitPrice,
+        amount: item.total,
+      })),
+      quantity: totalQty,
+      unit_price: totalQty > 0 ? Math.round(totalAmount / totalQty) : 0,
+      total_amount: totalAmount,
+      created_by: selectedStaffMember?.name || formData.created_by,
+      vendor_gst: gstNumber || '',
+      is_gst: !!gstNumber,
+    };
+  } else {
+    draftPayloadRef.current = null;
+  }
+
+  // Auto-save as draft on unmount (navigation away)
+  useEffect(() => {
+    return () => {
+      if (!formSubmittedRef.current && draftPayloadRef.current) {
+        beaconPost('/purchase-orders', draftPayloadRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} noValidate>
       <div className="grid gap-4 py-2">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -999,22 +1055,27 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
           </div>
         </div>
 
+
+
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>{t('status')} *</Label>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.status}
-              onChange={(e) => { setFormData({ ...formData, status: e.target.value as any }); setErrors(prev => { const {status: _, ...rest} = prev; return rest; }); }}
-            >
-              <option value="draft">{t('draft')}</option>
-              <option value="pending">{t('pendingApproval')}</option>
-              <option value="approved">{t('approved')}</option>
-              <option value="ordered">{t('ordered')}</option>
-            </select>
-            {errors.status && <FieldError message={errors.status} />}
+            <Label>{t('vendorAddress')}</Label>
+            <Textarea 
+              value={formData.vendor_address}
+              onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
+              placeholder={t('enterVendorAddress')} 
+              className="border border-gray-300" 
+            />
           </div>
-
+          <div className="space-y-2">
+            <Label>{t('notes')}</Label>
+            <Textarea 
+              value={formData.notes}
+              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              placeholder={t('additionalNotesOrComments')} 
+              className="border border-gray-300" 
+            />
+          </div>
         </div>
 
         {/* Items Section */}
@@ -1179,27 +1240,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
             </div>
           )}
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendorAddress')}</Label>
-            <Textarea 
-              value={formData.vendor_address}
-              onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
-              placeholder={t('enterVendorAddress')} 
-              className="border border-gray-300" 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('notes')}</Label>
-            <Textarea 
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder={t('additionalNotesOrComments')} 
-              className="border border-gray-300" 
-            />
-          </div>
-        </div>
       </div>
 
       {/* Add to Stock Option */}
@@ -1217,8 +1257,16 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
           {t('cancel')}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          className="border-gray-300 text-gray-600 hover:bg-gray-50"
+          onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}
+        >
+          Save as Draft
         </Button>
         <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
           {t('createPO')}
@@ -1286,6 +1334,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
   // Vendor search state
   const [selectedVendorId, setSelectedVendorId] = useState('');
   const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+  const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -1310,7 +1359,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     (staff.role || '').toLowerCase().includes(staffSearchQuery.toLowerCase())
   );
 
-  const selectedStaffMember = staffMembers.find(s => s.id === assignedStaff || s.name === assignedStaff);
+  const selectedStaffMember = staffMembers.find(s => s.id === formData.created_by || s.name === formData.created_by);
 
   const handleVendorSelect = (vendor: typeof vendors[0]) => {
     setSelectedVendorId(vendor.id);

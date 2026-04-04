@@ -757,16 +757,16 @@ export default function ReportsPage({ userRole, language = 'en' }: ReportsPagePr
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <MetricCard icon={Users} iconBg="bg-blue-100" iconColor="text-blue-600"
           label="Total Leads" value={`${safe(overviewMetrics.totalLeads)} this month`}
-          change={overviewMetrics.totalLeadsChange || '+12%'} changeTrend="up" />
+          change={overviewMetrics.totalLeadsChange} changeTrend="up" />
         <MetricCard icon={Package} iconBg="bg-green-100" iconColor="text-green-600"
           label="Orders Completed" value={`${safe(overviewMetrics.ordersCompleted)} this month`}
-          change={overviewMetrics.ordersCompletedChange || '+8%'} changeTrend="up" />
+          change={overviewMetrics.ordersCompletedChange} changeTrend="up" />
         <MetricCard icon={DollarSign} iconBg="bg-purple-100" iconColor="text-purple-600"
           label="Monthly Revenue" value={formatCurrency(overviewMetrics.monthlyRevenue)}
-          change={overviewMetrics.monthlyRevenueChange || '+15%'} changeTrend="up" />
+          change={overviewMetrics.monthlyRevenueChange} changeTrend="up" />
         <MetricCard icon={Truck} iconBg="bg-orange-100" iconColor="text-orange-600"
           label="On-Time Delivery" value={pct(overviewMetrics.onTimeDelivery)}
-          change={overviewMetrics.onTimeDeliveryChange || '+5%'} changeTrend="up" />
+          change={overviewMetrics.onTimeDeliveryChange} changeTrend="up" />
       </div>
 
       {/* 8 REPORT TABS */}

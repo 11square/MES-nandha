@@ -19,8 +19,8 @@ test.afterEach(async ({}, testInfo) => {
 });
 
 async function goToPO(page: import('@playwright/test').Page) {
-  await page.locator('nav').getByText('PO', { exact: true }).click();
-  await page.waitForURL('**/purchase-order', { timeout: 10_000 });
+  await page.locator('nav').getByText('Purchase Orders', { exact: true }).click();
+  await page.waitForURL('**/purchase-orders', { timeout: 10_000 });
   await page.waitForTimeout(1000);
 }
 
@@ -136,19 +136,6 @@ test.describe('PO — Create PO', () => {
     await goToPO(page);
     await page.getByRole('button', { name: /create po/i }).click();
     await page.waitForTimeout(500);
-    // Check for form heading
-    await expect(page.getByRole('heading', { name: /create new purchase order/i })).toBeVisible();
-  });
-});
-
-// ============================================================
-// 6. CREATE PO FORM
-// ============================================================
-test.describe('PO — Create PO', () => {
-  test('clicking Create PO should show form', async ({ authenticatedPage: page }) => {
-    await goToPO(page);
-    await page.getByRole('button', { name: /create po/i }).click();
-    await page.waitForTimeout(500);
     await expect(page.getByRole('heading', { name: /create new purchase order/i })).toBeVisible();
   });
 
@@ -188,6 +175,14 @@ test.describe('PO — Create PO', () => {
       await page.waitForTimeout(500);
       await expect(page.getByText(/vendor is required|is required/i).first()).toBeVisible();
     }
+  });
+
+  test('create PO form should NOT have a status dropdown', async ({ authenticatedPage: page }) => {
+    await goToPO(page);
+    await page.getByRole('button', { name: /create po/i }).click();
+    await page.waitForTimeout(500);
+    // Status field was removed from create form
+    await expect(page.locator('#status')).not.toBeVisible();
   });
 });
 
@@ -254,7 +249,7 @@ test.describe('PO — API Verification', () => {
       { timeout: 15_000 }
     );
     await page.locator('nav').getByText('PO', { exact: true }).click();
-    await page.waitForURL('**/purchase-order', { timeout: 10_000 });
+    await page.waitForURL('**/purchase-orders', { timeout: 10_000 });
     const response = await apiPromise;
     expect(response.status()).toBe(200);
   });
@@ -271,17 +266,17 @@ test.describe('PO — Navigation', () => {
     expect(page.url()).toContain('/dashboard');
   });
 
-  test('direct URL access to /purchase-order should work', async ({ authenticatedPage: page }) => {
-    await page.goto('/purchase-order');
+  test('direct URL access to /purchase-orders should work', async ({ authenticatedPage: page }) => {
+    await page.goto('/purchase-orders');
     await page.getByText('MES Pro').waitFor({ timeout: 10_000 });
-    expect(page.url()).toContain('/purchase-order');
+    expect(page.url()).toContain('/purchase-orders');
   });
 
-  test('refreshing /purchase-order should persist the page', async ({ authenticatedPage: page }) => {
+  test('refreshing /purchase-orders should persist the page', async ({ authenticatedPage: page }) => {
     await goToPO(page);
     await page.reload();
     await page.getByText('MES Pro').waitFor({ timeout: 10_000 });
-    expect(page.url()).toContain('/purchase-order');
+    expect(page.url()).toContain('/purchase-orders');
   });
 });
 

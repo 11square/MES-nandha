@@ -120,6 +120,7 @@ export default function App() {
   const { t, language, setLanguage } = useI18n();
   const { currentUser, setCurrentUser, modules } = useSharedState();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -142,7 +143,7 @@ export default function App() {
   const navigationItems = useMemo(() => {
     if (modules.length === 0) return []; // Still loading
     return modules
-      .filter((m) => moduleIconMap[m.key] && m.url && m.key !== 'products' && m.key !== 'production') // Only render known modules with a valid url, exclude products/production
+      .filter((m) => moduleIconMap[m.key] && m.url && m.key !== 'products' && m.key !== 'production' && m.key !== 'inventory' && m.key !== 'sales') // Only render known modules with a valid url, exclude products/production/inventory/sales
       .map((m) => ({
         id: m.url.replace(/^\//, ''), // e.g. '/leads' → 'leads', '/purchase-order' → 'purchase-order'
         moduleKey: m.key,
@@ -164,18 +165,23 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex relative overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-20">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-gray-200 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-gray-200 rounded-full blur-3xl"></div>
-      </div>
+
+      {/* Mobile overlay backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Professional sidebar with subtle glassmorphism */}
       <motion.aside 
         initial={false}
         animate={{ width: sidebarOpen ? 240 : 72 }}
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-        className="backdrop-blur-xl bg-white border-r border-gray-200 shadow-sm flex flex-col fixed h-full z-50"
+        className={`backdrop-blur-xl bg-white border-r border-gray-200 shadow-sm flex-col fixed h-full z-50 ${
+          mobileMenuOpen ? 'flex' : 'hidden md:flex'
+        }`}
       >
         <div className="h-16 flex items-center px-4 border-b border-gray-200">
           <button 
@@ -213,7 +219,7 @@ export default function App() {
               return (
                 <motion.button
                   key={item.id}
-                  onClick={() => navigate(item.url)}
+                  onClick={() => { navigate(item.url); setMobileMenuOpen(false); }}
                   whileHover={{ x: 3 }}
                   whileTap={{ scale: 0.98 }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
@@ -295,13 +301,20 @@ export default function App() {
         initial={false}
         animate={{ marginLeft: sidebarOpen ? 240 : 72 }}
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-        className="flex-1 flex flex-col min-w-0 mt-16 mb-7"
+        className="flex-1 flex flex-col min-w-0 mt-16 mb-7 max-md:!ml-0"
       >
         {/* Professional top bar */}
-        <header className="h-16 backdrop-blur-xl bg-white border-b border-gray-200 fixed w-[calc] top-0 z-40 px-8 flex items-center justify-between shadow-sm"
+        <header className="h-16 backdrop-blur-xl bg-white border-b border-gray-200 fixed top-0 z-40 px-4 md:px-8 flex items-center justify-between shadow-sm w-full max-md:!w-full"
         style={{ width: `calc(100% - ${sidebarOpen ? 240 : 72}px)` }}
         >
-          <div className="flex items-center gap-6 flex-1">
+          <div className="flex items-center gap-4 md:gap-6 flex-1">
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+            >
+              <Menu className="w-5 h-5 text-gray-600" />
+            </button>
             <div className="flex items-center gap-3">
               <div className="w-1 h-8 bg-gray-500 rounded-full"></div>
               <h1 className="text-xl text-gray-700 font-semibold">

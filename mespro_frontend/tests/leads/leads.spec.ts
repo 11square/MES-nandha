@@ -75,7 +75,7 @@ test.describe('Leads — Page Load & Layout', () => {
 
   test('should show leads table with correct headers', async ({ authenticatedPage: page }) => {
     await goToLeads(page);
-    const headers = ['Lead #', 'Date', 'Customer', 'Products', 'Source', 'Status', 'Conversion', 'Actions'];
+    const headers = ['Lead #', 'Required Date', 'Customer', 'Products', 'Source', 'Status', 'Conversion', 'Actions'];
     for (const header of headers) {
       await expect(page.locator('thead').getByText(header, { exact: true })).toBeVisible();
     }
@@ -173,6 +173,12 @@ test.describe('Leads — Create Lead Form Validation', () => {
 
     await page.locator('#source').selectOption('phone');
     await expect(page.getByText('Lead Source is required')).not.toBeVisible();
+  });
+
+  test('create lead form should NOT have a status dropdown', async ({ authenticatedPage: page }) => {
+    await openCreateLeadForm(page);
+    // Status field was removed — default "New" is set programmatically
+    await expect(page.locator('#status')).not.toBeVisible();
   });
 });
 
@@ -574,15 +580,18 @@ test.describe('Leads — Event Types', () => {
   test('conversion status dropdown should change value and show toast', async ({ authenticatedPage: page }) => {
     await goToLeads(page);
 
-    // Find the first conversion status select in the table
+    // Find the first conversion status select trigger in the table
     const conversionBtn = page.locator('tbody tr').first().locator('td').nth(6).locator('button').first();
+
+    // Read current status so we can select a DIFFERENT value (Radix Select won't fire onChange for same value)
+    const currentText = (await conversionBtn.textContent()) || '';
+    const targetOption = currentText.includes('Converted') && !currentText.includes('Not') ? 'Not Converted' : 'Converted';
+
     await conversionBtn.click();
+    await page.getByRole('option', { name: targetOption, exact: true }).click();
 
-    // Select "Converted"
-    await page.getByRole('option', { name: /^converted$/i }).click();
-
-    // Should show toast notification
-    await expect(page.getByText(/conversion status changed to/i)).toBeVisible({ timeout: 5000 });
+    // Should show toast notification — message format: "<LeadNumber> conversion updated to <value>"
+    await expect(page.getByText(/conversion updated to/i)).toBeVisible({ timeout: 5000 });
   });
 
   test('create lead form — source dropdown change event should update selection', async ({ authenticatedPage: page }) => {
@@ -592,12 +601,7 @@ test.describe('Leads — Event Types', () => {
     await expect(page.locator('#source')).toHaveValue('referral');
   });
 
-  test('create lead form — status dropdown change event should update selection', async ({ authenticatedPage: page }) => {
-    await openCreateLeadForm(page);
-
-    await page.locator('#leadStatus').selectOption('qualified');
-    await expect(page.locator('#leadStatus')).toHaveValue('qualified');
-  });
+  // Note: status dropdown was removed from create lead form — default "New" is set programmatically
 });
 
 // ============================================================

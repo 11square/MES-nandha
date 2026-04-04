@@ -816,7 +816,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
               </div>
               <div>
                 <span className="text-slate-400">Last: </span>
-                <span className="text-slate-600">{new Date(client.last_order).toLocaleDateString()}</span>
+                <span className="text-slate-600">{client.last_order && !isNaN(new Date(client.last_order).getTime()) ? new Date(client.last_order).toLocaleDateString() : '—'}</span>
               </div>
             </div>
 
@@ -882,7 +882,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">{t('lastOrder')}</p>
-                <p className="text-sm text-slate-900">{new Date(client.last_order).toLocaleDateString()}</p>
+                <p className="text-sm text-slate-900">{client.last_order && !isNaN(new Date(client.last_order).getTime()) ? new Date(client.last_order).toLocaleDateString() : '—'}</p>
               </div>
               <div>
                 <p className="text-xs text-slate-600 mb-1">{t('status')}</p>

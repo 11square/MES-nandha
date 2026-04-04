@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -104,7 +105,13 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   };
 
   useEffect(() => {
+    const hasPending = consumePendingDraft('/orders');
     refreshOrders();
+    if (hasPending) {
+      const t1 = setTimeout(() => refreshOrders(), 800);
+      const t2 = setTimeout(() => refreshOrders(), 2000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
   }, [filterCustomerType]);
 
   // Auto-open order form when a lead is converted
@@ -219,6 +226,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
+      'Draft': 'bg-gray-100 text-gray-700 border-gray-200',
       'Pending': 'bg-yellow-100 text-yellow-700 border-yellow-200',
       'In Production': 'bg-blue-100 text-blue-700 border-blue-200',
       'Bill': 'bg-purple-100 text-purple-700 border-purple-200',
@@ -263,9 +271,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
     const matchesStatus = filterStatus === 'all' || (order.status || '').toLowerCase().replace(/ /g, '-') === filterStatus.toLowerCase();
     
     if (activeTab === 'all') return matchesSearch && matchesStatus;
-    if (activeTab === 'pending') return matchesSearch && order.status === 'Pending';
-    if (activeTab === 'in-production') return matchesSearch && order.status === 'In Production';
-    if (activeTab === 'in-billing') return matchesSearch && order.status === 'Bill';
+    if (activeTab === 'draft') return matchesSearch && order.status === 'Draft';
     
     return matchesSearch && matchesStatus;
   });
@@ -329,9 +335,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
 
   const stats = {
     total: orders.length,
-    pending: orders.filter(o => o.status === 'Pending').length,
-    inProduction: orders.filter(o => o.status === 'In Production').length,
-    inBilling: orders.filter(o => o.status === 'Bill').length,
+    draft: orders.filter(o => o.status === 'Draft').length,
     totalValue: orders.reduce((sum, o) => sum + (parseFloat(o.grand_total) || 0), 0),
   };
 
@@ -542,7 +546,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalOrdersCount')}</CardTitle>
@@ -556,23 +560,12 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
 
         <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('pending')}</CardTitle>
+            <CardTitle className="text-sm font-medium">Draft</CardTitle>
             <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-700">{stats.pending}</div>
-            <p className="text-xs text-amber-600">{t('awaitingProduction')}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">{t('inBilling')}</CardTitle>
-            <Receipt className="h-4 w-4 text-emerald-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-700">{stats.inBilling}</div>
-            <p className="text-xs text-emerald-600">{t('readyForBilling')}</p>
+            <div className="text-2xl font-bold text-amber-700">{stats.draft}</div>
+            <p className="text-xs text-amber-600">Saved as draft</p>
           </CardContent>
         </Card>
 
@@ -606,9 +599,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t('allStatus')}</SelectItem>
-            <SelectItem value="pending">{t('pending')}</SelectItem>
-            <SelectItem value="in-production">{t('inProduction')}</SelectItem>
-            <SelectItem value="in-billing">{t('inBilling')}</SelectItem>
+            <SelectItem value="draft">Draft</SelectItem>
           </SelectContent>
         </Select>
         <Select value={filterCustomerType} onValueChange={setFilterCustomerType}>
@@ -630,14 +621,8 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
           <TabsTrigger value="all" className="px-4 py-2">
             {t('all')} ({orders.length})
           </TabsTrigger>
-          <TabsTrigger value="pending" className="px-4 py-2">
-            {t('pending')} ({stats.pending})
-          </TabsTrigger>
-          <TabsTrigger value="in-production" className="px-4 py-2">
-            {t('inProduction')} ({stats.inProduction})
-          </TabsTrigger>
-          <TabsTrigger value="in-billing" className="px-4 py-2">
-            {t('bill')} ({stats.inBilling})
+          <TabsTrigger value="draft" className="px-4 py-2">
+            Draft ({stats.draft})
           </TabsTrigger>
         </TabsList>
         
@@ -669,7 +654,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
                     <TableHead>{t('date')}</TableHead>
                     <TableHead>{t('customer')}</TableHead>
                     <TableHead>{t('type')}</TableHead>
-                    <TableHead>{t('products')}</TableHead>
+                    <TableHead className="text-center">{t('products')}</TableHead>
                     <TableHead>{t('amount')}</TableHead>
                     <TableHead>{t('dueDate')}</TableHead>
                     <TableHead>{t('status')}</TableHead>
@@ -692,7 +677,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
                           {getCustomerType(order.gst_number)}
                         </Badge>
                       </TableCell>
-                      <TableCell className="font-semibold border-l-2">{order.quantity}</TableCell>
+                      <TableCell className="font-semibold text-center">{order.quantity}</TableCell>
                       <TableCell className="font-semibold">₹{(parseFloat(order.grand_total) || 0).toLocaleString()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -1087,14 +1072,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Pending">{t('pending')}</SelectItem>
-                          <SelectItem value="Confirmed">{t('confirmed')}</SelectItem>
-                          <SelectItem value="In Production">{t('inProduction')}</SelectItem>
-                          <SelectItem value="Ready">{t('ready')}</SelectItem>
-                          <SelectItem value="Dispatched">{t('dispatched')}</SelectItem>
-                          <SelectItem value="Delivered">{t('delivered')}</SelectItem>
-                          <SelectItem value="Bill">{t('bill')}</SelectItem>
-                          <SelectItem value="Cancelled">{t('cancelled')}</SelectItem>
+                          <SelectItem value="Draft">Draft</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -1426,8 +1404,12 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
     });
   };
 
+  const savingAsDraftRef = useRef(false);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isDraft = savingAsDraftRef.current;
+    savingAsDraftRef.current = false;
     const form = e.target as HTMLFormElement;
     const formData = {
       customer: customerValue || (form.elements.namedItem('customer') as HTMLInputElement)?.value || '',
@@ -1437,22 +1419,32 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
       source: (form.elements.namedItem('source') as HTMLSelectElement)?.value || '',
     };
     formData.gst_number = gstNumber || '';
-    formData.status = (form.elements.namedItem('orderStatus') as HTMLSelectElement)?.value || '';
-    const validationErrors = validateFields(formData, {
-      customer: { required: true, min: 2 },
-      contact: { required: true },
-      mobile: { required: true, phone: true },
-      source: { required: true },
-      email: { required: true, email: true },
-      status: { required: true, label: 'Status' },
-    });
-    if (Object.keys(validationErrors).length) {
-      setErrors(validationErrors);
-      return;
-    }
-    if (addedProducts.length === 0) {
-      toast.error('Please add at least one product');
-      return;
+    formData.status = 'Pending';
+    if (!isDraft) {
+      const validationErrors = validateFields(formData, {
+        customer: { required: true, min: 2 },
+        contact: { required: true },
+        mobile: { required: true, phone: true },
+        source: { required: true },
+        email: { required: true, email: true },
+        status: { required: true, label: 'Status' },
+      });
+      if (Object.keys(validationErrors).length) {
+        setErrors(validationErrors);
+        return;
+      }
+      if (addedProducts.length === 0) {
+        toast.error('Please add at least one product');
+        return;
+      }
+    } else {
+      const validationErrors = validateFields(formData, {
+        customer: { required: true, min: 2 },
+      });
+      if (Object.keys(validationErrors).length) {
+        setErrors(validationErrors);
+        return;
+      }
     }
     const subtotal = addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0);
     const gstAmount = Math.round(subtotal * 0.18);
@@ -1464,7 +1456,7 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
     const notes = (form.elements.namedItem('notes') as HTMLTextAreaElement)?.value || '';
     const payload: any = {
       ...formData,
-      status: formData.status || 'Pending',
+      status: isDraft ? 'Draft' : (formData.status || 'Pending'),
       gst_number: gstNumber || '',
       state: stateValue || '',
       district: districtValue || '',
@@ -1487,7 +1479,8 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
     };
     try {
       await ordersService.createOrder(payload);
-      toast.success('Order created successfully!');
+      formSubmittedRef.current = true;
+      toast.success(isDraft ? 'Order saved as draft!' : 'Order created successfully!');
 
       // Auto-create client from order data
       try {
@@ -1530,8 +1523,56 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
     }
   };
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const formSubmittedRef = useRef(false);
+  const draftPayloadRef = useRef<any>(null);
+
+  // Sync draft payload ref on every render (synchronous — never stale on unmount)
+  {
+    const subtotal = addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0);
+    const gstAmount = Math.round(subtotal * 0.18);
+    const grandTotal = subtotal + gstAmount;
+    const totalQty = addedProducts.reduce((sum, p) => sum + p.quantity, 0);
+    draftPayloadRef.current = customerValue ? {
+      customer: customerValue,
+      contact: contactValue,
+      mobile: mobileValue,
+      email: emailValue,
+      source: '',
+      gst_number: gstNumber,
+      status: 'Draft',
+      state: stateValue,
+      district: districtValue,
+      address: '',
+      notes: '',
+      required_date: requiredDate || null,
+      category: '',
+      product: '',
+      size: '',
+      quantity: totalQty,
+      unit_price: addedProducts.length > 0 ? getProductRate(addedProducts[0]) : 0,
+      total_amount: subtotal,
+      gst_amount: gstAmount,
+      grand_total: grandTotal,
+      tax_rate: 18,
+      products: addedProducts.map(p => {
+        const rate = getProductRate(p);
+        return { product: p.product, category: p.category, subcategory: p.subcategory, size: p.subcategory, quantity: p.quantity, rate, amount: rate * p.quantity };
+      }),
+    } : null;
+  }
+
+  // Auto-save as draft on unmount (navigation away)
+  useEffect(() => {
+    return () => {
+      if (!formSubmittedRef.current && draftPayloadRef.current) {
+        beaconPost('/orders', draftPayloadRef.current);
+      }
+    };
+  }, []);
+
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} noValidate>
       <div className="grid gap-4 py-2">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -1632,20 +1673,55 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
               className="border border-gray-300"
             />
           </div>
+        </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className='space-y-2 mt-2'>
+            <Label htmlFor="address">{t('address')}</Label>
+            <Textarea id="address" defaultValue={leadData?.address || ''} placeholder={t('enterCustomerAddress')} className="border border-gray-300" />
+          </div>
+          <div className='space-y-2'>
+            <Label htmlFor="notes">{t('notesSpecialRequirements')}</Label>
+            <Textarea id="notes" value={prefillNotes} onChange={(e) => setPrefillNotes(e.target.value)} placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')} className="border border-gray-300" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="orderStatus">{t('status')} *</Label>
-            <select
-              id="orderStatus"
-              defaultValue={leadData ? 'Pending' : ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onChange={() => setErrors(prev => ({ ...prev, status: '' }))}
-            >
-              <option value="">{t('selectStatus')}</option>
-              <option value="Pending">{t('pending')}</option>
-              <option value="Confirmed">{t('confirmed')}</option>
-            </select>
-            <FieldError message={errors.status} />
+            <Label>{t('state')}</Label>
+            <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
+              <SelectTrigger className="border border-gray-300">
+                <SelectValue placeholder={t('enterState')} />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {getAllStates().map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {stateValue && gstNumber && <p className="text-xs text-green-600">Auto-filled from GST</p>}
+          </div>
+          <div className="space-y-2">
+            <Label>{t('district')}</Label>
+            {availableDistricts.length > 0 ? (
+              <Select value={districtValue} onValueChange={setDistrictValue}>
+                <SelectTrigger className="border border-gray-300">
+                  <SelectValue placeholder={t('enterDistrict')} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {availableDistricts.map(d => (
+                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input 
+                value={districtValue}
+                onChange={(e) => setDistrictValue(e.target.value)}
+                placeholder={t('enterDistrict')}
+                className="border border-gray-300"
+              />
+            )}
           </div>
         </div>
 
@@ -1836,61 +1912,14 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
             )}
           </CardContent>
         </Card>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className='space-y-2 mt-2'>
-            <Label htmlFor="address">{t('address')}</Label>
-            <Textarea id="address" defaultValue={leadData?.address || ''} placeholder={t('enterCustomerAddress')} className="border border-gray-300" />
-          </div>
-          <div className='space-y-2'>
-            <Label htmlFor="notes">{t('notesSpecialRequirements')}</Label>
-            <Textarea id="notes" value={prefillNotes} onChange={(e) => setPrefillNotes(e.target.value)} placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')} className="border border-gray-300" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('state')}</Label>
-            <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
-              <SelectTrigger className="border border-gray-300">
-                <SelectValue placeholder={t('enterState')} />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {getAllStates().map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {stateValue && gstNumber && <p className="text-xs text-green-600">Auto-filled from GST</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t('district')}</Label>
-            {availableDistricts.length > 0 ? (
-              <Select value={districtValue} onValueChange={setDistrictValue}>
-                <SelectTrigger className="border border-gray-300">
-                  <SelectValue placeholder={t('enterDistrict')} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {availableDistricts.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input 
-                value={districtValue}
-                onChange={(e) => setDistrictValue(e.target.value)}
-                placeholder={t('enterDistrict')}
-                className="border border-gray-300"
-              />
-            )}
-          </div>
-        </div>
       </div>
 
       <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
+        <Button type="button" variant="outline" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
           {t('cancel')}
+        </Button>
+        <Button type="button" variant="outline" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>
+          Save as Draft
         </Button>
         <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
           {t('createOrder')}

@@ -177,6 +177,28 @@ test.describe('Billing — New Invoice Form', () => {
 });
 
 // ============================================================
+// 7b. SAVE AS DRAFT
+// ============================================================
+test.describe('Billing — Save as Draft', () => {
+  test('new invoice form should show Save as Draft button', async ({ authenticatedPage: page }) => {
+    await goToBilling(page);
+    await page.getByRole('button', { name: /new invoice/i }).click();
+    await page.waitForTimeout(1000);
+    await expect(page.getByRole('button', { name: /save as draft/i })).toBeVisible();
+  });
+
+  test('Save as Draft button should be separate from Create Invoice', async ({ authenticatedPage: page }) => {
+    await goToBilling(page);
+    await page.getByRole('button', { name: /new invoice/i }).click();
+    await page.waitForTimeout(1000);
+    const draftBtn = page.getByRole('button', { name: /save as draft/i });
+    const createBtn = page.getByRole('button', { name: /create invoice/i });
+    await expect(draftBtn).toBeVisible();
+    await expect(createBtn).toBeVisible();
+  });
+});
+
+// ============================================================
 // 8. VIEW BILL
 // ============================================================
 test.describe('Billing — View Bill', () => {

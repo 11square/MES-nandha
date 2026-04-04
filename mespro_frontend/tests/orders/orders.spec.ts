@@ -75,14 +75,9 @@ test.describe('Orders — Stat Cards', () => {
     await expect(page.getByText(/total orders/i).first()).toBeVisible();
   });
 
-  test('should display Pending card', async ({ authenticatedPage: page }) => {
+  test('should display Draft card', async ({ authenticatedPage: page }) => {
     await goToOrders(page);
-    await expect(page.getByText(/^Pending$/i).first()).toBeVisible();
-  });
-
-  test('should display In Billing card', async ({ authenticatedPage: page }) => {
-    await goToOrders(page);
-    await expect(page.getByText(/in billing/i).first()).toBeVisible();
+    await expect(page.getByText(/^Draft$/i).first()).toBeVisible();
   });
 
   test('should display Total Value card', async ({ authenticatedPage: page }) => {
@@ -108,27 +103,23 @@ test.describe('Orders — Tabs', () => {
     await expect(page.getByRole('tab', { name: /all/i }).first()).toBeVisible();
   });
 
-  test('should show Pending tab', async ({ authenticatedPage: page }) => {
+  test('should show Draft tab', async ({ authenticatedPage: page }) => {
     await goToOrders(page);
-    await expect(page.getByRole('tab', { name: /pending/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /draft/i })).toBeVisible();
   });
 
-  test('should show In Production tab', async ({ authenticatedPage: page }) => {
+  test('should NOT show Pending, In Production, or Bill tabs', async ({ authenticatedPage: page }) => {
     await goToOrders(page);
-    await expect(page.getByRole('tab', { name: /in production/i })).toBeVisible();
+    await expect(page.getByRole('tab', { name: /^pending$/i })).not.toBeVisible();
+    await expect(page.getByRole('tab', { name: /in production/i })).not.toBeVisible();
+    await expect(page.getByRole('tab', { name: /^bill$/i })).not.toBeVisible();
   });
 
-  test('should show Bill tab', async ({ authenticatedPage: page }) => {
+  test('clicking Draft tab should filter orders', async ({ authenticatedPage: page }) => {
     await goToOrders(page);
-    await expect(page.getByRole('tab', { name: /bill/i }).first()).toBeVisible();
-  });
-
-  test('clicking Pending tab should filter orders', async ({ authenticatedPage: page }) => {
-    await goToOrders(page);
-    await page.getByRole('tab', { name: /pending/i }).click();
+    await page.getByRole('tab', { name: /draft/i }).click();
     await page.waitForTimeout(500);
-    // Tab should be active
-    await expect(page.getByRole('tab', { name: /pending/i })).toHaveAttribute('data-state', 'active');
+    await expect(page.getByRole('tab', { name: /draft/i })).toHaveAttribute('data-state', 'active');
   });
 });
 
@@ -348,6 +339,14 @@ test.describe('Orders — Field-Level Validation', () => {
     await expect(page.locator('#mobile')).toBeVisible();
     await expect(page.locator('#email')).toBeVisible();
     await expect(page.locator('#source')).toBeVisible();
+  });
+
+  test('create order form should NOT have a status dropdown', async ({ authenticatedPage: page }) => {
+    await goToOrders(page);
+    await page.getByRole('button', { name: /add order/i }).click();
+    await page.waitForTimeout(500);
+    // Status field was removed from create form — only set programmatically to "Pending"
+    await expect(page.locator('#status')).not.toBeVisible();
   });
 
   test('cancel button on add form should return to list', async ({ authenticatedPage: page }) => {
@@ -587,7 +586,7 @@ test.describe('Orders — Edge Cases', () => {
   test('rapid tab switching should not crash', async ({ authenticatedPage: page }) => {
     await goToOrders(page);
     for (let i = 0; i < 3; i++) {
-      await page.getByRole('tab', { name: /pending/i }).click();
+      await page.getByRole('tab', { name: /draft/i }).click();
       await page.waitForTimeout(100);
       await page.getByRole('tab', { name: /all/i }).first().click();
       await page.waitForTimeout(100);
@@ -624,9 +623,7 @@ test.describe('Orders — Console Error Checks', () => {
 
   test('tab switching should produce no console errors', async ({ authenticatedPage: page, consoleErrors }) => {
     await goToOrders(page);
-    await page.getByRole('tab', { name: /pending/i }).click();
-    await page.waitForTimeout(500);
-    await page.getByRole('tab', { name: /in production/i }).click();
+    await page.getByRole('tab', { name: /draft/i }).click();
     await page.waitForTimeout(500);
     await page.getByRole('tab', { name: /all/i }).first().click();
     await page.waitForTimeout(500);

@@ -8,7 +8,7 @@ import { chromium, type FullConfig } from '@playwright/test';
 
 const BASE_URL = 'http://localhost:5173';
 const TEST_EMAIL = process.env.TEST_EMAIL || 'admin@mespro.com';
-const TEST_PASSWORD = process.env.TEST_PASSWORD || 'admin123';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'admin@123';
 
 /** Path where the authenticated storage state is persisted. */
 export const STORAGE_STATE_PATH = 'tests/.auth/storageState.json';

@@ -677,25 +677,6 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('supplier')}</Label>
-                <Select 
-                  value={stockForm.supplier} 
-                  onValueChange={(value: string) => setStockForm({...stockForm, supplier: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectSupplier')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {suppliers.map((sup) => (
-                      <SelectItem key={sup} value={sup}>{sup}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
             <div className="flex justify-end gap-4 pt-4 border-t">
               <Button variant="outline" onClick={() => {
                 setShowAddStock(false);
@@ -1042,7 +1023,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1055,10 +1036,9 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
             </div>
           </div>
           <p className="text-3xl text-slate-900 font-bold">{formatCurrency(totalValue)}</p>
-          <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
-            <ArrowUpRight className="w-3 h-3" />
-            +12% {t('fromLastMonth')}
-          </p>
+          {totalValue > 0 && (
+            <p className="text-xs text-slate-500 mt-1">{t('totalStockValue')}</p>
+          )}
         </motion.div>
 
         <motion.div
@@ -1107,6 +1087,22 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
           </div>
           <p className="text-3xl text-slate-900 font-bold">{categories.length - 1}</p>
           <p className="text-xs text-slate-600 mt-1">{t('stockCategories')}</p>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-slate-600 font-medium">{t('totalProducts')}</span>
+            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Package className="w-5 h-5 text-indigo-600" />
+            </div>
+          </div>
+          <p className="text-3xl text-slate-900 font-bold">{stockListItems.length}</p>
+          <p className="text-xs text-slate-600 mt-1">{t('productsInStock')}</p>
         </motion.div>
       </div>
 
@@ -1167,7 +1163,6 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                 <th className="text-right py-4 px-6 text-sm font-semibold text-slate-900">Current Stock</th>
                 <th className="text-right py-4 px-6 text-sm font-semibold text-slate-900">Reorder Level</th>
                 <th className="text-right py-4 px-6 text-sm font-semibold text-slate-900">Unit Price</th>
-                <th className="text-left py-4 px-6 text-sm font-semibold text-slate-900">Supplier</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-slate-900">Status</th>
                 <th className="text-left py-4 px-6 text-sm font-semibold text-slate-900">Actions</th>
               </tr>
@@ -1202,9 +1197,6 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                   </td>
                   <td className="py-4 px-6 text-right">
                     <p className="text-sm text-slate-900 font-medium">{formatCurrency(item.unit_price)}</p>
-                  </td>
-                  <td className="py-4 px-6">
-                    <p className="text-sm text-slate-700">{item.supplier}</p>
                   </td>
                   <td className="py-4 px-6">
                     <Badge className={getStatusColor(item.status)}>

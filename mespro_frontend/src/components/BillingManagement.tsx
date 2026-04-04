@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
+import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { getCustomerType } from '../lib/utils';
 import { ConfirmDialog } from './ui/confirm-dialog';
@@ -240,7 +241,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   const [filterCustomerType, setFilterCustomerType] = useState('all');
 
   useEffect(() => {
+    const hasPending = consumePendingDraft('/billing');
     refreshBills();
+    if (hasPending) {
+      const t1 = setTimeout(() => refreshBills(), 800);
+      const t2 = setTimeout(() => refreshBills(), 2000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
+    }
   }, [filterCustomerType]);
 
   const refreshBills = () => {
@@ -862,38 +869,117 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     setEditingAddon(null);
   };
 
-  const handleBillSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const billFormRef = useRef<HTMLFormElement>(null);
+  const billSubmittedRef = useRef(false);
+  const billDraftPayloadRef = useRef<any>(null);
+
+  // Reset submitted ref when form opens (so auto-save works for each new form session)
+  useEffect(() => {
+    if (showCreateBill) {
+      billSubmittedRef.current = false;
+    }
+  }, [showCreateBill]);
+
+  // Sync bill draft payload ref on every render (synchronous — never stale on unmount)
+  if (showCreateBill && !editingBill) {
     const client = getSelectedClient();
     const clientValue = client ? client.name : (clientSearchQuery.trim() || '');
-    const errs = validateFields(
-      {
+    if (clientValue) {
+      const totals = calculateBillTotals();
+      billDraftPayloadRef.current = {
+        bill_no: billForm.bill_number || undefined,
         date: billForm.date,
-        client: clientValue,
-        gst: billForm.gst,
-        invoiceType: billForm.invoiceType,
+        order_id: orderBillData ? parseOrderIdForApi(orderBillData.orderId) : null,
+        client_id: client && client.id !== 'CUSTOM' ? client.id : null,
+        client_name: clientValue,
+        client_address: client?.address || '',
+        client_gst: billForm.gst_number || client?.gstNo || '',
+        items: billForm.items,
+        subtotal: Math.round(totals.subtotal),
+        total_discount: Math.round(totals.totalDiscount),
+        total_tax: Math.round(totals.totalTax),
+        grand_total: Math.round(totals.grandTotal),
+        status: 'draft',
+        payment_status: 'pending',
         payment_type: billForm.payment_type,
-      },
-      {
-        date: { required: true, label: 'Date' },
-        client: { required: true, label: 'Client' },
-        gst: { required: true, numeric: true, min: 0, label: 'GST' },
-        invoiceType: { required: true, label: 'Invoice Type' },
-        payment_type: { required: true, label: 'Bill Type' },
+        paid_amount: 0,
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        notes: billForm.notes,
+        created_by: billForm.created_by,
+        gst_rate: billForm.gst,
+      };
+    } else {
+      billDraftPayloadRef.current = null;
+    }
+  } else {
+    billDraftPayloadRef.current = null;
+  }
+
+  // Save current form data as draft via beacon (fire-and-forget)
+  const saveBillDraftBeacon = () => {
+    if (!billSubmittedRef.current && billDraftPayloadRef.current) {
+      beaconPost('/billing', billDraftPayloadRef.current);
+      billSubmittedRef.current = true; // Prevent double-save
+      toast.info('Form auto-saved as draft');
+      return true;
+    }
+    return false;
+  };
+
+  // Auto-save bill as draft on unmount (navigation away)
+  useEffect(() => {
+    return () => {
+      if (!billSubmittedRef.current && billDraftPayloadRef.current) {
+        beaconPost('/billing', billDraftPayloadRef.current);
       }
-    );
-    if (billForm.items.length === 0) {
-      errs.items = 'At least one item must be added';
+    };
+  }, []);
+
+  const performBillCreate = async (isDraft: boolean) => {
+    const client = getSelectedClient();
+    const clientValue = client ? client.name : (clientSearchQuery.trim() || '');
+    if (!isDraft) {
+      const errs = validateFields(
+        {
+          date: billForm.date,
+          client: clientValue,
+          gst: billForm.gst,
+          invoiceType: billForm.invoiceType,
+          payment_type: billForm.payment_type,
+        },
+        {
+          date: { required: true, label: 'Date' },
+          client: { required: true, label: 'Client' },
+          gst: { required: true, numeric: true, min: 0, label: 'GST' },
+          invoiceType: { required: true, label: 'Invoice Type' },
+          payment_type: { required: true, label: 'Bill Type' },
+        }
+      );
+      if (billForm.items.length === 0) {
+        errs.items = 'At least one item must be added';
+      }
+      if (Object.keys(errs).length) {
+        setErrors(errs);
+        return;
+      }
+      setErrors({});
+      if (!client || billForm.items.length === 0) return;
+    } else {
+      // Draft only requires client name
+      const errs = validateFields(
+        { client: clientValue },
+        { client: { required: true, label: 'Client' } }
+      );
+      if (Object.keys(errs).length) {
+        setErrors(errs);
+        return;
+      }
+      setErrors({});
+      if (!client) return;
     }
-    if (Object.keys(errs).length) {
-      setErrors(errs);
-      return;
-    }
-    setErrors({});
-    if (!client || billForm.items.length === 0) return;
 
     const totals = calculateBillTotals();
-    
+
     try {
       await billingService.createBill({
         bill_no: billForm.bill_number || undefined,
@@ -908,6 +994,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         total_discount: Math.round(totals.totalDiscount),
         total_tax: Math.round(totals.totalTax),
         grand_total: Math.round(totals.grandTotal),
+        status: isDraft ? 'draft' : 'final',
         payment_status: 'pending',
         payment_type: billForm.payment_type,
         paid_amount: 0,
@@ -916,7 +1003,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         created_by: billForm.created_by,
         gst_rate: billForm.gst,
       });
-      toast.success('Bill created successfully!');
+      toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
+      billSubmittedRef.current = true;
       setActiveTab(billForm.gst > 0 ? 'gst-bills' : 'non-gst-bills');
       refreshBills();
       resetBillForm();
@@ -937,6 +1025,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         toast.error(err.message || 'Failed to create bill');
       }
     }
+  };
+
+  const handleBillSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await performBillCreate(false);
+  };
+
+  const handleSaveAsDraft = async () => {
+    await performBillCreate(true);
   };
 
   const handlePaymentSubmit = async (e: React.FormEvent) => {
@@ -1483,6 +1580,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <Button 
             variant="outline" 
             onClick={() => {
+              // Auto-save as draft on back for new bills with data
+              if (!editingBill) {
+                saveBillDraftBeacon();
+              } else {
+                billSubmittedRef.current = true;
+              }
               setShowCreateBill(false);
               setEditingBill(null);
               resetBillForm();
@@ -1501,7 +1604,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </div>
         <Card>
           <CardContent className="pt-6">
-            <form onSubmit={handleBillSubmit} noValidate>
+            <form ref={billFormRef} onSubmit={handleBillSubmit} noValidate>
               <div className="space-y-8">
                 {/* Client & Date Selection */}
                 <div className="flex flex-wrap items-end gap-2">
@@ -2053,6 +2156,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                 {errors.items && <FieldError message={errors.items} />}
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => {
+                    // Auto-save as draft on cancel for new bills with data
+                    if (!editingBill) {
+                      saveBillDraftBeacon();
+                    }
                     setShowCreateBill(false);
                     setEditingBill(null);
                     resetBillForm();
@@ -2065,10 +2172,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       {activeTab === 'non-gst-bills' ? t('updateQuotationBill') : t('updateInvoice')}
                     </Button>
                   ) : (
+                    <>
+                    <Button type="button" variant="outline" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={handleSaveAsDraft}>
+                      Save as Draft
+                    </Button>
                     <Button type="submit" disabled={billForm.items.length === 0 || (!billForm.client_id && !clientSearchQuery.trim())}>
                       <FileText className="mr-2 h-4 w-4" />
                       {activeTab === 'non-gst-bills' ? t('createQuotationBill') : t('createInvoice')}
                     </Button>
+                    </>
                   )}
                 </div>
               </div>
@@ -2305,7 +2417,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     bill.gst_rate > 0
                   ).map((bill) => (
                     <TableRow key={bill.id}>
-                      <TableCell className="font-medium font-mono">{bill.bill_no}</TableCell>
+                      <TableCell className="font-medium font-mono">
+                        {bill.bill_no}
+                        {(bill as any).status === 'draft' && <Badge className="ml-2 bg-gray-100 text-gray-700 text-[10px] px-1.5 py-0.5">Draft</Badge>}
+                      </TableCell>
                       <TableCell>{new Date(bill.date).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <div>
@@ -2480,7 +2595,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       bill.gst_rate === 0
                     ).map((bill) => (
                       <TableRow key={bill.id}>
-                        <TableCell className="font-medium font-mono">{bill.bill_no}</TableCell>
+                        <TableCell className="font-medium font-mono">
+                          {bill.bill_no}
+                          {(bill as any).status === 'draft' && <Badge className="ml-2 bg-gray-100 text-gray-700 text-[10px] px-1.5 py-0.5">Draft</Badge>}
+                        </TableCell>
                         <TableCell>{new Date(bill.date).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <div>
