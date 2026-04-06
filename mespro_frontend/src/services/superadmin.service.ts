@@ -77,7 +77,7 @@ class SuperAdminService {
   async updateBusiness(id: number, formData: FormData): Promise<Business> {
     // postFormData uses POST, but we need PUT — use a custom method
     const url = `/superadmin/businesses/${id}`;
-    const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+    const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
     const token = localStorage.getItem('token');
 
     const response = await fetch(`${baseUrl}${url}`, {

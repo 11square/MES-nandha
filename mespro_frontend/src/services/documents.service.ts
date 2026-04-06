@@ -83,7 +83,7 @@ class DocumentsService {
    * Get the download URL for a document
    */
   getDownloadUrl(id: number): string {
-    const base = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+    const base = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
     return `${base}/documents/${id}/download`;
   }
 

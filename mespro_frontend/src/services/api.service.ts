@@ -5,7 +5,7 @@
  */
 
 // Base API configuration — points to the backend server
-const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:3000/api/v1';
+const API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || '/api/v1';
 
 class ApiService {
   private baseUrl: string;
