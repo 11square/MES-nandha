@@ -1089,7 +1089,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
-      setActiveTab(billForm.items.some(i => i.tax > 0) ? 'gst-bills' : 'non-gst-bills');
+      setActiveTab((billForm.bill_number || '').startsWith('QTN') ? 'non-gst-bills' : 'gst-bills');
       refreshBills();
       resetBillForm();
       setShowCreateBill(false);
@@ -1371,7 +1371,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     </div>
     <div class="invoice-meta">
       <table>
-        <tr><td>Invoice No.</td><td>${bill.bill_no}</td></tr>
+        <tr><td>${isQuotation ? 'Quotation No.' : 'Invoice No.'}</td><td>${bill.bill_no}</td></tr>
         <tr><td>Date</td><td>${new Date(bill.date).toLocaleDateString('en-IN')}</td></tr>
         <tr><td>Place of Supply</td><td>${placeOfSupply}</td></tr>
       </table>
@@ -1422,7 +1422,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   <!-- Amount in Words + Amounts -->
   <div class="bottom-section">
     <div class="amount-words">
-      <div class="label">Invoice Amount In Words</div>
+      <div class="label">${isQuotation ? 'Quotation' : 'Invoice'} Amount In Words</div>
       <div>${numToWords(bill.grand_total)}</div>
     </div>
     <div class="amounts-table">
@@ -1571,7 +1571,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       terms_conditions: (bill as any).terms_conditions || 'Thanks for doing business with us!',
     });
     setClientSearchQuery(client ? client.name : (bill.client_name || ''));
-    setActiveTab(bill.gst_rate > 0 ? 'gst-bills' : 'non-gst-bills');
+    setActiveTab((bill.bill_no || '').startsWith('QTN') ? 'non-gst-bills' : 'gst-bills');
     setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', gstRate: 18, quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setItemRowErrors({});
     setActiveRowDropdown(null);
@@ -1629,7 +1629,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
       });
       toast.success('Bill updated successfully!');
-      setActiveTab(billForm.items.some(i => i.tax > 0) ? 'gst-bills' : 'non-gst-bills');
+      setActiveTab((billForm.bill_number || '').startsWith('QTN') ? 'non-gst-bills' : 'gst-bills');
       refreshBills();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update bill');
@@ -2748,7 +2748,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <option value="b2b">{t('b2b')}</option>
                   <option value="b2c">{t('b2c')}</option>
                 </select>
-                <Button variant="outline" onClick={() => exportBillsCSV(bills.filter(b => b.gst_rate > 0 && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
+                <Button variant="outline" onClick={() => exportBillsCSV(bills.filter(b => (b.bill_no || '').startsWith('INV') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('export')}
                 </Button>
@@ -2773,7 +2773,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   {bills.filter(bill => 
                     ((bill.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
-                    bill.gst_rate > 0
+                    (bill.bill_no || '').startsWith('INV')
                   ).map((bill) => (
                     <TableRow key={bill.id}>
                       <TableCell className="font-medium font-mono">
@@ -2915,7 +2915,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <option value="b2b">{t('b2b')}</option>
                   <option value="b2c">{t('b2c')}</option>
                 </select>
-                <Button variant="outline" onClick={() => exportBillsCSV(bills.filter(b => b.gst_rate === 0 && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
+                <Button variant="outline" onClick={() => exportBillsCSV(bills.filter(b => (b.bill_no || '').startsWith('QTN') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('export')}
                 </Button>
@@ -2940,7 +2940,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   {bills.filter(bill => 
                     ((bill.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
-                    bill.gst_rate === 0
+                    (bill.bill_no || '').startsWith('QTN')
                   ).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={9} className="text-center py-8 text-gray-500">
@@ -2951,7 +2951,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     bills.filter(bill => 
                       ((bill.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                       (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
-                      bill.gst_rate === 0
+                      (bill.bill_no || '').startsWith('QTN')
                     ).map((bill) => (
                       <TableRow key={bill.id}>
                         <TableCell className="font-medium font-mono">
