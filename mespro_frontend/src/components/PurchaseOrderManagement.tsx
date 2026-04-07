@@ -39,7 +39,8 @@ import {
   FileText,
   Send,
   Check,
-  ChevronsUpDown
+  ChevronsUpDown,
+  IndianRupee
 } from 'lucide-react';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { ConfirmDialog } from './ui/confirm-dialog';
@@ -213,23 +214,14 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   // If showing add PO page, render it instead of the main view
   if (showAddPO) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            onClick={() => setShowAddPO(false)}
-          >
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => setShowAddPO(false)}>
             ← {t('back')}
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">{t('createNewPurchaseOrder')}</h1>
-          </div>
+          <h1 className="text-xl font-bold">{t('createNewPurchaseOrder')}</h1>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <AddPOForm onClose={() => setShowAddPO(false)} onSubmit={handleAddPO} language={language} stockItem={stockItem} />
-          </CardContent>
-        </Card>
+        <AddPOForm onClose={() => setShowAddPO(false)} onSubmit={handleAddPO} language={language} stockItem={stockItem} />
       </div>
     );
   }
@@ -237,35 +229,25 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   // If showing edit PO page, render it instead of the main view
   if (showEditPO && editingPO) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setShowEditPO(false);
-              setEditingPO(null);
-            }}
-          >
+      <div className="p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => { setShowEditPO(false); setEditingPO(null); }}>
             ← {t('back')}
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{t('editPurchaseOrder')}</h1>
-            <p className="text-sm text-gray-500">{editingPO.id}</p>
+            <h1 className="text-xl font-bold">{t('editPurchaseOrder')}</h1>
+            <p className="text-xs text-gray-500">{editingPO.id}</p>
           </div>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <EditPOForm 
-              po={editingPO} 
-              language={language}
-              onClose={() => {
-                setShowEditPO(false);
-                setEditingPO(null);
-              }}
-              onSubmit={handleUpdatePO}
-            />
-          </CardContent>
-        </Card>
+        <EditPOForm 
+          po={editingPO} 
+          language={language}
+          onClose={() => {
+            setShowEditPO(false);
+            setEditingPO(null);
+          }}
+          onSubmit={handleUpdatePO}
+        />
       </div>
     );
   }
@@ -932,343 +914,412 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
-      <div className="grid gap-4 py-2">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendor')} *</Label>
-            <div className="relative">
-              <div
-                tabIndex={0}
-                role="combobox"
-                aria-expanded={showVendorDropdown}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-pointer flex items-center justify-between bg-white"
-                onClick={() => setShowVendorDropdown(!showVendorDropdown)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVendorDropdown(!showVendorDropdown); } }}
-              >
-                <span className={selectedVendor ? 'text-gray-900' : 'text-gray-500'}>
-                  {selectedVendor ? selectedVendor.name : (t('selectVendor'))}
-                </span>
-                <ChevronsUpDown className="w-4 h-4 text-gray-400" />
+      {/* PO Details + Vendor Info - Compact Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Left: PO Details */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <FileText className="w-4 h-4" /> PO Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('date')} *</Label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }}
+                  className="h-8 text-sm"
+                />
+                {errors.date && <FieldError message={errors.date} />}
               </div>
-              {showVendorDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-72 overflow-hidden">
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <Input
-                        placeholder={t('searchVendor')}
-                        value={vendorSearchQuery}
-                        onChange={(e) => setVendorSearchQuery(e.target.value)}
-                        className="pl-8 h-8 text-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('expectedDelivery')} *</Label>
+                <Input
+                  type="date"
+                  value={formData.expected_delivery}
+                  onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }}
+                  className="h-8 text-sm"
+                />
+                {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+                <Input
+                  value={gstNumber}
+                  onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
+                  placeholder="e.g. 33AUJPM8458P1ZR"
+                  maxLength={15}
+                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                />
+                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Right: Vendor Info */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Building className="w-4 h-4" /> Vendor Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('vendor')} *</Label>
+                <div className="relative">
+                  <div
+                    tabIndex={0}
+                    role="combobox"
+                    aria-expanded={showVendorDropdown}
+                    className="w-full h-8 px-2 border border-gray-300 rounded-md cursor-pointer flex items-center justify-between bg-white text-xs"
+                    onClick={() => setShowVendorDropdown(!showVendorDropdown)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVendorDropdown(!showVendorDropdown); } }}
+                  >
+                    <span className={selectedVendor ? 'text-gray-900' : 'text-gray-500'}>
+                      {selectedVendor ? selectedVendor.name : (t('selectVendor'))}
+                    </span>
+                    <ChevronsUpDown className="w-3 h-3 text-gray-400" />
                   </div>
-                  <div className="max-h-56 overflow-y-auto">
-                    {filteredVendors.length === 0 ? (
-                      <div className="p-3 text-sm text-gray-500 text-center">
-                        {t('noVendorFound')}
-                      </div>
-                    ) : (
-                      filteredVendors.map(vendor => (
-                        <div
-                          key={vendor.id}
-                          className={`px-3 py-2 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`}
-                          onClick={() => handleVendorSelect(vendor)}
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{vendor.name}</p>
-                            <p className="text-xs text-gray-500">{vendor.contactPerson} • {vendor.category}</p>
-                          </div>
-                          {selectedVendorId === vendor.id && (
-                            <Check className="w-4 h-4 text-blue-600" />
-                          )}
+                  {showVendorDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-hidden">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="w-3 h-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <Input
+                            placeholder={t('searchVendor')}
+                            value={vendorSearchQuery}
+                            onChange={(e) => setVendorSearchQuery(e.target.value)}
+                            className="pl-7 h-7 text-xs"
+                            onClick={(e) => e.stopPropagation()}
+                          />
                         </div>
-                      ))
-                    )}
-                  </div>
+                      </div>
+                      <div className="max-h-56 overflow-y-auto">
+                        {filteredVendors.length === 0 ? (
+                          <div className="p-2 text-xs text-gray-500 text-center">
+                            {t('noVendorFound')}
+                          </div>
+                        ) : (
+                          filteredVendors.map(vendor => (
+                            <div
+                              key={vendor.id}
+                              className={`px-3 py-1.5 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`}
+                              onClick={() => handleVendorSelect(vendor)}
+                            >
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{vendor.name}</div>
+                                <div className="text-[10px] text-gray-500">{vendor.contactPerson} • {vendor.category}</div>
+                              </div>
+                              {selectedVendorId === vendor.id && (
+                                <Check className="w-3 h-3 text-blue-600" />
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {errors.vendor && <FieldError message={errors.vendor} />}
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">{t('vendorContact')}</Label>
+                  <Input
+                    value={formData.vendor_contact}
+                    onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })}
+                    placeholder="+91 XXXXX XXXXX"
+                    className="h-8 text-sm bg-gray-50"
+                    readOnly
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('vendorEmail')}</Label>
+                  <Input
+                    type="email"
+                    value={formData.vendor_email}
+                    onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })}
+                    placeholder="vendor@example.com"
+                    className="h-8 text-sm bg-gray-50"
+                    readOnly
+                  />
+                </div>
+              </div>
+              {/* Selected vendor info display */}
+              {selectedVendor && (
+                <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
+                  <p className="font-semibold text-gray-800">{selectedVendor.name}</p>
+                  {formData.vendor_contact && <p className="mt-0.5">{formData.vendor_contact}</p>}
+                  {formData.vendor_email && <p className="mt-0.5">{formData.vendor_email}</p>}
+                  {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
                 </div>
               )}
             </div>
-            {errors.vendor && <FieldError message={errors.vendor} />}
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t('gstNumber')}</Label>
-            <Input
-              value={gstNumber}
-              onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
-              placeholder={t('enterGstNumber')}
-              maxLength={15}
-              className={`border border-gray-300${gstError ? ' border-red-500' : ''}`}
-            />
-            {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendorContact')}</Label>
-            <Input 
-              value={formData.vendor_contact}
-              onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })}
-              placeholder="+91 XXXXX XXXXX" 
-              className="border border-gray-300 bg-gray-50" 
-              readOnly
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t('vendorEmail')}</Label>
-            <Input 
-              type="email"
-              value={formData.vendor_email}
-              onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })}
-              placeholder="vendor@example.com" 
-              className="border border-gray-300 bg-gray-50" 
-              readOnly
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('date')} *</Label>
-            <Input 
-              type="date"
-              value={formData.date}
-              onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }}
-              className="border border-gray-300" 
-            />
-            {errors.date && <FieldError message={errors.date} />}
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t('expectedDelivery')} *</Label>
-            <Input 
-              type="date"
-              value={formData.expected_delivery}
-              onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }}
-              className="border border-gray-300" 
-            />
-            {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
-          </div>
-        </div>
-
-
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendorAddress')}</Label>
-            <Textarea 
-              value={formData.vendor_address}
-              onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
-              placeholder={t('enterVendorAddress')} 
-              className="border border-gray-300" 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('notes')}</Label>
-            <Textarea 
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder={t('additionalNotesOrComments')} 
-              className="border border-gray-300" 
-            />
-          </div>
-        </div>
-
-        {/* Items Section */}
-        <div className="space-y-3">
-          <Label className="text-base font-semibold">{t('items')} *</Label>
-          {errors.items && <FieldError message={errors.items} />}
-          
-          {/* Add Item Card */}
-          <Card className="p-4">
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-gray-700">
-                  {t('addNewItem')}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>{t('category')} *</Label>
-                  <Select
-                    value={newItem.category || undefined}
-                    onValueChange={(value: string) => {
-                      setNewItem({ category: value, subcategory: '', product: '', quantity: newItem.quantity, unitPrice: 0 });
-                    }}
-                  >
-                    <SelectTrigger className="w-full border border-gray-300">
-                      <SelectValue placeholder={t('selectCategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {productCategories.map(cat => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('subcategory')} *</Label>
-                  <Select
-                    key={`subcat-${newItem.category}`}
-                    value={newItem.subcategory || undefined}
-                    onValueChange={(value: string) => {
-                      setNewItem({ ...newItem, subcategory: value, product: '', unitPrice: 0 });
-                    }}
-                    disabled={!newItem.category}
-                  >
-                    <SelectTrigger className="w-full border border-gray-300">
-                      <SelectValue placeholder={t('selectSubcategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getSubcategoriesByCategory(newItem.category).map(subcat => (
-                        <SelectItem key={subcat} value={subcat}>{subcat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label>{t('item')} *</Label>
-                  <Select
-                    key={`prod-${newItem.category}-${newItem.subcategory}`}
-                    value={newItem.product || undefined}
-                    onValueChange={(value: string) => {
-                      const products = getProductsBySubcategory(newItem.category, newItem.subcategory);
-                      const selectedProduct = products.find(p => p.id === value);
-                      setNewItem({ ...newItem, product: value, unitPrice: selectedProduct?.unitPrice || 0 });
-                    }}
-                    disabled={!newItem.subcategory}
-                  >
-                    <SelectTrigger className="w-full border border-gray-300">
-                      <SelectValue placeholder={t('selectItem')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {getProductsBySubcategory(newItem.category, newItem.subcategory).map(prod => (
-                        <SelectItem key={prod.id} value={prod.id}>{prod.name} - ₹{prod.unitPrice}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('quantity')} *</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={newItem.quantity}
-                    onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 0 })}
-                    onFocus={(e) => e.target.select()}
-                    onKeyDown={blockInvalidNumberKeys}
-                    className="border border-gray-300"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('unitPrice')}</Label>
-                  <Input
-                    value={`₹${newItem.unitPrice.toLocaleString()}`}
-                    disabled
-                    className="border border-gray-300 bg-gray-50"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addItem}
-                  disabled={!newItem.category || !newItem.subcategory || !newItem.product}
-                  className="text-blue-600 border-blue-300 hover:bg-blue-50"
-                >
-                  <Plus className="w-4 h-4 mr-1" />
-                  {t('addItem')}
-                </Button>
-              </div>
-            </div>
-          </Card>
-
-          {/* Added Items List */}
-          {addedItems.length > 0 && (
-            <div className="border border-gray-200 rounded-lg p-3 space-y-2 bg-gray-50">
-              <div className="flex items-center justify-between">
-                <Label className="text-sm text-gray-600">{t('addedItems')}</Label>
-                <span className="text-sm font-semibold text-blue-600">
-                  {t('total')}: ₹{getTotalAmount().toLocaleString()}
-                </span>
-              </div>
-              {addedItems.map((item, index) => {
-                const categoryName = productCategories.find(c => c.id === item.category)?.name || item.category;
-                return (
-                  <div key={item.id} className="flex items-center justify-between bg-white px-3 py-2 rounded border border-gray-200">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-medium text-gray-700">#{index + 1}</span>
-                      <span className="text-gray-400">|</span>
-                      <span className="text-gray-600">{categoryName}</span>
-                      <span className="text-gray-400">→</span>
-                      <span className="text-gray-600">{item.subcategory}</span>
-                      <span className="text-gray-400">→</span>
-                      <span className="text-gray-900 font-medium">{item.productName}</span>
-                      <span className="text-gray-400">×</span>
-                      <span className="font-semibold">{item.quantity}</span>
-                      <span className="text-gray-400">@</span>
-                      <span className="text-gray-600">₹{item.unitPrice}</span>
-                      <span className="text-gray-400">=</span>
-                      <span className="font-bold text-green-600">₹{item.total.toLocaleString()}</span>
-                    </div>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeItem(item.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 h-6 px-2"
-                    >
-                      <XCircle className="w-4 h-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Items Section */}
+      <Card className={`shadow-sm mb-4 overflow-visible ${errors.items ? 'border-red-400' : ''}`}>
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Package className="w-4 h-4" /> {t('items')} *
+            </CardTitle>
+            <Badge variant="outline" className="text-xs text-gray-500">
+              {addedItems.length} {addedItems.length === 1 ? 'item' : 'items'} added
+            </Badge>
+          </div>
+          {errors.items && <p className="text-sm text-red-500 mt-1">{errors.items}</p>}
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          {/* Item Entry - Compact Table Style */}
+          <div className="overflow-visible">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[22%]">Category *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[22%]">Subcategory *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[22%]">{t('item')} *</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">{t('quantity')} *</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">{t('unitPrice')}</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="py-1 pr-2">
+                    <Select
+                      value={newItem.category || undefined}
+                      onValueChange={(value: string) => {
+                        setNewItem({ category: value, subcategory: '', product: '', quantity: newItem.quantity, unitPrice: 0 });
+                      }}
+                    >
+                      <SelectTrigger className="h-7 text-xs border border-gray-300">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {productCategories.map(cat => (
+                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Select
+                      key={`subcat-${newItem.category}`}
+                      value={newItem.subcategory || undefined}
+                      onValueChange={(value: string) => {
+                        setNewItem({ ...newItem, subcategory: value, product: '', unitPrice: 0 });
+                      }}
+                      disabled={!newItem.category}
+                    >
+                      <SelectTrigger className="h-7 text-xs border border-gray-300">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getSubcategoriesByCategory(newItem.category).map(subcat => (
+                          <SelectItem key={subcat} value={subcat}>{subcat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Select
+                      key={`prod-${newItem.category}-${newItem.subcategory}`}
+                      value={newItem.product || undefined}
+                      onValueChange={(value: string) => {
+                        const products = getProductsBySubcategory(newItem.category, newItem.subcategory);
+                        const selectedProduct = products.find(p => p.id === value);
+                        setNewItem({ ...newItem, product: value, unitPrice: selectedProduct?.unitPrice || 0 });
+                      }}
+                      disabled={!newItem.subcategory}
+                    >
+                      <SelectTrigger className="h-7 text-xs border border-gray-300">
+                        <SelectValue placeholder="Select..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {getProductsBySubcategory(newItem.category, newItem.subcategory).map(prod => (
+                          <SelectItem key={prod.id} value={prod.id}>{prod.name} - ₹{prod.unitPrice}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </td>
+                  <td className="py-1 pr-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      value={newItem.quantity}
+                      onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 0 })}
+                      onFocus={(e) => e.target.select()}
+                      onKeyDown={(e) => {
+                        blockInvalidNumberKeys(e);
+                        if (e.key === 'Enter' && newItem.product && newItem.quantity > 0) { e.preventDefault(); addItem(); }
+                      }}
+                      className="h-7 text-xs text-center"
+                    />
+                  </td>
+                  <td className="py-1 pr-2 text-right text-xs text-gray-600">
+                    {newItem.product ? `₹${newItem.unitPrice.toLocaleString()}` : '-'}
+                  </td>
+                  <td className="py-1 text-right text-xs font-medium text-gray-700">
+                    {newItem.product && newItem.quantity > 0 ? `₹${(newItem.unitPrice * newItem.quantity).toLocaleString()}` : '-'}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* Add Item Button */}
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              onClick={addItem}
+              disabled={!newItem.category || !newItem.subcategory || !newItem.product || newItem.quantity < 1}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              {t('addItem')}
+            </Button>
+          </div>
+
+          {/* Added Items Table - Invoice Style */}
+          {addedItems.length > 0 && (
+            <div className="mt-4 border rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-28">Category</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-28">Subcategory</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
+                    <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
+                    <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {addedItems.map((item, index) => {
+                    const categoryName = productCategories.find(c => c.id === item.category)?.name || item.category;
+                    return (
+                      <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                        <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
+                        <td className="py-1.5 px-2 font-medium">{item.productName}</td>
+                        <td className="py-1.5 px-2 text-gray-500">{categoryName}</td>
+                        <td className="py-1.5 px-2 text-gray-500">{item.subcategory}</td>
+                        <td className="py-1.5 px-2 text-center">{item.quantity}</td>
+                        <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1.5 px-2">
+                          <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
+                            <Trash2 className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Totals Row */}
+                  <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2">Total</td>
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2 text-center">{addedItems.reduce((s, i) => s + i.quantity, 0)}</td>
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2 text-right text-blue-700">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Amount Summary */}
+      {addedItems.length > 0 && (
+        <Card className="shadow-sm mb-4">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <IndianRupee className="w-4 h-4" /> Amount Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="space-y-1.5 text-sm max-w-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Items</span>
+                <span>{addedItems.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Total Quantity</span>
+                <span>{addedItems.reduce((s, i) => s + i.quantity, 0)}</span>
+              </div>
+              <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
+                <span>Total Amount</span>
+                <span className="text-blue-700">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Address, Notes & Stock Option */}
+      <Card className="shadow-sm mb-4">
+        <CardContent className="px-4 py-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
+              <textarea
+                value={formData.vendor_address}
+                onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
+                placeholder={t('enterVendorAddress')}
+                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('notes')}</Label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder={t('additionalNotesOrComments')}
+                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Add to Stock Option */}
-      <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-lg">
+      <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
         <div>
-          <Label className="text-sm font-semibold text-green-800">{t('addToStock')}</Label>
-          <p className="text-xs text-green-600 mt-0.5">{t('addToStockDescription')}</p>
+          <Label className="text-xs font-semibold text-green-800">{t('addToStock')}</Label>
+          <p className="text-[10px] text-green-600 mt-0.5">{t('addToStockDescription')}</p>
         </div>
         <input
           type="checkbox"
           checked={formData.add_to_stock}
           onChange={(e) => setFormData({ ...formData, add_to_stock: e.target.checked })}
-          className="w-5 h-5 accent-green-600 cursor-pointer"
+          className="w-4 h-4 accent-green-600 cursor-pointer"
         />
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
           {t('cancel')}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="border-gray-300 text-gray-600 hover:bg-gray-50"
-          onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}
-        >
+        <Button type="button" variant="outline" size="sm" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>
           Save as Draft
         </Button>
-        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700">
+          <ShoppingCart className="mr-1 h-3 w-3" />
           {t('createPO')}
         </Button>
       </div>

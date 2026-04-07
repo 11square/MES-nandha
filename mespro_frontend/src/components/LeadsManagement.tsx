@@ -362,7 +362,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   // If showing create lead page, render it instead of the main view
   if (showCreateLead) {
     return (
-      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+      <div className="p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => setShowCreateLead(false)}>
             ← {t('back')}
@@ -377,7 +377,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   // If showing edit lead page, render it instead of the main view
   if (showEditLead && editingLead) {
     return (
-      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+      <div className="p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => { setShowEditLead(false); setEditingLead(null); }}>
             ← {t('back')}

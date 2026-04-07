@@ -472,7 +472,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   // If showing add order page, render it instead of the main view
   if (showAddOrder) {
     return (
-      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+      <div className="p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Button 
             variant="outline"
@@ -496,7 +496,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   // If showing edit order page, render it instead of the main view
   if (showEditOrder && editingOrder) {
     return (
-      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+      <div className="p-4 space-y-4">
         <div className="flex items-center gap-3">
           <Button 
             variant="outline"
