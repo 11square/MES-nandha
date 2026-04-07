@@ -1585,7 +1585,26 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
                 <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
                 <div className="relative">
                   <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
-                    <span className="h-full flex items-center px-2 text-xs bg-gray-50 border-r border-gray-300 text-gray-600">+91</span>
+                    <select
+                      className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
+                      defaultValue="+91"
+                    >
+                      <option value="+91">+91</option>
+                      <option value="+1">+1</option>
+                      <option value="+44">+44</option>
+                      <option value="+61">+61</option>
+                      <option value="+81">+81</option>
+                      <option value="+86">+86</option>
+                      <option value="+971">+971</option>
+                      <option value="+65">+65</option>
+                      <option value="+60">+60</option>
+                      <option value="+49">+49</option>
+                      <option value="+33">+33</option>
+                      <option value="+39">+39</option>
+                      <option value="+55">+55</option>
+                      <option value="+82">+82</option>
+                      <option value="+27">+27</option>
+                    </select>
                     <Input
                       id="mobile"
                       placeholder="XXXXX XXXXX"
