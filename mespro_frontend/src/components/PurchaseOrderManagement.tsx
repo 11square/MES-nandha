@@ -682,14 +682,17 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     return result;
   }, [allItems]);
 
-  // New item state (from catalog)
+  // New item state (search-based)
   const [newItem, setNewItem] = useState({
     category: '',
     subcategory: '',
     product: '',
+    productName: '',
     quantity: 0,
     unitPrice: 0,
   });
+  const [itemSearchQuery, setItemSearchQuery] = useState('');
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
 
   // Added items list
   interface POItem {
@@ -715,26 +718,39 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     return injectedProductItems[categoryId]?.[subcategory] || [];
   };
 
+  const selectItemFromSearch = (item: any) => {
+    const catId = (item.category || 'other').toLowerCase().replace(/\s+/g, '-');
+    const unitPrice = Number(item.base_price || item.selling_price || item.unit_price || item.unitPrice) || 0;
+    setNewItem({
+      category: catId,
+      subcategory: item.subcategory || 'General',
+      product: String(item.id),
+      productName: item.name,
+      quantity: newItem.quantity || 1,
+      unitPrice,
+    });
+    setItemSearchQuery(item.name);
+    setShowItemDropdown(false);
+  };
+
   const addItem = () => {
-    if (!newItem.category || !newItem.subcategory || !newItem.product) return;
-    
-    const products = getProductsBySubcategory(newItem.category, newItem.subcategory);
-    const selectedProduct = products.find(p => p.id === newItem.product);
-    if (!selectedProduct) return;
+    if (!newItem.product || !newItem.productName) return;
+    if (newItem.quantity < 1) return;
 
     const newPOItem: POItem = {
       id: `item-${Date.now()}`,
       category: newItem.category,
       subcategory: newItem.subcategory,
       product: newItem.product,
-      productName: selectedProduct.name,
+      productName: newItem.productName,
       quantity: newItem.quantity,
-      unitPrice: selectedProduct.unitPrice,
-      total: newItem.quantity * selectedProduct.unitPrice,
+      unitPrice: newItem.unitPrice,
+      total: newItem.quantity * newItem.unitPrice,
     };
 
     setAddedItems([...addedItems, newPOItem]);
-    setNewItem({ category: '', subcategory: '', product: '', quantity: 0, unitPrice: 0 });
+    setNewItem({ category: '', subcategory: '', product: '', productName: '', quantity: 0, unitPrice: 0 });
+    setItemSearchQuery('');
     setErrors(prev => { const {items: _, ...rest} = prev; return rest; });
   };
 
@@ -777,14 +793,16 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       const reorderQty = Math.max(1, Number(stockItem.reorder_level) - Number(stockItem.current_stock));
       const unitPrice = Number(stockItem.unit_price) || 0;
 
-      // Pre-select the stock item in the dropdowns
+      // Pre-select the stock item
       setNewItem({
         category: matchedCategoryId,
         subcategory: subcat,
         product: stockProductId,
+        productName: stockItem.name || '',
         quantity: reorderQty,
         unitPrice: unitPrice,
       });
+      setItemSearchQuery(stockItem.name || '');
 
       // Also pre-fill the vendor if supplier info is available
       if (stockItem.supplier && vendors.length > 0) {
@@ -1083,72 +1101,63 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[22%]">Category *</th>
-                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[22%]">Subcategory *</th>
-                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[22%]">{t('item')} *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[30%]">{t('item')} *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[18%]">Category</th>
                   <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">{t('quantity')} *</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">{t('unitPrice')}</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Amount</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">{t('unitPrice')}</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">Amount</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
                   <td className="py-1 pr-2">
-                    <Select
-                      value={newItem.category || undefined}
-                      onValueChange={(value: string) => {
-                        setNewItem({ category: value, subcategory: '', product: '', quantity: newItem.quantity, unitPrice: 0 });
-                      }}
-                    >
-                      <SelectTrigger className="h-7 text-xs border border-gray-300">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {productCategories.map(cat => (
-                          <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        placeholder="Search item..."
+                        value={itemSearchQuery}
+                        onChange={(e) => {
+                          setItemSearchQuery(e.target.value);
+                          setNewItem({ ...newItem, product: '', productName: '', category: '', subcategory: '', unitPrice: 0 });
+                          setShowItemDropdown(true);
+                        }}
+                        onFocus={() => setShowItemDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowItemDropdown(false), 300)}
+                        className="h-7 text-xs"
+                      />
+                      {showItemDropdown && (
+                        <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                          {allItems
+                            .filter((p: any) => (p.name || '').toLowerCase().includes(itemSearchQuery.toLowerCase()))
+                            .length > 0 ? (
+                            allItems
+                              .filter((p: any) => (p.name || '').toLowerCase().includes(itemSearchQuery.toLowerCase()))
+                              .map((item: any) => (
+                                <div
+                                  key={item.id}
+                                  className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    selectItemFromSearch(item);
+                                  }}
+                                >
+                                  <div className="font-medium text-xs">{item.name}</div>
+                                  <div className="text-[10px] text-gray-500">{item.category}{item.subcategory ? ` > ${item.subcategory}` : ''} • ₹{Number(item.base_price || item.selling_price || item.unit_price || 0).toLocaleString()}</div>
+                                </div>
+                              ))
+                          ) : (
+                            <div className="px-2 py-1 text-center text-gray-500 text-xs">
+                              No items found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </td>
-                  <td className="py-1 pr-2">
-                    <Select
-                      key={`subcat-${newItem.category}`}
-                      value={newItem.subcategory || undefined}
-                      onValueChange={(value: string) => {
-                        setNewItem({ ...newItem, subcategory: value, product: '', unitPrice: 0 });
-                      }}
-                      disabled={!newItem.category}
-                    >
-                      <SelectTrigger className="h-7 text-xs border border-gray-300">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getSubcategoriesByCategory(newItem.category).map(subcat => (
-                          <SelectItem key={subcat} value={subcat}>{subcat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </td>
-                  <td className="py-1 pr-2">
-                    <Select
-                      key={`prod-${newItem.category}-${newItem.subcategory}`}
-                      value={newItem.product || undefined}
-                      onValueChange={(value: string) => {
-                        const products = getProductsBySubcategory(newItem.category, newItem.subcategory);
-                        const selectedProduct = products.find(p => p.id === value);
-                        setNewItem({ ...newItem, product: value, unitPrice: selectedProduct?.unitPrice || 0 });
-                      }}
-                      disabled={!newItem.subcategory}
-                    >
-                      <SelectTrigger className="h-7 text-xs border border-gray-300">
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {getProductsBySubcategory(newItem.category, newItem.subcategory).map(prod => (
-                          <SelectItem key={prod.id} value={prod.id}>{prod.name} - ₹{prod.unitPrice}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <td className="py-1 pr-2 text-xs text-gray-500">
+                    {newItem.category ? (
+                      <span className="truncate block">{productCategories.find(c => c.id === newItem.category)?.name || newItem.category}{newItem.subcategory ? ` > ${newItem.subcategory}` : ''}</span>
+                    ) : '-'}
                   </td>
                   <td className="py-1 pr-2">
                     <Input
@@ -1180,7 +1189,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
             <Button
               type="button"
               onClick={addItem}
-              disabled={!newItem.category || !newItem.subcategory || !newItem.product || newItem.quantity < 1}
+              disabled={!newItem.product || newItem.quantity < 1}
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
             >
