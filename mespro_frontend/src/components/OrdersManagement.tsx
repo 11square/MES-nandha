@@ -39,7 +39,10 @@ import {
   Receipt,
   Check,
   ChevronsUpDown,
-  Trash2
+  Trash2,
+  Building,
+  IndianRupee,
+  CheckCircle
 } from 'lucide-react';
 
 const toDateInputValue = (value: any): string => {
@@ -469,26 +472,23 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   // If showing add order page, render it instead of the main view
   if (showAddOrder) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+        <div className="flex items-center gap-3">
           <Button 
-            variant="outline" 
+            variant="outline"
+            size="sm"
             onClick={() => { setShowAddOrder(false); onClearLeadForOrder?.(); }}
           >
             ← {t('back')}
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{t('addNewOrder')}</h1>
+            <h1 className="text-xl font-bold">{t('addNewOrder')}</h1>
             {leadForOrder && (
-              <p className="text-sm text-green-600">Auto-filled from Lead: {leadForOrder.lead_number}</p>
+              <p className="text-xs text-green-600">Auto-filled from Lead: {leadForOrder.lead_number}</p>
             )}
           </div>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <AddOrderForm onClose={() => { setShowAddOrder(false); onClearLeadForOrder?.(); }} categories={categories} allProducts={mergedProducts} onSuccess={refreshOrders} leadData={leadForOrder || undefined} />
-          </CardContent>
-        </Card>
+        <AddOrderForm onClose={() => { setShowAddOrder(false); onClearLeadForOrder?.(); }} categories={categories} allProducts={mergedProducts} onSuccess={refreshOrders} leadData={leadForOrder || undefined} />
       </div>
     );
   }
@@ -496,10 +496,11 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   // If showing edit order page, render it instead of the main view
   if (showEditOrder && editingOrder) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+        <div className="flex items-center gap-3">
           <Button 
-            variant="outline" 
+            variant="outline"
+            size="sm"
             onClick={() => {
               setShowEditOrder(false);
               setEditingOrder(null);
@@ -508,24 +509,20 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
             ← {t('back')}
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{t('editOrder')}</h1>
-            <p className="text-sm text-gray-500">{editingOrder.order_number}</p>
+            <h1 className="text-xl font-bold">{t('editOrder')}</h1>
+            <p className="text-xs text-gray-500">{editingOrder.order_number}</p>
           </div>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <EditOrderForm 
-              order={editingOrder} 
-              categories={categories}
-              allProducts={mergedProducts}
-              onClose={() => {
-                setShowEditOrder(false);
-                setEditingOrder(null);
-              }}
-              onSuccess={refreshOrders}
-            />
-          </CardContent>
-        </Card>
+        <EditOrderForm 
+          order={editingOrder} 
+          categories={categories}
+          allProducts={mergedProducts}
+          onClose={() => {
+            setShowEditOrder(false);
+            setEditingOrder(null);
+          }}
+          onSuccess={refreshOrders}
+        />
       </div>
     );
   }
@@ -1573,355 +1570,450 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
-      <div className="grid gap-4 py-2">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="mobile">{t('mobile')} *</Label>
-            <div className="relative">
-              <Input
-                id="mobile"
-                placeholder="+91 XXXXX XXXXX"
-                className="border border-gray-300"
-                value={mobileValue}
-                onChange={(e) => {
-                  setMobileValue(e.target.value);
-                  setShowMobileDropdown(true);
-                  setErrors(prev => ({ ...prev, mobile: '' }));
-                }}
-                onFocus={() => setShowMobileDropdown(true)}
-              />
-              {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  {filteredClients.map(client => (
-                    <div
-                      key={client.id || client._id}
-                      className="px-3 py-2 cursor-pointer hover:bg-blue-50"
-                      onClick={() => handleClientSelect(client)}
-                    >
-                      <p className="text-sm font-medium text-gray-900">{String(client.name || client.customer_name || client.client_name || '')}</p>
-                      <p className="text-xs text-gray-500">{String(client.phone || client.mobile || '')}</p>
+      {/* Order Details + Client Info - Compact Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Left: Order Details */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Order Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('orderSource')} *</Label>
+                <select
+                  id="source"
+                  defaultValue={leadData?.source ? leadData.source.toLowerCase() : ''}
+                  className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={() => errors.source && setErrors(prev => ({ ...prev, source: '' }))}
+                >
+                  <option value="">{t('selectSource')}</option>
+                  <option value="website">{t('website')}</option>
+                  <option value="phone">{t('phone')}</option>
+                  <option value="walkin">{t('walkin')}</option>
+                  <option value="advertisement">{t('advertisement')}</option>
+                  <option value="referral">{t('referral')}</option>
+                  <option value="inperson">{t('inperson')}</option>
+                </select>
+                <FieldError message={errors.source} />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
+                <Input
+                  id="requiredDate"
+                  type="date"
+                  value={requiredDate}
+                  onChange={(e) => setRequiredDate(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+                <Input
+                  value={gstNumber}
+                  onChange={handleGstChange}
+                  placeholder="e.g. 33AUJPM8458P1ZR"
+                  maxLength={15}
+                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                />
+                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('state')}</Label>
+                <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
+                  <SelectTrigger className="h-8 text-xs border border-gray-300">
+                    <SelectValue placeholder={t('enterState')} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {getAllStates().map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('district')}</Label>
+                {availableDistricts.length > 0 ? (
+                  <Select value={districtValue} onValueChange={setDistrictValue}>
+                    <SelectTrigger className="h-8 text-xs border border-gray-300">
+                      <SelectValue placeholder={t('enterDistrict')} />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {availableDistricts.map(d => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={districtValue}
+                    onChange={(e) => setDistrictValue(e.target.value)}
+                    placeholder={t('enterDistrict')}
+                    className="h-8 text-sm"
+                  />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Right: Client Info */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Building className="w-4 h-4" /> Client Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
+                <div className="relative">
+                  <Input
+                    id="mobile"
+                    placeholder="+91 XXXXX XXXXX"
+                    className="h-8 text-sm"
+                    value={mobileValue}
+                    onChange={(e) => {
+                      setMobileValue(e.target.value);
+                      setShowMobileDropdown(true);
+                      if (errors.mobile) setErrors(prev => ({ ...prev, mobile: '' }));
+                    }}
+                    onFocus={() => setShowMobileDropdown(true)}
+                  />
+                  {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredClients.map(client => (
+                        <div
+                          key={client.id || client._id}
+                          className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
+                          onClick={() => handleClientSelect(client)}
+                        >
+                          <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
+                          <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
+                </div>
+                <FieldError message={errors.mobile} />
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
+                  <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => ({ ...prev, customer: '' })); }} />
+                  <FieldError message={errors.customer} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+                  <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => ({ ...prev, contact: '' })); }} />
+                  <FieldError message={errors.contact} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs text-gray-500">{t('email')} *</Label>
+                  <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }} />
+                  <FieldError message={errors.email} />
+                </div>
+              </div>
+              {/* Selected client info display */}
+              {customerValue && mobileValue && (
+                <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
+                  <p className="font-semibold text-gray-800">{customerValue}</p>
+                  {contactValue && <p className="mt-0.5">Contact: {contactValue}</p>}
+                  <p className="mt-0.5">{mobileValue}</p>
+                  {emailValue && <p className="mt-0.5">{emailValue}</p>}
+                  {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
                 </div>
               )}
             </div>
-            <FieldError message={errors.mobile} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="customer">{t('businessName')} *</Label>
-            <Input id="customer" placeholder={t('enterBusinessName')} className="border border-gray-300" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); setErrors(prev => ({ ...prev, customer: '' })); }} />
-            <FieldError message={errors.customer} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('gstNumber')}</Label>
-            <Input
-              value={gstNumber}
-              onChange={handleGstChange}
-              placeholder={t('enterGstNumber')}
-              maxLength={15}
-              className={`border border-gray-300${gstError ? ' border-red-500' : ''}`}
-            />
-            {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="contact">{t('contactPerson')} *</Label>
-            <Input id="contact" placeholder={t('enterContactPerson')} className="border border-gray-300" value={contactValue} onChange={(e) => { setContactValue(e.target.value); setErrors(prev => ({ ...prev, contact: '' })); }} />
-            <FieldError message={errors.contact} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{t('email')} *</Label>
-            <Input id="email" type="email" placeholder="email@example.com" className="border border-gray-300" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }} />
-            <FieldError message={errors.email} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="source">{t('orderSource')} *</Label>
-            <select
-              id="source"
-              defaultValue={leadData?.source ? leadData.source.toLowerCase() : ''}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              onChange={() => setErrors(prev => ({ ...prev, source: '' }))}
-            >
-              <option value="">{t('selectSource')}</option>
-              <option value="website">{t('website')}</option>
-              <option value="phone">{t('phone')}</option>
-              <option value="walkin">{t('walkin')}</option>
-              <option value="advertisement">{t('advertisement')}</option>
-              <option value="referral">{t('referral')}</option>
-              <option value="inperson">{t('inperson')}</option>
-            </select>
-            <FieldError message={errors.source} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="requiredDate">{t('requiredDate')}</Label>
-            <Input
-              id="requiredDate"
-              type="date"
-              value={requiredDate}
-              onChange={(e) => setRequiredDate(e.target.value)}
-              className="border border-gray-300"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className='space-y-2 mt-2'>
-            <Label htmlFor="address">{t('address')}</Label>
-            <Textarea id="address" defaultValue={leadData?.address || ''} placeholder={t('enterCustomerAddress')} className="border border-gray-300" />
-          </div>
-          <div className='space-y-2'>
-            <Label htmlFor="notes">{t('notesSpecialRequirements')}</Label>
-            <Textarea id="notes" value={prefillNotes} onChange={(e) => setPrefillNotes(e.target.value)} placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')} className="border border-gray-300" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('state')}</Label>
-            <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
-              <SelectTrigger className="border border-gray-300">
-                <SelectValue placeholder={t('enterState')} />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {getAllStates().map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {stateValue && gstNumber && <p className="text-xs text-green-600">Auto-filled from GST</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t('district')}</Label>
-            {availableDistricts.length > 0 ? (
-              <Select value={districtValue} onValueChange={setDistrictValue}>
-                <SelectTrigger className="border border-gray-300">
-                  <SelectValue placeholder={t('enterDistrict')} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {availableDistricts.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input 
-                value={districtValue}
-                onChange={(e) => setDistrictValue(e.target.value)}
-                placeholder={t('enterDistrict')}
-                className="border border-gray-300"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Add Items Section */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">{t('addItems')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Multiple Item Entry Rows */}
-            <div className="space-y-3">
-              {/* Header Row */}
-              <div className="grid grid-cols-12 gap-3 items-center text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                <div className="col-span-7">{t('item')} *</div>
-                <div className="col-span-3">{t('qty')} *</div>
-                <div className="col-span-2"></div>
-              </div>
-
-              {/* Item Entry Rows */}
-              {itemEntryRows.map((row, index) => (
-                <div key={row.id} className="grid grid-cols-12 gap-3 items-center">
-                  <div className="col-span-7 relative">
-                    <Input
-                      type="text"
-                      placeholder={t('searchItem')}
-                      value={row.itemName}
-                      onChange={(e) => {
-                        updateItemRow(row.id, 'itemName', e.target.value);
-                        updateItemRow(row.id, 'itemId', '');
-                        setActiveRowDropdown(row.id);
-                      }}
-                      onFocus={() => setActiveRowDropdown(row.id)}
-                      onBlur={() => setTimeout(() => setActiveRowDropdown(null), 300)}
-                      className={itemRowErrors[row.id]?.itemId ? 'border-red-400' : ''}
-                    />
-                    <FieldError message={itemRowErrors[row.id]?.itemId} />
-                    {activeRowDropdown === row.id && (
-                      <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
-                        {allProducts
-                          .filter(p => p.name.toLowerCase().includes(row.itemName.toLowerCase()) || p.sku.toLowerCase().includes(row.itemName.toLowerCase()))
-                          .length > 0 ? (
-                          allProducts
-                            .filter(p => p.name.toLowerCase().includes(row.itemName.toLowerCase()) || p.sku.toLowerCase().includes(row.itemName.toLowerCase()))
-                            .map(product => (
-                              <div
-                                key={product.id}
-                                className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  selectItemForRow(row.id, product);
-                                }}
-                              >
-                                <div className="font-medium text-sm">{product.name}</div>
-                                <div className="text-xs text-gray-500">{product.sku} • {product.category} {product.subcategory ? `> ${product.subcategory}` : ''}</div>
-                              </div>
-                            ))
-                        ) : (
-                          <div className="px-3 py-2 text-center text-gray-500 text-sm">
-                            {t('noItemsFound')}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-span-3">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={row.quantity}
-                      onChange={(e) => updateItemRow(row.id, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
-                      onFocus={(e) => e.target.select()} onKeyDown={blockInvalidNumberKeys}
-                      className={itemRowErrors[row.id]?.quantity ? 'border-red-400' : 'border border-gray-300'}
-                    />
-                    <FieldError message={itemRowErrors[row.id]?.quantity} />
-                  </div>
-                  <div className="col-span-2 flex gap-2">
-                    {index === itemEntryRows.length - 1 ? (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addNewItemRow}
-                        className="text-green-600 border-green-300 hover:bg-green-50 h-9 px-3"
-                        title="Add Row"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    ) : null}
-                    {itemEntryRows.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeItemRow(row.id)}
-                        className="text-red-500 hover:bg-red-50 h-9 px-2"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Add All Items Button */}
-            <div className="flex justify-end pt-2">
-              <Button
-                type="button"
-                onClick={addAllItems}
-                disabled={!itemEntryRows.some(row => row.itemId)}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                {t('addItem')}
-              </Button>
-            </div>
-
-            {/* Items Table */}
-            {addedProducts.length > 0 && (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-12">{t('sno')}</TableHead>
-                      <TableHead>{t('item')}</TableHead>
-                      <TableHead className="text-center w-20">{t('qty')}</TableHead>
-                      <TableHead className="text-right w-24">{t('price')}</TableHead>
-                      <TableHead className="text-right w-28">{t('total')}</TableHead>
-                      <TableHead className="w-20"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {addedProducts.map((product, index) => {
-                      const productDetails = getProductsBySubcategory(product.category, product.subcategory).find(p => p.id === product.product) || allProducts.find(p => String(p.id) === String(product.product));
-                      const productName = productDetails?.name || product.product;
-                      const unitPrice = getProductRate(product);
-                      const total = unitPrice * product.quantity;
-                      return (
-                        <TableRow key={product.id}>
-                          <TableCell>{index + 1}</TableCell>
-                          <TableCell>{productName}</TableCell>
-                          <TableCell className="text-center">
-                            {editingItemId === product.id ? (
-                              <Input type="number" min="1" value={editingQty} onChange={(e) => setEditingQty(Math.max(1, parseInt(e.target.value) || 1))} className="w-20 h-8 text-center" />
-                            ) : product.quantity}
-                          </TableCell>
-                          <TableCell className="text-right">₹{unitPrice.toLocaleString()}</TableCell>
-                          <TableCell className="text-right font-semibold">₹{(editingItemId === product.id ? unitPrice * editingQty : total).toLocaleString()}</TableCell>
-                          <TableCell>
-                            <div className="flex gap-1 justify-center">
-                              {editingItemId === product.id ? (
-                                <>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => { setAddedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: editingQty } : p)); setEditingItemId(null); }}><Check className="h-4 w-4 text-green-600" /></Button>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => setEditingItemId(null)}><XCircle className="h-4 w-4 text-gray-400" /></Button>
-                                </>
-                              ) : (
-                                <>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => { setEditingItemId(product.id); setEditingQty(product.quantity); }}><Edit className="h-4 w-4 text-blue-500" /></Button>
-                                  <Button type="button" size="sm" variant="ghost" onClick={() => removeProduct(product.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-
-                {/* Totals Section */}
-                <div className="flex justify-end">
-                  <div className="w-64 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{t('subtotal')}</span>
-                      <span>₹{addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>{t('gst18')}</span>
-                      <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0) * 0.18).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between font-bold border-t pt-2">
-                      <span>{t('grandTotal')}</span>
-                      <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0) * 1.18).toLocaleString()}</span>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
+      {/* Items Section */}
+      <Card className={`shadow-sm mb-4 overflow-visible ${errors.products ? 'border-red-400' : ''}`}>
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Package className="w-4 h-4" /> {t('addItems')} *
+            </CardTitle>
+            <Badge variant="outline" className="text-xs text-gray-500">
+              {addedProducts.length} {addedProducts.length === 1 ? 'item' : 'items'} added
+            </Badge>
+          </div>
+          {errors.products && <p className="text-sm text-red-500 mt-1">{errors.products}</p>}
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          {/* Item Entry Rows - Compact Table Style */}
+          <div className="overflow-visible">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[30%]">{t('item')} *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[16%]">Category</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">{t('qty')} *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Unit</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">Price/Unit</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">Amount</th>
+                  <th className="w-[8%]"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {itemEntryRows.map((row, index) => {
+                  const productInfo = allProducts.find(p => String(p.id) === String(row.itemId));
+                  const rowPrice = getEffectiveProductRate(productInfo);
+                  const rowTotal = rowPrice * row.quantity;
+                  return (
+                    <tr key={row.id} className="border-b border-gray-100">
+                      <td className="py-1 pr-2">
+                        <div className="relative">
+                          <Input
+                            type="text"
+                            placeholder="Search item..."
+                            value={row.itemName}
+                            onChange={(e) => {
+                              updateItemRow(row.id, 'itemName', e.target.value);
+                              updateItemRow(row.id, 'itemId', '');
+                              setActiveRowDropdown(row.id);
+                            }}
+                            onFocus={() => setActiveRowDropdown(row.id)}
+                            onBlur={() => setTimeout(() => setActiveRowDropdown(null), 300)}
+                            className={`h-7 text-xs ${itemRowErrors[row.id]?.itemId ? 'border-red-400' : ''}`}
+                          />
+                          <FieldError message={itemRowErrors[row.id]?.itemId} />
+                          {activeRowDropdown === row.id && (
+                            <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                              {allProducts
+                                .filter(p => p.name.toLowerCase().includes(row.itemName.toLowerCase()) || p.sku.toLowerCase().includes(row.itemName.toLowerCase()))
+                                .length > 0 ? (
+                                allProducts
+                                  .filter(p => p.name.toLowerCase().includes(row.itemName.toLowerCase()) || p.sku.toLowerCase().includes(row.itemName.toLowerCase()))
+                                  .map(product => (
+                                    <div
+                                      key={product.id}
+                                      className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        selectItemForRow(row.id, product);
+                                      }}
+                                    >
+                                      <div className="font-medium text-xs">{product.name}</div>
+                                      <div className="text-[10px] text-gray-500">{product.sku} • {product.category} {product.subcategory ? `> ${product.subcategory}` : ''} • ₹{getEffectiveProductRate(product).toLocaleString()}</div>
+                                    </div>
+                                  ))
+                              ) : (
+                                <div className="px-2 py-1 text-center text-gray-500 text-xs">
+                                  {t('noItemsFound')}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-1 pr-2 text-xs text-gray-500">
+                        {productInfo ? (
+                          <span className="truncate block">{productInfo.category}{productInfo.subcategory ? ` > ${productInfo.subcategory}` : ''}</span>
+                        ) : '-'}
+                      </td>
+                      <td className="py-1 pr-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          value={row.quantity}
+                          onChange={(e) => updateItemRow(row.id, 'quantity', Math.max(0, parseInt(e.target.value) || 0))}
+                          onFocus={(e) => e.target.select()}
+                          onKeyDown={(e) => {
+                            blockInvalidNumberKeys(e);
+                            if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) { e.preventDefault(); addAllItems(); }
+                            else if (e.key === 'Tab' && !e.shiftKey && index === itemEntryRows.length - 1) {
+                              e.preventDefault();
+                              addNewItemRow();
+                            }
+                          }}
+                          className={`h-7 text-xs text-center ${itemRowErrors[row.id]?.quantity ? 'border-red-400' : ''}`}
+                        />
+                        <FieldError message={itemRowErrors[row.id]?.quantity} />
+                      </td>
+                      <td className="py-1 pr-2 text-xs text-gray-500">
+                        {productInfo?.unit || 'Pcs'}
+                      </td>
+                      <td className="py-1 pr-2 text-right text-xs text-gray-600">
+                        {row.itemId ? `₹${rowPrice.toLocaleString()}` : '-'}
+                      </td>
+                      <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
+                        {row.itemId ? `₹${rowTotal.toLocaleString()}` : '-'}
+                      </td>
+                      <td className="py-1">
+                        <div className="flex gap-0.5">
+                          {index === itemEntryRows.length - 1 && (
+                            <Button type="button" variant="ghost" size="sm" onClick={addNewItemRow} className="h-6 w-6 p-0 text-green-600 hover:bg-green-50" title="Add row">
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          )}
+                          {itemEntryRows.length > 1 && (
+                            <Button type="button" variant="ghost" size="sm" onClick={() => removeItemRow(row.id)} className="h-6 w-6 p-0 text-red-500 hover:bg-red-50">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Add Items Button */}
+          <div className="flex justify-end pt-2">
+            <Button
+              type="button"
+              onClick={addAllItems}
+              disabled={!itemEntryRows.some(row => row.itemId)}
+              size="sm"
+              className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
+            >
+              <Plus className="w-3 h-3 mr-1" />
+              {t('addItem')}
+            </Button>
+          </div>
+
+          {/* Added Items Table - Invoice Style */}
+          {addedProducts.length > 0 && (
+            <div className="mt-4 border rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-28">Category</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-12">Unit</th>
+                    <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Price/Unit</th>
+                    <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
+                    <th className="w-16"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {addedProducts.map((product, index) => {
+                    const productDetails = getProductsBySubcategory(product.category, product.subcategory).find(p => p.id === product.product) || allProducts.find(p => String(p.id) === String(product.product));
+                    const productName = productDetails?.name || product.product;
+                    const unitPrice = getProductRate(product);
+                    const total = unitPrice * product.quantity;
+                    return (
+                      <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                        <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
+                        <td className="py-1.5 px-2 font-medium">{productName}</td>
+                        <td className="py-1.5 px-2 text-gray-500">{product.category || '-'}{product.subcategory ? ` > ${product.subcategory}` : ''}</td>
+                        <td className="py-1.5 px-2 text-center">
+                          {editingItemId === product.id ? (
+                            <Input type="number" min="1" value={editingQty} onChange={(e) => setEditingQty(Math.max(1, parseInt(e.target.value) || 1))} onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Enter') { e.preventDefault(); setAddedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: editingQty } : p)); setEditingItemId(null); }}} className="w-14 h-6 text-xs text-center" />
+                          ) : product.quantity}
+                        </td>
+                        <td className="py-1.5 px-2 text-center text-gray-500">{productDetails?.unit || 'Pcs'}</td>
+                        <td className="py-1.5 px-2 text-right">₹{unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1.5 px-2 text-right font-bold">₹{(editingItemId === product.id ? unitPrice * editingQty : total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="py-1.5 px-2">
+                          {editingItemId === product.id ? (
+                            <div className="flex gap-0.5 justify-center">
+                              <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => { setAddedProducts(prev => prev.map(p => p.id === product.id ? { ...p, quantity: editingQty } : p)); setEditingItemId(null); }}><CheckCircle className="h-3 w-3 text-green-500" /></Button>
+                              <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => setEditingItemId(null)}><XCircle className="h-3 w-3 text-gray-400" /></Button>
+                            </div>
+                          ) : (
+                            <div className="flex gap-0.5 justify-center">
+                              <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => { setEditingItemId(product.id); setEditingQty(product.quantity); }}><Edit className="h-3 w-3 text-blue-500" /></Button>
+                              <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeProduct(product.id)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {/* Totals Row */}
+                  <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2">Total</td>
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2 text-center">{addedProducts.reduce((s, p) => s + p.quantity, 0)}</td>
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2"></td>
+                    <td className="py-2 px-2 text-right text-blue-700">₹{addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Amount Summary with GST */}
+      {addedProducts.length > 0 && (
+        <Card className="shadow-sm mb-4">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <IndianRupee className="w-4 h-4" /> Amount Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="space-y-1.5 text-sm max-w-xs">
+              <div className="flex justify-between">
+                <span className="text-gray-600">{t('subtotal')}</span>
+                <span>₹{addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">{t('gst18')}</span>
+                <span>₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0) * 0.18).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
+                <span>{t('grandTotal')}</span>
+                <span className="text-blue-700">₹{Math.round(addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0) * 1.18).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Address, Notes */}
+      <Card className="shadow-sm mb-4">
+        <CardContent className="px-4 py-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-gray-500">{t('address')}</Label>
+              <textarea
+                id="address"
+                defaultValue={leadData?.address || ''}
+                placeholder={t('enterCustomerAddress')}
+                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('notesSpecialRequirements')}</Label>
+              <textarea
+                id="notes"
+                value={prefillNotes}
+                onChange={(e) => setPrefillNotes(e.target.value)}
+                placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')}
+                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
           {t('cancel')}
         </Button>
-        <Button type="button" variant="outline" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>
+        <Button type="button" variant="outline" size="sm" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>
           Save as Draft
         </Button>
-        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700">
+          <Receipt className="mr-1 h-3 w-3" />
           {t('createOrder')}
         </Button>
       </div>
