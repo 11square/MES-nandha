@@ -718,6 +718,10 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
   const addNewItemRow = () => {
     const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
     setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-row-search="${newId}"]`) as HTMLInputElement;
+      el?.focus();
+    }, 50);
   };
 
   const updateItemRow = (rowId: number, field: string, value: string | number) => {
@@ -1139,6 +1143,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                     <td className="py-1 pr-2">
                       <div className="relative">
                         <Input
+                          data-row-search={row.id}
                           type="text"
                           placeholder="Search item..."
                           value={row.itemName}
