@@ -1489,7 +1489,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     const formData: Record<string, string> = {
       customer: customerValue || (form.elements.namedItem('customer') as HTMLInputElement)?.value || '',
       contact: contactValue || (form.elements.namedItem('contact') as HTMLInputElement)?.value || '',
-      mobile: mobileValue ? `${countryCode} ${mobileValue}` : '',
+      mobile: mobileValue || '',
       email: emailValue || (form.elements.namedItem('email') as HTMLInputElement)?.value || '',
       source: (form.elements.namedItem('source') as HTMLSelectElement)?.value || '',
       required_date: (form.elements.namedItem('required_date') as HTMLInputElement)?.value || '',
@@ -1526,7 +1526,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     const payload: any = {
       customer: formData.customer,
       contact: formData.contact,
-      mobile: formData.mobile,
+      mobile: mobileValue ? `${countryCode} ${mobileValue}` : '',
       email: formData.email || '',
       source: formData.source || '',
       category: leadSummary.category,
