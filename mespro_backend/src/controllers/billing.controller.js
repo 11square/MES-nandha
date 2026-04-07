@@ -45,6 +45,7 @@ module.exports = {
             items.map((item) => ({
               item_id: item.item_id || null,
               name: item.name,
+              hsn_sac: item.hsn_sac || null,
               category: item.category || null,
               subcategory: item.subcategory || null,
               size: item.size || null,
@@ -266,7 +267,7 @@ module.exports = {
       const { StockItem } = require('../models');
       const items = await StockItem.findAll({
         where: applyBusinessScope(req),
-        attributes: ['id', 'name', 'sku', 'unit_price', 'unit', 'current_stock', 'category', 'subcategory'],
+        attributes: ['id', 'name', 'sku', 'hsn_sac', 'unit_price', 'selling_price', 'unit', 'current_stock', 'category', 'subcategory'],
         order: [['name', 'ASC']],
       });
       return ApiResponse.success(res, items);

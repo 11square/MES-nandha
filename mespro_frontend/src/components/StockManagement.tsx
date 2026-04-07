@@ -51,6 +51,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
     category: '',
     subcategory: '',
     sku: '',
+    hsn_sac: '',
     current_stock: '',
     reorder_level: '',
     unit: 'pieces',
@@ -97,6 +98,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       category: '',
       subcategory: '',
       sku: '',
+      hsn_sac: '',
       current_stock: '',
       reorder_level: '',
       unit: 'pieces',
@@ -138,6 +140,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
         category: stockForm.category,
         subcategory: stockForm.subcategory,
         sku: stockForm.sku || generateSKU(),
+        hsn_sac: stockForm.hsn_sac,
         current_stock: currentStock,
         reorder_level: reorderLevel,
         unit: stockForm.unit,
@@ -163,6 +166,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       category: item.category || '',
       subcategory: item.subcategory || '',
       sku: item.sku || '',
+      hsn_sac: item.hsn_sac || '',
       current_stock: String(item.current_stock || ''),
       reorder_level: String(item.reorder_level || ''),
       unit: item.unit || 'pieces',
@@ -194,6 +198,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
         category: stockForm.category,
         subcategory: stockForm.subcategory,
         sku: stockForm.sku,
+        hsn_sac: stockForm.hsn_sac,
         current_stock: currentStock,
         reorder_level: reorderLevel,
         unit: stockForm.unit,
@@ -268,6 +273,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
         id: s.id || s._id,
         name: s.name || '',
         sku: s.sku || '',
+        hsn_sac: s.hsn_sac || '',
         category: s.category || '',
         subcategory: s.subcategory || '',
         unit: s.unit || 'pieces',
@@ -279,6 +285,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
         id: p.id || p._id,
         name: p.name || '',
         sku: p.sku || '',
+        hsn_code: p.hsn_code || '',
         category: p.category || '',
         subcategory: p.subcategory || '',
         unit: p.unit || 'pcs',
@@ -491,6 +498,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                             category: categoryName,
                             subcategory: product.subcategory || '',
                             sku: product.sku || '',
+                            hsn_sac: product.hsn_code || product.hsn_sac || '',
                             unit: mappedUnit,
                             selling_price: String(product.selling_price || product.base_price || ''),
                             buying_price: String(product.base_price || ''),
@@ -552,6 +560,17 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                 {isFromProduct && <p className="text-xs text-slate-500">Auto-filled from product</p>}
                 <FieldError message={errors.sku} />
               </div>
+            </div>
+
+            {/* HSN/SAC Code */}
+            <div className="space-y-2">
+              <Label>HSN/SAC Code</Label>
+              <Input
+                value={stockForm.hsn_sac}
+                onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
+                placeholder="e.g. 39261019"
+                maxLength={20}
+              />
             </div>
 
             {/* Category & Subcategory - auto-filled when product selected */}
@@ -737,6 +756,12 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                   <Label className="text-sm text-slate-500">{t('skuCode')}</Label>
                   <p className="text-base font-medium text-slate-900 mt-1">{viewingItem.sku}</p>
                 </div>
+                {viewingItem.hsn_sac && (
+                  <div>
+                    <Label className="text-sm text-slate-500">HSN/SAC</Label>
+                    <p className="text-base font-medium text-slate-900 mt-1">{viewingItem.hsn_sac}</p>
+                  </div>
+                )}
                 <div>
                   <Label className="text-sm text-slate-500">{t('category')}</Label>
                   <p className="text-base font-medium text-slate-900 mt-1">
@@ -862,6 +887,17 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                 </div>
                 <FieldError message={errors.sku} />
               </div>
+            </div>
+
+            {/* HSN/SAC Code */}
+            <div className="space-y-2">
+              <Label>HSN/SAC Code</Label>
+              <Input
+                value={stockForm.hsn_sac}
+                onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
+                placeholder="e.g. 39261019"
+                maxLength={20}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

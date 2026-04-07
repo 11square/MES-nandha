@@ -103,6 +103,18 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: true,
     },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    terms_conditions: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    place_of_supply: {
+      type: DataTypes.STRING(60),
+      allowNull: true,
+    },
     business_id: {
       type: DataTypes.INTEGER,
       allowNull: true,

@@ -56,6 +56,10 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 0,
     },
+    hsn_sac: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     total: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false,

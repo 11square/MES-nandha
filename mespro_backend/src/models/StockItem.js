@@ -24,6 +24,10 @@ module.exports = (sequelize) => {
       allowNull: false,
       unique: true,
     },
+    hsn_sac: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     current_stock: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,

@@ -59,6 +59,7 @@ interface StockItem {
   category: string;
   subcategory: string;
   sku: string;
+  hsnSac: string;
   currentStock: number;
   unit: string;
   unitPrice: number;
@@ -78,6 +79,7 @@ interface Client {
 interface BillItem {
   item_id: string;
   name: string;
+  hsn_sac?: string;
   category?: string;
   subcategory?: string;
   size?: string;
@@ -155,12 +157,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     id: number;
     itemId: string;
     itemName: string;
+    hsnSac: string;
     quantity: number;
+    unit: string;
     price: number;
     discount: number;
   }
   const [itemEntryRows, setItemEntryRows] = useState<ItemEntryRow[]>([
-    { id: 1, itemId: '', itemName: '', quantity: 0, price: 0, discount: 0 }
+    { id: 1, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }
   ]);
   const [activeRowDropdown, setActiveRowDropdown] = useState<number | null>(null);
   const itemInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
@@ -195,6 +199,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       return {
         item_id: String(item?.item_id ?? item?.id ?? `item-${idx + 1}`),
         name: String(item?.name ?? item?.product ?? item?.item_name ?? ''),
+        hsn_sac: item?.hsn_sac || '',
         category: item?.category || '',
         subcategory: item?.subcategory || '',
         size: item?.size || '',
@@ -303,6 +308,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         category: item.category || '',
         subcategory: item.subcategory || '',
         sku: item.sku || '',
+        hsnSac: item.hsn_sac || item.hsnSac || '',
         currentStock: item.current_stock ?? item.currentStock ?? 0,
         unit: item.unit || '',
         unitPrice: Number(item.selling_price) || Number(item.unit_price) || Number(item.unitPrice) || 0,
@@ -374,9 +380,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     notes: '',
     created_by: 'Admin',
     payment_type: 'cash' as 'cash' | 'credit',
+    payment_method: 'cash' as 'cash' | 'upi' | 'card' | 'bank',
     gst: 18,
     invoiceType: 'b2b' as 'b2b' | 'b2c',
     gst_number: '',
+    place_of_supply: '33-Tamil Nadu',
+    due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    terms_conditions: 'Thanks for doing business with us!',
   });
 
   // Addons state
@@ -635,7 +645,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       return;
     }
     const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
-    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', quantity: 0, price: 0, discount: 0 }]);
+    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setTimeout(() => {
       itemInputRefs.current[newId]?.focus();
     }, 100);
@@ -657,7 +667,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   // Select item for a specific row
   const selectItemForRow = (rowId: number, stock: typeof stockItems[0]) => {
     setItemEntryRows(rows => rows.map(row => 
-      row.id === rowId ? { ...row, itemId: stock.id, itemName: stock.name, price: stock.unitPrice } : row
+      row.id === rowId ? { ...row, itemId: stock.id, itemName: stock.name, hsnSac: stock.hsnSac || '', price: stock.unitPrice, unit: stock.unit || 'Pcs' } : row
     ));
     setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
     setActiveRowDropdown(null);
@@ -719,11 +729,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       newItems.push({
         item_id: stock.id,
         name: stock.name,
+        hsn_sac: row.hsnSac || '',
         category: stock.category || '',
         subcategory: stock.subcategory || '',
         size: '',
         quantity: row.quantity,
-        unit: stock.unit || '',
+        unit: row.unit || stock.unit || 'Pcs',
         unit_price: unitPrice,
         discount: row.discount,
         tax: currentGst,
@@ -800,6 +811,67 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   const cancelEditItem = () => {
     setEditingItemIndex(null);
     setEditingItem(null);
+  };
+
+  // Indian states list for Place of Supply
+  const INDIAN_STATES = [
+    '01-Jammu & Kashmir', '02-Himachal Pradesh', '03-Punjab', '04-Chandigarh', '05-Uttarakhand',
+    '06-Haryana', '07-Delhi', '08-Rajasthan', '09-Uttar Pradesh', '10-Bihar',
+    '11-Sikkim', '12-Arunachal Pradesh', '13-Nagaland', '14-Manipur', '15-Mizoram',
+    '16-Tripura', '17-Meghalaya', '18-Assam', '19-West Bengal', '20-Jharkhand',
+    '21-Odisha', '22-Chhattisgarh', '23-Madhya Pradesh', '24-Gujarat', '26-Dadra & Nagar Haveli',
+    '27-Maharashtra', '28-Andhra Pradesh', '29-Karnataka', '30-Goa', '31-Lakshadweep',
+    '32-Kerala', '33-Tamil Nadu', '34-Puducherry', '35-Andaman & Nicobar', '36-Telangana',
+    '37-Andhra Pradesh (New)', '38-Ladakh',
+  ];
+
+  const UNIT_OPTIONS = ['Pcs', 'Kg', 'Ltr', 'Mtr', 'Box', 'Bag', 'Set', 'Nos', 'Pair', 'Roll', 'Pack', 'Dozen', 'Ton', 'Sq.ft', 'Sq.mtr'];
+
+  // Convert number to Indian currency words
+  const amountToWords = (num: number): string => {
+    if (num === 0) return 'Zero Rupees only';
+    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
+      'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
+    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+    const convert = (n: number): string => {
+      if (n < 20) return ones[n];
+      if (n < 100) return tens[Math.floor(n / 10)] + (n % 10 ? ' ' + ones[n % 10] : '');
+      if (n < 1000) return ones[Math.floor(n / 100)] + ' Hundred' + (n % 100 ? ' and ' + convert(n % 100) : '');
+      if (n < 100000) return convert(Math.floor(n / 1000)) + ' Thousand' + (n % 1000 ? ' ' + convert(n % 1000) : '');
+      if (n < 10000000) return convert(Math.floor(n / 100000)) + ' Lakh' + (n % 100000 ? ' ' + convert(n % 100000) : '');
+      return convert(Math.floor(n / 10000000)) + ' Crore' + (n % 10000000 ? ' ' + convert(n % 10000000) : '');
+    };
+    const rupees = Math.floor(num);
+    const paise = Math.round((num - rupees) * 100);
+    let words = convert(rupees) + ' Rupees';
+    if (paise > 0) words += ' and ' + convert(paise) + ' Paise';
+    return words + ' only';
+  };
+
+  // Calculate tax breakdown by HSN/SAC code
+  const calculateTaxBreakdown = () => {
+    const gstRate = billForm.gst;
+    const halfRate = gstRate / 2;
+    const hsnMap: Record<string, { hsn: string; taxable: number; cgst: number; sgst: number; total: number }> = {};
+    
+    billForm.items.forEach(item => {
+      const hsn = item.hsn_sac || '-';
+      const itemSubtotal = item.unit_price * item.quantity;
+      const discountAmt = (itemSubtotal * item.discount) / 100;
+      const taxable = itemSubtotal - discountAmt;
+      const cgst = (taxable * halfRate) / 100;
+      const sgst = (taxable * halfRate) / 100;
+      
+      if (!hsnMap[hsn]) {
+        hsnMap[hsn] = { hsn, taxable: 0, cgst: 0, sgst: 0, total: 0 };
+      }
+      hsnMap[hsn].taxable += taxable;
+      hsnMap[hsn].cgst += cgst;
+      hsnMap[hsn].sgst += sgst;
+      hsnMap[hsn].total += cgst + sgst;
+    });
+    
+    return Object.values(hsnMap);
   };
 
   const calculateBillTotals = () => {
@@ -902,11 +974,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         status: 'draft',
         payment_status: 'pending',
         payment_type: billForm.payment_type,
+        payment_method: billForm.payment_method,
         paid_amount: 0,
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        due_date: billForm.due_date,
         notes: billForm.notes,
         created_by: billForm.created_by,
         gst_rate: billForm.gst,
+        place_of_supply: billForm.place_of_supply,
+        terms_conditions: billForm.terms_conditions,
+        state: billForm.place_of_supply,
       };
     } else {
       billDraftPayloadRef.current = null;
@@ -997,11 +1073,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         status: isDraft ? 'draft' : 'final',
         payment_status: 'pending',
         payment_type: billForm.payment_type,
+        payment_method: billForm.payment_method,
         paid_amount: 0,
-        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        due_date: billForm.due_date,
         notes: billForm.notes,
         created_by: billForm.created_by,
         gst_rate: billForm.gst,
+        place_of_supply: billForm.place_of_supply,
+        terms_conditions: billForm.terms_conditions,
+        state: billForm.place_of_supply,
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
@@ -1069,9 +1149,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       notes: '',
       created_by: 'Admin',
       payment_type: 'cash',
+      payment_method: 'cash',
       gst: 18,
       invoiceType: 'b2b',
       gst_number: '',
+      place_of_supply: '33-Tamil Nadu',
+      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      terms_conditions: 'Thanks for doing business with us!',
     });
     setCurrentItem({ itemId: '', quantity: 0, discount: 0 });
     setSelectedCategory('');
@@ -1081,7 +1165,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     setEditingItem(null);
     setClientSearchQuery('');
     setShowClientDropdown(false);
-    setItemEntryRows([{ id: 1, itemId: '', itemName: '', quantity: 1, price: 0, discount: 0 }]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setItemRowErrors({});
     setActiveRowDropdown(null);
     setAddons([]);
@@ -1106,124 +1190,280 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   // Generate a clean bill PDF in a new window
   const generateBillPDF = (bill: Bill) => {
-    const printWindow = window.open('', '_blank', 'width=800,height=900');
+    const printWindow = window.open('', '_blank', 'width=800,height=1100');
     if (!printWindow) {
       toast.error('Please allow popups to generate PDF');
       return;
     }
 
     const clientAddress = getBillClientAddress(bill);
+    const placeOfSupply = (bill as any).place_of_supply || '33-Tamil Nadu';
+    const termsConditions = (bill as any).terms_conditions || 'Thanks for doing business with us!';
+    const isQuotation = bill.bill_no.startsWith('QTN');
+    const docTitle = isQuotation ? 'Quotation' : 'Tax Invoice';
+    const balance = bill.grand_total - bill.paid_amount;
 
-    const itemsRows = bill.items.map(item => `
+    // Build item rows with serial numbers
+    let totalQty = 0;
+    const itemsRows = bill.items.map((item, idx) => {
+      const taxablePrice = item.unit_price * (1 - (item.discount || 0) / 100);
+      const taxableTotal = taxablePrice * item.quantity;
+      const gstAmt = taxableTotal * ((item.tax || 0) / 100);
+      const finalRate = taxablePrice * (1 + (item.tax || 0) / 100);
+      totalQty += item.quantity;
+      return `
+        <tr>
+          <td class="tc">${idx + 1}</td>
+          <td>${item.name}${item.category ? ' (' + item.category + ')' : ''}</td>
+          <td class="tc">${item.hsn_sac || ''}</td>
+          <td class="tr">${item.quantity}</td>
+          <td class="tc">${item.unit || 'Pcs'}</td>
+          <td class="tr">${fmtCur(item.unit_price)}</td>
+          <td class="tr">${fmtCur(taxablePrice)}</td>
+          <td class="tr">${fmtCur(gstAmt)}</td>
+          <td class="tr">${fmtCur(finalRate)}</td>
+          <td class="tr bold">${fmtCur(item.total)}</td>
+        </tr>`;
+    }).join('');
+
+    // HSN/SAC tax breakdown - group items by hsn_sac
+    const hsnMap: Record<string, { taxable: number; cgst: number; sgst: number; total: number }> = {};
+    bill.items.forEach(item => {
+      const hsn = item.hsn_sac || '-';
+      const taxablePrice = item.unit_price * (1 - (item.discount || 0) / 100);
+      const taxableAmt = taxablePrice * item.quantity;
+      const halfRate = (item.tax || 0) / 2;
+      const halfTax = taxableAmt * (halfRate / 100);
+      if (!hsnMap[hsn]) hsnMap[hsn] = { taxable: 0, cgst: 0, sgst: 0, total: 0 };
+      hsnMap[hsn].taxable += taxableAmt;
+      hsnMap[hsn].cgst += halfTax;
+      hsnMap[hsn].sgst += halfTax;
+      hsnMap[hsn].total += halfTax * 2;
+    });
+
+    const halfGstRate = bill.gst_rate / 2;
+    const hsnRows = Object.entries(hsnMap).map(([hsn, v]) => `
       <tr>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.name}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">₹${item.unit_price.toLocaleString()}</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.discount}%</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.tax}%</td>
-        <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;font-weight:600;">₹${item.total.toLocaleString()}</td>
+        <td>${hsn}</td>
+        <td class="tr">${fmtCur(v.taxable)}</td>
+        <td class="tc">${halfGstRate}%</td>
+        <td class="tr">${fmtCur(v.cgst)}</td>
+        <td class="tc">${halfGstRate}%</td>
+        <td class="tr">${fmtCur(v.sgst)}</td>
+        <td class="tr bold">${fmtCur(v.total)}</td>
+      </tr>`).join('');
+
+    const hsnTotals = Object.values(hsnMap).reduce((a, v) => ({
+      taxable: a.taxable + v.taxable, cgst: a.cgst + v.cgst, sgst: a.sgst + v.sgst, total: a.total + v.total
+    }), { taxable: 0, cgst: 0, sgst: 0, total: 0 });
+
+    // Number to Indian words
+    const numToWords = (n: number): string => {
+      if (n === 0) return 'Zero';
+      const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+      const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+      const convert = (num: number): string => {
+        if (num < 20) return ones[num];
+        if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 ? ' ' + ones[num % 10] : '');
+        if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 ? ' and ' + convert(num % 100) : '');
+        if (num < 100000) return convert(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 ? ' ' + convert(num % 1000) : '');
+        if (num < 10000000) return convert(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 ? ' ' + convert(num % 100000) : '');
+        return convert(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 ? ' ' + convert(num % 10000000) : '');
+      };
+      const rupees = Math.floor(n);
+      const paise = Math.round((n - rupees) * 100);
+      let result = convert(rupees) + ' Rupees';
+      if (paise > 0) result += ' and ' + convert(paise) + ' Paise';
+      result += ' only';
+      return result;
+    };
+
+    function fmtCur(v: number) { return '₹ ' + v.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>${bill.bill_no} - ${docTitle}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #222; font-size: 12px; line-height: 1.5; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .doc-title { text-align: center; font-size: 16px; font-weight: 700; padding: 10px 0; border-bottom: 2px solid #222; margin-bottom: 0; }
+    .top-section { display: flex; border: 1px solid #444; border-top: none; }
+    .company-info { flex: 1; padding: 10px 12px; border-right: 1px solid #444; }
+    .company-name { font-size: 18px; font-weight: 800; }
+    .company-detail { font-size: 11px; color: #444; line-height: 1.6; margin-top: 2px; }
+    .invoice-meta { width: 260px; }
+    .invoice-meta table { width: 100%; border-collapse: collapse; }
+    .invoice-meta td { padding: 6px 10px; border-bottom: 1px solid #ccc; font-size: 12px; }
+    .invoice-meta td:first-child { font-weight: 600; width: 45%; border-right: 1px solid #ccc; }
+    .invoice-meta tr:last-child td { border-bottom: none; }
+    .bill-to { border: 1px solid #444; border-top: none; padding: 10px 12px; }
+    .bill-to .label { font-size: 11px; color: #666; margin-bottom: 4px; }
+    .bill-to .client-name { font-size: 14px; font-weight: 700; }
+    .bill-to p { font-size: 12px; line-height: 1.6; }
+    .items-table { width: 100%; border-collapse: collapse; margin-top: -1px; }
+    .items-table th { background: #f5f5f5; padding: 8px 6px; border: 1px solid #444; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+    .items-table td { padding: 7px 6px; border: 1px solid #ccc; font-size: 11.5px; }
+    .items-table tr:last-child td { border-bottom: 1px solid #444; }
+    .items-table .total-row td { font-weight: 700; background: #f9f9f9; border: 1px solid #444; }
+    .tc { text-align: center; }
+    .tr { text-align: right; }
+    .bold { font-weight: 700; }
+    .bottom-section { display: flex; border: 1px solid #444; border-top: none; }
+    .amount-words { flex: 1; padding: 10px 12px; border-right: 1px solid #444; font-size: 11px; }
+    .amount-words .label { font-weight: 600; margin-bottom: 4px; }
+    .amounts-table { width: 280px; }
+    .amounts-table table { width: 100%; border-collapse: collapse; }
+    .amounts-table td { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #ddd; }
+    .amounts-table td:first-child { font-weight: 600; }
+    .amounts-table td:last-child { text-align: right; }
+    .amounts-table tr:last-child td { border-bottom: none; }
+    .amounts-table .grand-total td { font-size: 13px; font-weight: 800; background: #f5f5f5; border-top: 2px solid #444; border-bottom: 2px solid #444; }
+    .hsn-section { margin-top: 16px; }
+    .hsn-table { width: 100%; border-collapse: collapse; }
+    .hsn-table th { background: #f5f5f5; padding: 6px 8px; border: 1px solid #444; font-size: 10.5px; font-weight: 700; }
+    .hsn-table td { padding: 6px 8px; border: 1px solid #ccc; font-size: 11px; }
+    .hsn-table .total-row td { font-weight: 700; background: #f9f9f9; border: 1px solid #444; }
+    .footer-section { display: flex; margin-top: 16px; border: 1px solid #444; min-height: 120px; }
+    .terms-box { flex: 1; padding: 10px 12px; border-right: 1px solid #444; }
+    .terms-box .label { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
+    .terms-box p { font-size: 11px; color: #444; }
+    .signatory-box { width: 260px; padding: 10px 12px; text-align: center; position: relative; }
+    .signatory-box .for-text { font-size: 12px; font-weight: 600; }
+    .signatory-box .sig-label { position: absolute; bottom: 10px; left: 0; right: 0; font-size: 11px; font-weight: 700; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 3px; font-size: 10px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 8px; }
+    @media print { body { padding: 10px; } @page { margin: 10mm; } }
+  </style>
+</head>
+<body>
+  <!-- Title -->
+  <div class="doc-title">${docTitle}</div>
+
+  <!-- Company Info + Invoice Meta -->
+  <div class="top-section">
+    <div class="company-info">
+      <div class="company-name">MES Pro</div>
+      <div class="company-detail">
+        Manufacturing Execution System<br>
+        State: ${placeOfSupply}
+      </div>
+    </div>
+    <div class="invoice-meta">
+      <table>
+        <tr><td>Invoice No.</td><td>${bill.bill_no}</td></tr>
+        <tr><td>Date</td><td>${new Date(bill.date).toLocaleDateString('en-IN')}</td></tr>
+        <tr><td>Place of Supply</td><td>${placeOfSupply}</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- Bill To -->
+  <div class="bill-to">
+    <div class="label">Bill To</div>
+    <div class="client-name">${bill.client_name}</div>
+    <p>${clientAddress}</p>
+    ${bill.client_gst ? `<p>GSTIN Number: ${bill.client_gst}</p>` : ''}
+    <p>State: ${placeOfSupply}</p>
+  </div>
+
+  <!-- Items Table -->
+  <table class="items-table">
+    <thead>
+      <tr>
+        <th style="width:30px;">#</th>
+        <th>Item name</th>
+        <th>HSN/SAC</th>
+        <th>Quantity</th>
+        <th>Unit</th>
+        <th>Price/Unit</th>
+        <th>Taxable<br>Price/unit</th>
+        <th>GST</th>
+        <th>Final Rate</th>
+        <th>Amount</th>
       </tr>
-    `).join('');
+    </thead>
+    <tbody>
+      ${itemsRows}
+      <tr class="total-row">
+        <td class="tc" colspan="2">Total</td>
+        <td></td>
+        <td class="tr">${totalQty}</td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td class="tr">${fmtCur(bill.total_tax)}</td>
+        <td></td>
+        <td class="tr">${fmtCur(bill.grand_total)}</td>
+      </tr>
+    </tbody>
+  </table>
 
-    const statusLabel = bill.payment_status.charAt(0).toUpperCase() + bill.payment_status.slice(1);
-    const statusColor = bill.payment_status === 'paid' ? '#16a34a' : bill.payment_status === 'partial' ? '#f59e0b' : bill.payment_status === 'overdue' ? '#dc2626' : '#6b7280';
+  <!-- Amount in Words + Amounts -->
+  <div class="bottom-section">
+    <div class="amount-words">
+      <div class="label">Invoice Amount In Words</div>
+      <div>${numToWords(bill.grand_total)}</div>
+    </div>
+    <div class="amounts-table">
+      <table>
+        <tr><td>Sub Total</td><td>${fmtCur(bill.subtotal)}</td></tr>
+        ${bill.total_discount > 0 ? `<tr><td>Discount</td><td>- ${fmtCur(bill.total_discount)}</td></tr>` : ''}
+        ${bill.total_tax > 0 ? `<tr><td>Tax (${bill.gst_rate}%)</td><td>${fmtCur(bill.total_tax)}</td></tr>` : ''}
+        <tr class="grand-total"><td>Total</td><td>${fmtCur(bill.grand_total)}</td></tr>
+        <tr><td>Paid</td><td>${fmtCur(bill.paid_amount)}</td></tr>
+        <tr><td>Balance</td><td>${fmtCur(balance)}</td></tr>
+      </table>
+    </div>
+  </div>
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>${bill.bill_no} - Invoice</title>
-        <style>
-          * { margin: 0; padding: 0; box-sizing: border-box; }
-          body { font-family: 'Segoe UI', Arial, sans-serif; color: #333; padding: 40px; max-width: 800px; margin: 0 auto; }
-          .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-          .company-name { font-size: 24px; font-weight: 700; color: #1e40af; }
-          .company-sub { font-size: 12px; color: #6b7280; margin-top: 4px; }
-          .invoice-title { font-size: 28px; font-weight: 700; color: #1e40af; text-align: right; }
-          .invoice-no { font-size: 14px; color: #6b7280; text-align: right; margin-top: 4px; }
-          .status-badge { display: inline-block; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600; color: white; background: ${statusColor}; margin-top: 8px; float: right; }
-          .info-section { display: flex; justify-content: space-between; margin-bottom: 30px; }
-          .info-box { flex: 1; }
-          .info-box h3 { font-size: 12px; text-transform: uppercase; color: #6b7280; margin-bottom: 8px; letter-spacing: 1px; }
-          .info-box p { font-size: 14px; line-height: 1.6; }
-          table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-          thead th { background: #f8fafc; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280; border-bottom: 2px solid #e2e8f0; letter-spacing: 0.5px; }
-          thead th:nth-child(2), thead th:nth-child(4), thead th:nth-child(5) { text-align: center; }
-          thead th:nth-child(3), thead th:last-child { text-align: right; }
-          .summary { display: flex; justify-content: flex-end; }
-          .summary-box { width: 300px; }
-          .summary-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
-          .summary-row.total { border-top: 2px solid #1e40af; margin-top: 8px; padding-top: 12px; font-size: 18px; font-weight: 700; color: #1e40af; }
-          .footer { margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 12px; color: #9ca3af; }
-          .notes { background: #fffbeb; border: 1px solid #fde68a; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
-          .notes strong { display: block; margin-bottom: 4px; color: #92400e; }
-          @media print { body { padding: 20px; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div>
-            <div class="company-name">MES Pro</div>
-            <div class="company-sub">Manufacturing Execution System</div>
-          </div>
-          <div>
-            <div class="invoice-title">${bill.bill_no.startsWith('QTN') ? 'QUOTATION' : 'INVOICE'}</div>
-            <div class="invoice-no">${bill.bill_no}</div>
-            <div class="status-badge">${statusLabel}</div>
-          </div>
-        </div>
+  <!-- HSN/SAC Tax Breakdown -->
+  ${bill.gst_rate > 0 ? `
+  <div class="hsn-section">
+    <table class="hsn-table">
+      <thead>
+        <tr>
+          <th rowspan="2">HSN/SAC</th>
+          <th rowspan="2">Taxable amount</th>
+          <th colspan="2">CGST</th>
+          <th colspan="2">SGST</th>
+          <th rowspan="2">Total Tax Amount</th>
+        </tr>
+        <tr>
+          <th>Rate</th>
+          <th>Amount</th>
+          <th>Rate</th>
+          <th>Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${hsnRows}
+        <tr class="total-row">
+          <td class="tc">Total</td>
+          <td class="tr">${fmtCur(hsnTotals.taxable)}</td>
+          <td></td>
+          <td class="tr">${fmtCur(hsnTotals.cgst)}</td>
+          <td></td>
+          <td class="tr">${fmtCur(hsnTotals.sgst)}</td>
+          <td class="tr bold">${fmtCur(hsnTotals.total)}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>` : ''}
 
-        <div class="info-section">
-          <div class="info-box">
-            <h3>Bill To</h3>
-            <p><strong>${bill.client_name}</strong></p>
-            <p>${clientAddress}</p>
-            ${bill.client_gst ? `<p style="margin-top:4px;font-size:12px;color:#6b7280;">GSTIN: ${bill.client_gst}</p>` : ''}
-          </div>
-          <div class="info-box" style="text-align:right;">
-            <h3>Invoice Details</h3>
-            <p>Date: ${new Date(bill.date).toLocaleDateString()}</p>
-            <p>Due: ${new Date(bill.due_date).toLocaleDateString()}</p>
-            <p>Type: ${bill.payment_type === 'cash' ? 'Cash' : 'Credit'}</p>
-            ${bill.gst_rate ? `<p>GST Rate: ${bill.gst_rate}%</p>` : ''}
-          </div>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th>Item</th>
-              <th>Qty</th>
-              <th>Unit Price</th>
-              <th>Discount</th>
-              <th>Tax</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${itemsRows}
-          </tbody>
-        </table>
-
-        <div class="summary">
-          <div class="summary-box">
-            <div class="summary-row"><span>Subtotal:</span><span>₹${bill.subtotal.toLocaleString()}</span></div>
-            <div class="summary-row" style="color:#dc2626;"><span>Discount:</span><span>-₹${bill.total_discount.toLocaleString()}</span></div>
-            ${bill.gst_rate ? `<div class="summary-row"><span>GST (${bill.gst_rate}%):</span><span>₹${bill.total_tax.toLocaleString()}</span></div>` : ''}
-            <div class="summary-row total"><span>Grand Total:</span><span>₹${bill.grand_total.toLocaleString()}</span></div>
-            <div class="summary-row" style="color:#16a34a;"><span>Paid:</span><span>₹${bill.paid_amount.toLocaleString()}</span></div>
-            <div class="summary-row" style="color:#dc2626;font-weight:600;"><span>Balance:</span><span>₹${(bill.grand_total - bill.paid_amount).toLocaleString()}</span></div>
-          </div>
-        </div>
-
-        ${bill.notes ? `<div class="notes"><strong>Notes:</strong>${bill.notes}</div>` : ''}
-
-        <div class="footer">
-          <p>Generated by MES Pro | ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
-        </div>
-      </body>
-      </html>
-    `;
+  <!-- Terms & Signatory -->
+  <div class="footer-section">
+    <div class="terms-box">
+      <div class="label">Terms and conditions</div>
+      <p>${termsConditions}</p>
+      ${bill.notes ? `<div style="margin-top:8px;"><div class="label">Notes</div><p>${bill.notes}</p></div>` : ''}
+    </div>
+    <div class="signatory-box">
+      <div class="for-text">For: MES Pro</div>
+      <div class="sig-label">Authorized Signatory</div>
+    </div>
+  </div>
+</body>
+</html>`;
 
     printWindow.document.write(html);
     printWindow.document.close();
@@ -1288,13 +1528,17 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       notes: bill.notes || '',
       created_by: bill.created_by,
       payment_type: bill.payment_type,
+      payment_method: (bill.payment_method as any) || 'cash',
       gst: bill.gst_rate,
       invoiceType: bill.client_gst ? 'b2b' : 'b2c',
       gst_number: bill.client_gst || '',
+      place_of_supply: (bill as any).place_of_supply || '33-Tamil Nadu',
+      due_date: bill.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      terms_conditions: (bill as any).terms_conditions || 'Thanks for doing business with us!',
     });
     setClientSearchQuery(client ? client.name : (bill.client_name || ''));
     setActiveTab(bill.gst_rate > 0 ? 'gst-bills' : 'non-gst-bills');
-    setItemEntryRows([{ id: 1, itemId: '', itemName: '', quantity: 1, price: 0, discount: 0 }]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setItemRowErrors({});
     setActiveRowDropdown(null);
     setEditingItemIndex(null);
@@ -1574,18 +1818,20 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   // If showing create bill page, render it instead of the main view
   if (showCreateBill) {
+    const totals = calculateBillTotals();
+    const taxBreakdown = calculateTaxBreakdown();
+    const halfGst = billForm.gst / 2;
+    const taxableAmount = totals.subtotal - totals.totalDiscount;
+
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center gap-4">
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
+            size="sm"
             onClick={() => {
-              // Auto-save as draft on back for new bills with data
-              if (!editingBill) {
-                saveBillDraftBeacon();
-              } else {
-                billSubmittedRef.current = true;
-              }
+              if (!editingBill) { saveBillDraftBeacon(); } else { billSubmittedRef.current = true; }
               setShowCreateBill(false);
               setEditingBill(null);
               resetBillForm();
@@ -1593,116 +1839,142 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           >
             ← {t('back')}
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">
-              {editingBill
-                ? (activeTab === 'non-gst-bills' ? t('editQuotationBill') : t('editInvoice'))
-                : (activeTab === 'non-gst-bills' ? t('createNewQuotationBill') : t('createNewInvoice'))
-              }
-            </h1>
-          </div>
+          <h1 className="text-xl font-bold">
+            {editingBill
+              ? (activeTab === 'non-gst-bills' ? t('editQuotationBill') : t('editInvoice'))
+              : (activeTab === 'non-gst-bills' ? t('createNewQuotationBill') : t('createNewInvoice'))
+            }
+          </h1>
         </div>
-        <Card>
-          <CardContent className="pt-6">
-            <form ref={billFormRef} onSubmit={handleBillSubmit} noValidate>
-              <div className="space-y-8">
-                {/* Client & Date Selection */}
-                <div className="flex flex-wrap items-end gap-2">
-                  <div className="space-y-2 w-[170px]">
-                    <Label>Date *</Label>
-                    <Input
-                      type="date"
-                      value={billForm.date}
-                      onChange={(e) => { setBillForm(prev => ({ ...prev, date: e.target.value })); setErrors(prev => ({ ...prev, date: '' })); }}
-                      className="h-9 w-full"
-                    />
+
+        <form ref={billFormRef} onSubmit={handleBillSubmit} noValidate>
+          {/* Invoice Details + Client - Compact Two-Column Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            {/* Left: Invoice Details */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <FileText className="w-4 h-4" /> Invoice Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  <div>
+                    <Label className="text-xs text-gray-500">Invoice No.</Label>
+                    <Input type="text" value={billForm.bill_number} readOnly className="h-8 text-sm bg-gray-50 font-mono" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Date *</Label>
+                    <Input type="date" value={billForm.date} onChange={(e) => { setBillForm(prev => ({ ...prev, date: e.target.value })); setErrors(prev => ({ ...prev, date: '' })); }} className="h-8 text-sm" />
                     <FieldError message={errors.date} />
                   </div>
-                  <div className="space-y-2 w-[260px]">
-                    <Label>Client *</Label>
+                  <div>
+                    <Label className="text-xs text-gray-500">Place of Supply</Label>
+                    <select value={billForm.place_of_supply} onChange={(e) => setBillForm(prev => ({ ...prev, place_of_supply: e.target.value }))} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                      {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">GST % *</Label>
+                    <select value={billForm.gst} onChange={(e) => { setBillForm(prev => ({ ...prev, gst: Number(e.target.value) })); setErrors(prev => ({ ...prev, gst: '' })); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                      <option value={0}>0%</option>
+                      <option value={5}>5%</option>
+                      <option value={12}>12%</option>
+                      <option value={18}>18%</option>
+                      <option value={28}>28%</option>
+                    </select>
+                    <FieldError message={errors.gst} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Invoice Type *</Label>
+                    <select value={billForm.invoiceType} onChange={(e) => { setBillForm(prev => ({ ...prev, invoiceType: e.target.value as 'b2b' | 'b2c' })); setErrors(prev => ({ ...prev, invoiceType: '' })); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                      <option value="b2b">B2B (Business to Business)</option>
+                      <option value="b2c">B2C (Business to Consumer)</option>
+                    </select>
+                    <FieldError message={errors.invoiceType} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Bill Type *</Label>
+                    <select value={billForm.payment_type} onChange={(e) => { setBillForm(prev => ({ ...prev, payment_type: e.target.value as 'cash' | 'credit' })); setErrors(prev => ({ ...prev, payment_type: '' })); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                      <option value="cash">{t('cash')}</option>
+                      <option value="credit">{t('credit')}</option>
+                    </select>
+                    <FieldError message={errors.payment_type} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Payment Method</Label>
+                    <select value={billForm.payment_method} onChange={(e) => setBillForm(prev => ({ ...prev, payment_method: e.target.value as any }))} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                      <option value="cash">Cash</option>
+                      <option value="upi">UPI</option>
+                      <option value="card">Card</option>
+                      <option value="bank">Bank Transfer</option>
+                    </select>
+                  </div>
+                  {billForm.payment_type === 'credit' && (
+                    <div>
+                      <Label className="text-xs text-gray-500">Due Date</Label>
+                      <Input type="date" value={billForm.due_date} onChange={(e) => setBillForm(prev => ({ ...prev, due_date: e.target.value }))} className="h-8 text-sm" />
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Right: Bill To (Client) */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Building className="w-4 h-4" /> Bill To
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="space-y-2">
+                  <div>
+                    <Label className="text-xs text-gray-500">Client *</Label>
                     <div className="relative">
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
                         <div className="relative flex-1">
                           <Input
                             type="text"
-                            placeholder={t('client')}
+                            placeholder="Search client..."
                             value={clientSearchQuery}
                             onChange={(e) => {
                               setClientSearchQuery(e.target.value);
                               setShowClientDropdown(true);
                               setErrors(prev => ({ ...prev, client: '' }));
-                              if (!e.target.value) {
-                                setBillForm(prev => ({ ...prev, client_id: '' }));
-                              }
+                              if (!e.target.value) setBillForm(prev => ({ ...prev, client_id: '' }));
                             }}
                             onFocus={() => setShowClientDropdown(true)}
                             onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                            className="h-9 w-full"
+                            className="h-8 text-sm"
                           />
                         </div>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => setShowAddClientDialog(true)}
-                          title={t('addNewClient')}
-                          className="h-9"
-                        >
-                          <Plus className="h-4 w-4" />
+                        <Button type="button" variant="outline" onClick={() => setShowAddClientDialog(true)} title="Add New Client" className="h-8 px-2">
+                          <Plus className="h-3 w-3" />
                         </Button>
                       </div>
                       {showClientDropdown && clientSearchQuery && (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
+                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
                           {filteredClients.length > 0 ? (
                             <>
                               {filteredClients.map(client => (
-                                <div
-                                  key={client.id}
-                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100"
-                                  onMouseDown={(e) => { e.preventDefault(); handleSelectClient(client); }}
-                                >
-                                  <div className="font-medium">{client.name}</div>
-                                  <div className="text-xs text-gray-500">{client.contactPerson} • {client.phone}</div>
+                                <div key={client.id} className="px-3 py-1.5 hover:bg-gray-100 cursor-pointer border-b border-gray-50" onMouseDown={(e) => { e.preventDefault(); handleSelectClient(client); }}>
+                                  <div className="font-medium text-sm">{client.name}</div>
+                                  <div className="text-[10px] text-gray-500">{client.phone} {client.gstNo ? `• GST: ${client.gstNo}` : ''}</div>
                                 </div>
                               ))}
-                              <div
-                                className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-t border-gray-200 bg-gray-50"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setBillForm(prev2 => ({ ...prev2, client_id: '' }));
-                                  setShowClientDropdown(false);
-                                }}
-                              >
-                                <div className="font-medium text-blue-600">Use "{clientSearchQuery}"</div>
-                                <div className="text-xs text-gray-500">{t('useAsCustomClientName')}</div>
+                              <div className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer border-t border-gray-200 bg-gray-50" onMouseDown={(e) => { e.preventDefault(); setBillForm(prev2 => ({ ...prev2, client_id: '' })); setShowClientDropdown(false); }}>
+                                <div className="font-medium text-blue-600 text-sm">Use "{clientSearchQuery}"</div>
                               </div>
                             </>
                           ) : (
                             <>
-                              <div
-                                className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100"
-                                onMouseDown={(e) => {
-                                  e.preventDefault();
-                                  setBillForm(prev2 => ({ ...prev2, client_id: '' }));
-                                  setShowClientDropdown(false);
-                                }}
-                              >
-                                <div className="font-medium text-blue-600">Use "{clientSearchQuery}"</div>
-                                <div className="text-xs text-gray-500">{t('useAsCustomClientName')}</div>
+                              <div className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer" onMouseDown={(e) => { e.preventDefault(); setBillForm(prev2 => ({ ...prev2, client_id: '' })); setShowClientDropdown(false); }}>
+                                <div className="font-medium text-blue-600 text-sm">Use "{clientSearchQuery}"</div>
                               </div>
-                              <div className="px-4 py-3 text-center border-t border-gray-100">
-                                <div className="text-gray-500 mb-2">{t('orAddAsNewClient')}</div>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  onMouseDown={(e: React.MouseEvent) => {
-                                    e.preventDefault();
-                                    setNewClientForm({ ...newClientForm, name: clientSearchQuery });
-                                    setShowAddClientDialog(true);
-                                    setShowClientDropdown(false);
-                                  }}
-                                >
-                                  <Plus className="h-4 w-4 mr-1" />
-                                  {t('addNewClient')}
+                              <div className="px-3 py-2 text-center border-t border-gray-100">
+                                <Button type="button" size="sm" variant="outline" onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); setNewClientForm({ ...newClientForm, name: clientSearchQuery }); setShowAddClientDialog(true); setShowClientDropdown(false); }}>
+                                  <Plus className="h-3 w-3 mr-1" /> {t('addNewClient')}
                                 </Button>
                               </div>
                             </>
@@ -1712,556 +1984,555 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     </div>
                     <FieldError message={errors.client} />
                   </div>
-                  <div className="space-y-2 w-[200px]">
-                    <Label>{t('billNumber')}</Label>
-                    <Input
-                      type="text"
-                      value={billForm.bill_number}
-                      readOnly
-                      className="h-9 w-full bg-gray-50"
-                    />
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                    <div className="col-span-2">
+                      <Label className="text-xs text-gray-500">GSTIN</Label>
+                      <Input type="text" placeholder="e.g. 33AUJPM8458P1ZR" value={billForm.gst_number} onChange={(e) => setBillForm(prev => ({ ...prev, gst_number: e.target.value.toUpperCase() }))} className="h-8 text-sm font-mono" maxLength={15} />
+                    </div>
                   </div>
-                  <div className="space-y-2 w-[120px]">
-                    <Label>{t('gst')} *</Label>
-                    <select
-                      value={billForm.gst}
-                      onChange={(e) => { setBillForm(prev => ({ ...prev, gst: Number(e.target.value) })); setErrors(prev => ({ ...prev, gst: '' })); }}
-                      className="w-full h-9 px-3 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value={0}>0%</option>
-                      <option value={18}>18%</option>
-                    </select>
-                    <FieldError message={errors.gst} />
+                  {/* Selected client info display */}
+                  {(() => {
+                    const sel = getSelectedClient();
+                    if (!sel) return null;
+                    return (
+                      <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
+                        <p className="font-semibold text-gray-800">{sel.name}</p>
+                        {sel.address && <p className="mt-0.5">{sel.address}</p>}
+                        {sel.gstNo && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {sel.gstNo}</p>}
+                        {'phone' in sel && sel.phone && <p className="mt-0.5">Contact: {sel.phone}</p>}
+                      </div>
+                    );
+                  })()}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Addon Form - Only show when showAddonForm is true */}
+          {showAddonForm && (
+            <Card className="border-blue-200 bg-blue-50/30 mb-4 shadow-sm">
+              <CardHeader className="py-2 px-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm">{t('addAddonAdditionalCharge')}</CardTitle>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddonForm(false)} className="text-gray-500 hover:text-gray-700 h-6 w-6 p-0">✕</Button>
+                </div>
+              </CardHeader>
+              <CardContent className="px-4 pb-3 pt-0">
+                <div className="grid grid-cols-3 gap-3">
+                  <div>
+                    <Label className="text-xs">Title *</Label>
+                    <Input placeholder="e.g. Installation" value={newAddon.title} onChange={(e) => { setNewAddon({ ...newAddon, title: e.target.value }); setAddonErrors(prev => ({ ...prev, title: '' })); }} className="h-8 text-sm" />
+                    <FieldError message={addonErrors.title} />
                   </div>
-                  <div className="space-y-2 w-[210px]">
-                    <Label>{t('invoiceType')} *</Label>
-                    <select
-                      value={billForm.invoiceType}
-                      onChange={(e) => { setBillForm(prev => ({ ...prev, invoiceType: e.target.value as 'b2b' | 'b2c' })); setErrors(prev => ({ ...prev, invoiceType: '' })); }}
-                      className="w-full h-9 px-3 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="b2b">B2B (Business to Business)</option>
-                      <option value="b2c">B2C (Business to Consumer)</option>
-                    </select>
-                    <FieldError message={errors.invoiceType} />
+                  <div>
+                    <Label className="text-xs">Description *</Label>
+                    <Input placeholder="Description" value={newAddon.description} onChange={(e) => { setNewAddon({ ...newAddon, description: e.target.value }); setAddonErrors(prev => ({ ...prev, description: '' })); }} className="h-8 text-sm" />
+                    <FieldError message={addonErrors.description} />
                   </div>
-                  <div className="space-y-2 w-[140px]">
-                    <Label>{t('billType')} *</Label>
-                    <select
-                      value={billForm.payment_type}
-                      onChange={(e) => { setBillForm(prev => ({ ...prev, payment_type: e.target.value as 'cash' | 'credit' })); setErrors(prev => ({ ...prev, payment_type: '' })); }}
-                      className="w-full h-9 px-3 border border-gray-300 rounded-md text-sm"
-                    >
-                      <option value="cash">{t('cash')}</option>
-                      <option value="credit">{t('credit')}</option>
-                    </select>
-                    <FieldError message={errors.payment_type} />
+                  <div>
+                    <Label className="text-xs">Amount *</Label>
+                    <div className="flex gap-1">
+                      <Input type="number" min="0" placeholder="0" value={newAddon.amount || ''} onChange={(e) => { setNewAddon({ ...newAddon, amount: Number(e.target.value) }); setAddonErrors(prev => ({ ...prev, amount: '' })); }} onKeyDown={blockInvalidNumberKeys} className="h-8 text-sm" />
+                      <Button type="button" onClick={addAddon} size="sm" className="h-8 px-2"><Plus className="h-3 w-3" /></Button>
+                    </div>
+                    <FieldError message={addonErrors.amount} />
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-4 items-end">
-                  <div className="space-y-2 w-[220px]">
-                    <Label>{t('gstNo')}</Label>
-                    <Input
-                      type="text"
-                      placeholder="e.g. 29ABCDE1234F1Z5"
-                      value={billForm.gst_number}
-                      onChange={(e) => setBillForm(prev => ({ ...prev, gst_number: e.target.value.toUpperCase() }))}
-                      className="h-9 font-mono"
-                      maxLength={15}
-                    />
-                  </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Items Section */}
+          <Card className="shadow-sm mb-4">
+            <CardHeader className="py-3 px-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Items
+                </CardTitle>
+                <div className="flex gap-2">
+                  {!showAddonForm && (
+                    <Button type="button" variant="outline" size="sm" className="text-xs h-7" onClick={() => setShowAddonForm(true)}>
+                      <Plus className="w-3 h-3 mr-1" /> Addon
+                    </Button>
+                  )}
                 </div>
-
-                {/* Addon Form - Only show when showAddonForm is true */}
-                {showAddonForm && (
-                  <Card className="border-blue-200 bg-blue-50/30">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base">{t('addAddonAdditionalCharge')}</CardTitle>
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddonForm(false)} className="text-gray-500 hover:text-gray-700">
-                          ✕
-                        </Button>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label>{t('title')} *</Label>
-                          <Input
-                            placeholder={t('egInstallationCharge')}
-                            value={newAddon.title}
-                            onChange={(e) => { setNewAddon({ ...newAddon, title: e.target.value }); setAddonErrors(prev => ({ ...prev, title: '' })); }}
-                          />
-                          <FieldError message={addonErrors.title} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>{t('description')} *</Label>
-                          <Input
-                            placeholder={t('description')}
-                            value={newAddon.description}
-                            onChange={(e) => { setNewAddon({ ...newAddon, description: e.target.value }); setAddonErrors(prev => ({ ...prev, description: '' })); }}
-                          />
-                          <FieldError message={addonErrors.description} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>{t('amount')} *</Label>
-                          <div className="flex gap-2">
-                            <Input
-                              type="number"
-                              min="0"
-                              placeholder="0"
-                              value={newAddon.amount || ''}
-                              onChange={(e) => { setNewAddon({ ...newAddon, amount: Number(e.target.value) }); setAddonErrors(prev => ({ ...prev, amount: '' })); }}
-                              onKeyDown={blockInvalidNumberKeys}
-                            />
-                            <Button type="button" onClick={addAddon}>
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <FieldError message={addonErrors.amount} />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Add Items Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">{t('addItems')}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-5">
-                    {/* Multiple Item Entry Rows */}
-                    <div className="space-y-3">
-                      {/* Header Row */}
-                      <div className="grid grid-cols-12 gap-3 items-center text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                        <div className="col-span-4">{t('item')} *</div>
-                        <div className="col-span-2">{t('qty')} *</div>
-                        <div className="col-span-2">{t('price')}</div>
-                        <div className="col-span-2">{t('disc')}</div>
-                        <div className="col-span-2"></div>
-                      </div>
-                      
-                      {/* Item Entry Rows */}
-                      {itemEntryRows.map((row, index) => (
-                        <div key={row.id} className="grid grid-cols-12 gap-3 items-center">
-                          <div className="col-span-4 relative">
-                            <Input
-                              ref={(el) => { itemInputRefs.current[row.id] = el; }}
-                              type="text"
-                              placeholder={t('searchItem')}
-                              value={row.itemName}
-                              onChange={(e) => {
-                                updateItemRow(row.id, 'itemName', e.target.value);
-                                updateItemRow(row.id, 'itemId', '');
-                                setActiveRowDropdown(row.id);
-                              }}
-                              onFocus={() => setActiveRowDropdown(row.id)}
-                              onBlur={() => setTimeout(() => setActiveRowDropdown(null), 300)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) {
-                                  e.preventDefault();
-                                  addAllItemsToBill();
-                                }
-                              }}
-                              className={itemRowErrors[row.id]?.itemId ? 'border-red-400' : ''}
-                            />
-                            <FieldError message={itemRowErrors[row.id]?.itemId} />
-                            {activeRowDropdown === row.id && (
-                              <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
-                                {stockItems
-                                  .filter(s => s.currentStock > 0 && s.name.toLowerCase().includes(row.itemName.toLowerCase()))
-                                  .length > 0 ? (
-                                  stockItems
-                                    .filter(s => s.currentStock > 0 && s.name.toLowerCase().includes(row.itemName.toLowerCase()))
-                                    .map(stock => (
-                                      <div
-                                        key={stock.id}
-                                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                        onMouseDown={(e) => {
-                                          e.preventDefault();
-                                          selectItemForRow(row.id, stock);
-                                        }}
-                                      >
-                                        <div className="font-medium text-sm">{stock.name}</div>
-                                        <div className="text-xs text-gray-500">₹{stock.unitPrice} • {stock.currentStock} {t('avail')}</div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0">
+              {/* Item Entry Rows - Compact Table Style */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[28%]">Item *</th>
+                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">HSN/SAC</th>
+                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">Qty *</th>
+                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Unit</th>
+                      <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">Price/Unit</th>
+                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">Disc %</th>
+                      <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">Amount</th>
+                      <th className="w-[8%]"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {itemEntryRows.map((row, index) => {
+                      const rowPrice = row.price > 0 ? row.price : (getSelectedStock(row.itemId)?.unitPrice || 0);
+                      const rowSubtotal = rowPrice * row.quantity;
+                      const rowDiscAmt = (rowSubtotal * row.discount) / 100;
+                      const rowTaxable = rowSubtotal - rowDiscAmt;
+                      const rowTax = (rowTaxable * billForm.gst) / 100;
+                      const rowTotal = rowTaxable + rowTax;
+                      return (
+                        <tr key={row.id} className="border-b border-gray-100">
+                          <td className="py-1 pr-2">
+                            <div className="relative">
+                              <Input
+                                ref={(el) => { itemInputRefs.current[row.id] = el; }}
+                                type="text"
+                                placeholder="Search item..."
+                                value={row.itemName}
+                                onChange={(e) => { updateItemRow(row.id, 'itemName', e.target.value); updateItemRow(row.id, 'itemId', ''); setActiveRowDropdown(row.id); }}
+                                onFocus={() => setActiveRowDropdown(row.id)}
+                                onBlur={() => setTimeout(() => setActiveRowDropdown(null), 300)}
+                                onKeyDown={(e) => { if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) { e.preventDefault(); addAllItemsToBill(); } }}
+                                className={`h-7 text-xs ${itemRowErrors[row.id]?.itemId ? 'border-red-400' : ''}`}
+                              />
+                              <FieldError message={itemRowErrors[row.id]?.itemId} />
+                              {activeRowDropdown === row.id && (
+                                <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-auto">
+                                  {stockItems.filter(s => s.currentStock > 0 && s.name.toLowerCase().includes(row.itemName.toLowerCase())).length > 0 ? (
+                                    stockItems.filter(s => s.currentStock > 0 && s.name.toLowerCase().includes(row.itemName.toLowerCase())).map(stock => (
+                                      <div key={stock.id} className="px-2 py-1 hover:bg-gray-100 cursor-pointer border-b border-gray-50 last:border-b-0" onMouseDown={(e) => { e.preventDefault(); selectItemForRow(row.id, stock); }}>
+                                        <div className="font-medium text-xs">{stock.name}</div>
+                                        <div className="text-[10px] text-gray-500">₹{stock.unitPrice} • {stock.currentStock} {stock.unit || 'Pcs'}</div>
                                       </div>
                                     ))
-                                ) : (
-                                  <div className="px-3 py-2 text-center text-gray-500 text-sm">
-                                    {t('noItemsFound')}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                          <div className="col-span-2">
+                                  ) : (
+                                    <div className="px-2 py-1 text-center text-gray-500 text-xs">{t('noItemsFound')}</div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-1 pr-2">
+                            <Input type="text" placeholder="HSN" value={row.hsnSac} onChange={(e) => updateItemRow(row.id, 'hsnSac', e.target.value)} className="h-7 text-xs font-mono" maxLength={10} />
+                          </td>
+                          <td className="py-1 pr-2">
                             <Input
-                              type="number"
-                              min="0"
-                              value={row.quantity}
+                              type="number" min="1" value={row.quantity}
                               onChange={(e) => updateItemRow(row.id, 'quantity', Math.max(0, Number(e.target.value) || 0))}
                               onFocus={(e) => e.target.select()}
-                              className={itemRowErrors[row.id]?.quantity ? 'border-red-400' : 'border border-gray-300'}
-                              onKeyDown={(e) => {
-                                blockInvalidNumberKeys(e);
-                                if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) {
-                                  e.preventDefault();
-                                  addAllItemsToBill();
-                                }
-                              }}
+                              className={`h-7 text-xs text-center ${itemRowErrors[row.id]?.quantity ? 'border-red-400' : ''}`}
+                              onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) { e.preventDefault(); addAllItemsToBill(); } }}
                             />
                             <FieldError message={itemRowErrors[row.id]?.quantity} />
-                          </div>
-                          <div className="col-span-2">
+                          </td>
+                          <td className="py-1 pr-2">
+                            <select value={row.unit} onChange={(e) => updateItemRow(row.id, 'unit', e.target.value)} className="w-full h-7 px-1 border border-gray-300 rounded-md text-xs">
+                              {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
+                            </select>
+                          </td>
+                          <td className="py-1 pr-2">
                             <Input
-                              type="number"
-                              min="0"
-                              value={row.price || ''}
-                              placeholder="Auto"
+                              type="number" min="0" value={row.price || ''} placeholder="Auto"
                               onChange={(e) => updateItemRow(row.id, 'price', Number(e.target.value))}
-                              className="border border-gray-300"
-                              onKeyDown={(e) => {
-                                blockInvalidNumberKeys(e);
-                                if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) {
-                                  e.preventDefault();
-                                  addAllItemsToBill();
-                                }
-                              }}
+                              className="h-7 text-xs text-right"
+                              onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) { e.preventDefault(); addAllItemsToBill(); } }}
                             />
-                          </div>
-                          <div className="col-span-2">
+                          </td>
+                          <td className="py-1 pr-2">
                             <Input
-                              type="number"
-                              min="0"
-                              max="100"
-                              value={row.discount}
+                              type="number" min="0" max="100" value={row.discount}
                               onChange={(e) => updateItemRow(row.id, 'discount', Number(e.target.value))}
-                              className="border border-gray-300"
+                              className="h-7 text-xs text-center"
                               onKeyDown={(e) => {
                                 blockInvalidNumberKeys(e);
-                                if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) {
-                                  e.preventDefault();
-                                  addAllItemsToBill();
-                                } else if (e.key === 'Tab' && !e.shiftKey && index === itemEntryRows.length - 1) {
+                                if (e.key === 'Enter' && itemEntryRows.some(r => r.itemId)) { e.preventDefault(); addAllItemsToBill(); }
+                                else if (e.key === 'Tab' && !e.shiftKey && index === itemEntryRows.length - 1) {
                                   e.preventDefault();
                                   const lastRow = itemEntryRows[itemEntryRows.length - 1];
                                   const errs: { itemId?: string; quantity?: string } = {};
                                   if (!lastRow.itemId) errs.itemId = 'Select an item';
                                   if (!lastRow.quantity || lastRow.quantity < 1) errs.quantity = 'Enter quantity';
-                                  if (Object.keys(errs).length) {
-                                    setItemRowErrors(prev => ({ ...prev, [lastRow.id]: errs }));
-                                    return;
-                                  }
+                                  if (Object.keys(errs).length) { setItemRowErrors(prev => ({ ...prev, [lastRow.id]: errs })); return; }
                                   addNewItemRow();
                                 }
                               }}
                             />
-                          </div>
-                          <div className="col-span-2 flex gap-2">
-                            {index === itemEntryRows.length - 1 ? (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={addNewItemRow}
-                                className="text-green-600 border-green-300 hover:bg-green-50 h-9 px-3"
-                                title={t('addRow')}
-                              >
-                                <Plus className="w-4 h-4" />
-                              </Button>
-                            ) : null}
-                            {itemEntryRows.length > 1 && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeItemRow(row.id)}
-                                className="text-red-500 hover:bg-red-50 h-9 px-2"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Add Items to Bill Button */}
-                    <div className="flex justify-end pt-2">
-                      <Button
-                        type="button"
-                        onClick={addAllItemsToBill}
-                        disabled={!itemEntryRows.some(row => row.itemId)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        {t('addToBill')}
-                      </Button>
-                    </div>
-
-                    {/* Items Table */}
-                    {(billForm.items.length > 0 || addons.length > 0) && (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Item</TableHead>
-                            <TableHead className="text-center w-20">Qty</TableHead>
-                            <TableHead className="text-right w-24">Price</TableHead>
-                            <TableHead className="text-center w-20">Disc %</TableHead>
-                            <TableHead className="text-right w-24">Total</TableHead>
-                            <TableHead className="w-20"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {billForm.items.map((item, index) => (
-                            <TableRow key={index}>
-                              <TableCell>{item.name}</TableCell>
-                              <TableCell className="text-center">
-                                {editingItemIndex === index ? (
-                                  <Input type="number" value={editingItem?.quantity || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, quantity: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-16 h-8" />
-                                ) : item.quantity}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                {editingItemIndex === index ? (
-                                  <Input type="number" value={editingItem?.unit_price || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, unit_price: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-20 h-8" />
-                                ) : `₹${item.unit_price.toLocaleString()}`}
-                              </TableCell>
-                              <TableCell className="text-center">
-                                {editingItemIndex === index ? (
-                                  <Input type="number" value={editingItem?.discount || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, discount: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-16 h-8" />
-                                ) : `${item.discount}%`}
-                              </TableCell>
-                              <TableCell className="text-right font-semibold">₹{item.total.toLocaleString()}</TableCell>
-                              <TableCell>
-                                {editingItemIndex === index ? (
-                                  <div className="flex gap-1 justify-center">
-                                    <Button type="button" size="sm" variant="ghost" onClick={saveEditItem}><CheckCircle className="h-4 w-4 text-green-500" /></Button>
-                                    <Button type="button" size="sm" variant="ghost" onClick={cancelEditItem}><XCircle className="h-4 w-4 text-gray-400" /></Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex gap-1 justify-center">
-                                    <Button type="button" size="sm" variant="ghost" onClick={() => startEditItem(index)}><Edit className="h-4 w-4 text-blue-500" /></Button>
-                                    <Button type="button" size="sm" variant="ghost" onClick={() => removeItemFromBill(index)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                          {/* Addons displayed in the same table */}
-                          {addons.map((addon, index) => (
-                            <TableRow key={`addon-${addon.id}`} className="bg-blue-50/50">
-                              <TableCell>
-                                {editingAddonIndex === index ? (
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="bg-blue-100 text-blue-700 text-xs">Addon</Badge>
-                                    <Input 
-                                      value={editingAddon?.title || ''} 
-                                      onChange={(e) => setEditingAddon(prev => prev ? {...prev, title: e.target.value} : null)} 
-                                      className="w-32 h-8" 
-                                      placeholder="Title"
-                                    />
-                                    <Input 
-                                      value={editingAddon?.description || ''} 
-                                      onChange={(e) => setEditingAddon(prev => prev ? {...prev, description: e.target.value} : null)} 
-                                      className="w-32 h-8" 
-                                      placeholder="Description"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-2">
-                                    <Badge variant="outline" className="bg-blue-100 text-blue-700 text-xs">Addon</Badge>
-                                    <span>{addon.title}</span>
-                                    {addon.description && <span className="text-xs text-gray-500">({addon.description})</span>}
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-center">1</TableCell>
-                              <TableCell className="text-right">
-                                {editingAddonIndex === index ? (
-                                  <Input 
-                                    type="number" 
-                                    value={editingAddon?.amount || 0} 
-                                    onChange={(e) => setEditingAddon(prev => prev ? {...prev, amount: Number(e.target.value)} : null)} 
-                                    onKeyDown={blockInvalidNumberKeys}
-                                    className="w-20 h-8" 
-                                  />
-                                ) : `₹${addon.amount.toLocaleString()}`}
-                              </TableCell>
-                              <TableCell className="text-center">-</TableCell>
-                              <TableCell className="text-right font-semibold text-blue-600">
-                                ₹{(editingAddonIndex === index ? (editingAddon?.amount || 0) : addon.amount).toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                {editingAddonIndex === index ? (
-                                  <div className="flex gap-1 justify-center">
-                                    <Button type="button" size="sm" variant="ghost" onClick={saveEditAddon}><CheckCircle className="h-4 w-4 text-green-500" /></Button>
-                                    <Button type="button" size="sm" variant="ghost" onClick={cancelEditAddon}><XCircle className="h-4 w-4 text-gray-400" /></Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex gap-1 justify-center">
-                                    <Button type="button" size="sm" variant="ghost" onClick={() => startEditAddon(index)}><Edit className="h-4 w-4 text-blue-500" /></Button>
-                                    <Button type="button" size="sm" variant="ghost" onClick={() => removeAddon(addon.id)}><Trash2 className="h-4 w-4 text-red-500" /></Button>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-
-                    {/* Bill Totals */}
-                    {(billForm.items.length > 0 || addons.length > 0) && (
-                      <div className="flex justify-end">
-                        <div className="w-64 space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span>Subtotal:</span>
-                            <span>₹{Math.round(calculateBillTotals().subtotal).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between text-red-600">
-                            <span>Discount:</span>
-                            <span>-₹{Math.round(calculateBillTotals().totalDiscount).toLocaleString()}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>GST ({billForm.gst}%):</span>
-                            <span>₹{Math.round(calculateBillTotals().totalTax).toLocaleString()}</span>
-                          </div>
-                          {calculateBillTotals().totalAddons > 0 && (
-                            <div className="flex justify-between text-blue-600">
-                              <span>Addons:</span>
-                              <span>+₹{Math.round(calculateBillTotals().totalAddons).toLocaleString()}</span>
+                          </td>
+                          <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
+                            {row.itemId ? `₹${Math.round(rowTotal).toLocaleString()}` : '-'}
+                          </td>
+                          <td className="py-1">
+                            <div className="flex gap-0.5">
+                              {index === itemEntryRows.length - 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={addNewItemRow} className="h-6 w-6 p-0 text-green-600 hover:bg-green-50" title="Add row">
+                                  <Plus className="w-3 h-3" />
+                                </Button>
+                              )}
+                              {itemEntryRows.length > 1 && (
+                                <Button type="button" variant="ghost" size="sm" onClick={() => removeItemRow(row.id)} className="h-6 w-6 p-0 text-red-500 hover:bg-red-50">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              )}
                             </div>
-                          )}
-                          <div className="flex justify-between font-bold text-lg border-t pt-2">
-                            <span>Grand Total:</span>
-                            <span>₹{Math.round(calculateBillTotals().grandTotal).toLocaleString()}</span>
-                          </div>
-                        </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Add to Bill Button */}
+              <div className="flex justify-end pt-2">
+                <Button type="button" onClick={addAllItemsToBill} disabled={!itemEntryRows.some(row => row.itemId)} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8">
+                  <Plus className="w-3 h-3 mr-1" /> {t('addToBill')}
+                </Button>
+              </div>
+
+              {/* Added Items Table - Invoice Style */}
+              {(billForm.items.length > 0 || addons.length > 0) && (
+                <div className="mt-4 border rounded-lg overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-gray-50">
+                      <tr className="border-b">
+                        <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
+                        <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
+                        <th className="text-left py-2 px-2 font-semibold text-gray-600 w-20">HSN/SAC</th>
+                        <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
+                        <th className="text-center py-2 px-2 font-semibold text-gray-600 w-12">Unit</th>
+                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Price/Unit</th>
+                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Taxable</th>
+                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-16">GST</th>
+                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Final Rate</th>
+                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Amount</th>
+                        <th className="w-16"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {billForm.items.map((item, index) => {
+                        const itemSub = item.unit_price * item.quantity;
+                        const itemDiscAmt = (itemSub * item.discount) / 100;
+                        const itemTaxable = (item.unit_price * item.quantity - (item.unit_price * item.quantity * item.discount / 100)) / item.quantity;
+                        const itemGstAmt = (itemSub - itemDiscAmt) * item.tax / 100;
+                        const finalRate = (item.total / item.quantity);
+                        return (
+                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
+                            <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
+                            <td className="py-1.5 px-2 font-medium">{item.name}</td>
+                            <td className="py-1.5 px-2 text-gray-500 font-mono">{item.hsn_sac || '-'}</td>
+                            <td className="py-1.5 px-2 text-center">
+                              {editingItemIndex === index ? (
+                                <Input type="number" value={editingItem?.quantity || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, quantity: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-14 h-6 text-xs text-center" />
+                              ) : item.quantity}
+                            </td>
+                            <td className="py-1.5 px-2 text-center text-gray-500">{item.unit || 'Pcs'}</td>
+                            <td className="py-1.5 px-2 text-right">
+                              {editingItemIndex === index ? (
+                                <Input type="number" value={editingItem?.unit_price || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, unit_price: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-16 h-6 text-xs text-right" />
+                              ) : `₹${item.unit_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                            </td>
+                            <td className="py-1.5 px-2 text-right text-gray-600">₹{itemTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 px-2 text-right text-gray-600">₹{(itemGstAmt / item.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 px-2 text-right font-medium">₹{finalRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 px-2">
+                              {editingItemIndex === index ? (
+                                <div className="flex gap-0.5 justify-center">
+                                  <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={saveEditItem}><CheckCircle className="h-3 w-3 text-green-500" /></Button>
+                                  <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={cancelEditItem}><XCircle className="h-3 w-3 text-gray-400" /></Button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-0.5 justify-center">
+                                  <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => startEditItem(index)}><Edit className="h-3 w-3 text-blue-500" /></Button>
+                                  <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItemFromBill(index)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Addon rows */}
+                      {addons.map((addon, index) => (
+                        <tr key={`addon-${addon.id}`} className="border-b border-gray-100 bg-blue-50/30">
+                          <td className="py-1.5 px-2"></td>
+                          <td className="py-1.5 px-2">
+                            {editingAddonIndex === index ? (
+                              <div className="flex gap-1 items-center">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-700 text-[9px] h-4">Addon</Badge>
+                                <Input value={editingAddon?.title || ''} onChange={(e) => setEditingAddon(prev => prev ? {...prev, title: e.target.value} : null)} className="w-24 h-6 text-xs" />
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="outline" className="bg-blue-100 text-blue-700 text-[9px] h-4">Addon</Badge>
+                                <span>{addon.title}</span>
+                                {addon.description && <span className="text-[10px] text-gray-500">({addon.description})</span>}
+                              </div>
+                            )}
+                          </td>
+                          <td className="py-1.5 px-2">-</td>
+                          <td className="py-1.5 px-2 text-center">1</td>
+                          <td className="py-1.5 px-2 text-center">-</td>
+                          <td className="py-1.5 px-2 text-right">
+                            {editingAddonIndex === index ? (
+                              <Input type="number" value={editingAddon?.amount || 0} onChange={(e) => setEditingAddon(prev => prev ? {...prev, amount: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-16 h-6 text-xs text-right" />
+                            ) : `₹${addon.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
+                          </td>
+                          <td className="py-1.5 px-2 text-right">-</td>
+                          <td className="py-1.5 px-2 text-right">-</td>
+                          <td className="py-1.5 px-2 text-right">-</td>
+                          <td className="py-1.5 px-2 text-right font-bold text-blue-600">₹{addon.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-1.5 px-2">
+                            {editingAddonIndex === index ? (
+                              <div className="flex gap-0.5 justify-center">
+                                <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={saveEditAddon}><CheckCircle className="h-3 w-3 text-green-500" /></Button>
+                                <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={cancelEditAddon}><XCircle className="h-3 w-3 text-gray-400" /></Button>
+                              </div>
+                            ) : (
+                              <div className="flex gap-0.5 justify-center">
+                                <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => startEditAddon(index)}><Edit className="h-3 w-3 text-blue-500" /></Button>
+                                <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeAddon(addon.id)}><Trash2 className="h-3 w-3 text-red-500" /></Button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {/* Totals Row */}
+                      <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
+                        <td className="py-2 px-2"></td>
+                        <td className="py-2 px-2">Total</td>
+                        <td className="py-2 px-2"></td>
+                        <td className="py-2 px-2 text-center">{billForm.items.reduce((s, i) => s + i.quantity, 0)}</td>
+                        <td className="py-2 px-2"></td>
+                        <td className="py-2 px-2"></td>
+                        <td className="py-2 px-2"></td>
+                        <td className="py-2 px-2 text-right">₹{Math.round(totals.totalTax).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="py-2 px-2"></td>
+                        <td className="py-2 px-2 text-right text-blue-700">₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Summary + Tax Breakdown - Side by Side */}
+          {(billForm.items.length > 0 || addons.length > 0) && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+              {/* Amount Summary */}
+              <Card className="shadow-sm">
+                <CardHeader className="py-3 px-4">
+                  <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                    <IndianRupee className="w-4 h-4" /> Amounts
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4 pt-0">
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Sub Total</span>
+                      <span>₹{Math.round(totals.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    {totals.totalDiscount > 0 && (
+                      <div className="flex justify-between text-red-600">
+                        <span>Discount</span>
+                        <span>-₹{Math.round(totals.totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
+                    <div className="flex justify-between text-gray-600">
+                      <span>Taxable Amount</span>
+                      <span>₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    {billForm.gst > 0 && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">CGST ({halfGst}%)</span>
+                          <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-600">SGST ({halfGst}%)</span>
+                          <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </>
+                    )}
+                    {totals.totalAddons > 0 && (
+                      <div className="flex justify-between text-blue-600">
+                        <span>Addons</span>
+                        <span>+₹{Math.round(totals.totalAddons).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
+                      <span>Grand Total</span>
+                      <span className="text-blue-700">₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-gray-500">
+                      <span>Balance</span>
+                      <span>₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                  {/* Amount in Words */}
+                  <div className="mt-3 pt-2 border-t border-gray-200">
+                    <p className="text-[10px] text-gray-500 uppercase font-semibold">Invoice Amount in Words</p>
+                    <p className="text-xs text-gray-700 font-medium italic">{amountToWords(Math.round(totals.grandTotal))}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tax Breakdown by HSN */}
+              {billForm.gst > 0 && taxBreakdown.length > 0 && (
+                <Card className="shadow-sm">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tax Breakdown</CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-1.5 font-semibold text-gray-600" rowSpan={2}>HSN/SAC</th>
+                          <th className="text-right py-1.5 font-semibold text-gray-600" rowSpan={2}>Taxable</th>
+                          <th className="text-center py-1 font-semibold text-gray-600 border-b" colSpan={2}>CGST</th>
+                          <th className="text-center py-1 font-semibold text-gray-600 border-b" colSpan={2}>SGST</th>
+                          <th className="text-right py-1.5 font-semibold text-gray-600" rowSpan={2}>Total Tax</th>
+                        </tr>
+                        <tr className="border-b">
+                          <th className="text-center py-1 font-medium text-gray-500">Rate</th>
+                          <th className="text-right py-1 font-medium text-gray-500">Amt</th>
+                          <th className="text-center py-1 font-medium text-gray-500">Rate</th>
+                          <th className="text-right py-1 font-medium text-gray-500">Amt</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {taxBreakdown.map((row, idx) => (
+                          <tr key={idx} className="border-b border-gray-100">
+                            <td className="py-1.5 font-mono">{row.hsn}</td>
+                            <td className="py-1.5 text-right">₹{row.taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 text-center">{halfGst}%</td>
+                            <td className="py-1.5 text-right">₹{row.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 text-center">{halfGst}%</td>
+                            <td className="py-1.5 text-right">₹{row.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 text-right font-medium">₹{row.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-gray-50 font-bold border-t">
+                          <td className="py-1.5">Total</td>
+                          <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.taxable, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-1.5"></td>
+                          <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.cgst, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-1.5"></td>
+                          <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.sgst, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </CardContent>
                 </Card>
+              )}
+            </div>
+          )}
 
+          {/* Terms, Notes & Actions */}
+          <Card className="shadow-sm mb-4">
+            <CardContent className="px-4 py-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="bill-notes">{t('notes')}</Label>
-                  <Input
-                    id="bill-notes"
-                    value={billForm.notes}
-                    onChange={(e) => setBillForm(prev => ({ ...prev, notes: e.target.value }))}
-                    placeholder={t('additionalNotesOrTerms')}
+                  <Label className="text-xs text-gray-500">Terms & Conditions</Label>
+                  <textarea
+                    value={billForm.terms_conditions}
+                    onChange={(e) => setBillForm(prev => ({ ...prev, terms_conditions: e.target.value }))}
+                    placeholder="Thanks for doing business with us!"
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
-
-                {errors.items && <FieldError message={errors.items} />}
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => {
-                    // Auto-save as draft on cancel for new bills with data
-                    if (!editingBill) {
-                      saveBillDraftBeacon();
-                    }
-                    setShowCreateBill(false);
-                    setEditingBill(null);
-                    resetBillForm();
-                  }}>
-                    {t('cancel')}
-                  </Button>
-                  {editingBill ? (
-                    <Button type="button" onClick={handleUpdateBill} disabled={billForm.items.length === 0 || (!billForm.client_id && !clientSearchQuery.trim())}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      {activeTab === 'non-gst-bills' ? t('updateQuotationBill') : t('updateInvoice')}
-                    </Button>
-                  ) : (
-                    <>
-                    <Button type="button" variant="outline" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={handleSaveAsDraft}>
-                      Save as Draft
-                    </Button>
-                    <Button type="submit" disabled={billForm.items.length === 0 || (!billForm.client_id && !clientSearchQuery.trim())}>
-                      <FileText className="mr-2 h-4 w-4" />
-                      {activeTab === 'non-gst-bills' ? t('createQuotationBill') : t('createInvoice')}
-                    </Button>
-                    </>
-                  )}
+                <div>
+                  <Label className="text-xs text-gray-500">{t('notes')}</Label>
+                  <textarea
+                    value={billForm.notes}
+                    onChange={(e) => setBillForm(prev => ({ ...prev, notes: e.target.value }))}
+                    placeholder="Additional notes..."
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
               </div>
-            </form>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+
+          {errors.items && <FieldError message={errors.items} />}
+
+          {/* Action Buttons */}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => {
+              if (!editingBill) { saveBillDraftBeacon(); }
+              setShowCreateBill(false);
+              setEditingBill(null);
+              resetBillForm();
+            }}>
+              {t('cancel')}
+            </Button>
+            {editingBill ? (
+              <Button type="button" size="sm" onClick={handleUpdateBill} disabled={billForm.items.length === 0 || (!billForm.client_id && !clientSearchQuery.trim())}>
+                <FileText className="mr-1 h-3 w-3" />
+                {activeTab === 'non-gst-bills' ? t('updateQuotationBill') : t('updateInvoice')}
+              </Button>
+            ) : (
+              <>
+                <Button type="button" variant="outline" size="sm" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={handleSaveAsDraft}>
+                  Save as Draft
+                </Button>
+                <Button type="submit" size="sm" disabled={billForm.items.length === 0 || (!billForm.client_id && !clientSearchQuery.trim())} className="bg-blue-600 hover:bg-blue-700">
+                  <FileText className="mr-1 h-3 w-3" />
+                  {activeTab === 'non-gst-bills' ? t('createQuotationBill') : t('createInvoice')}
+                </Button>
+              </>
+            )}
+          </div>
+        </form>
 
         {/* Add New Client Dialog */}
         <Dialog open={showAddClientDialog} onOpenChange={(open: boolean) => { setShowAddClientDialog(open); if (!open) setClientErrors({}); }}>
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>{t('addNewClient')}</DialogTitle>
-              <DialogDescription>
-                {t('enterNewClientDetails')}
-              </DialogDescription>
+              <DialogDescription>{t('enterNewClientDetails')}</DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>{t('companyName')} *</Label>
-                <Input
-                  value={newClientForm.name}
-                  onChange={(e) => { setNewClientForm({ ...newClientForm, name: e.target.value }); setClientErrors(prev => ({ ...prev, name: '' })); }}
-                  placeholder={t('companyName')}
-                />
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">{t('companyName')} *</Label>
+                <Input value={newClientForm.name} onChange={(e) => { setNewClientForm({ ...newClientForm, name: e.target.value }); setClientErrors(prev => ({ ...prev, name: '' })); }} placeholder={t('companyName')} className="h-8 text-sm" />
                 <FieldError message={clientErrors.name} />
               </div>
-              <div className="space-y-2">
-                <Label>{t('contactPerson')} *</Label>
-                <Input
-                  value={newClientForm.contactPerson}
-                  onChange={(e) => { setNewClientForm({ ...newClientForm, contactPerson: e.target.value }); setClientErrors(prev => ({ ...prev, contactPerson: '' })); }}
-                  placeholder={t('contactPersonName')}
-                />
+              <div>
+                <Label className="text-xs">{t('contactPerson')} *</Label>
+                <Input value={newClientForm.contactPerson} onChange={(e) => { setNewClientForm({ ...newClientForm, contactPerson: e.target.value }); setClientErrors(prev => ({ ...prev, contactPerson: '' })); }} placeholder={t('contactPersonName')} className="h-8 text-sm" />
                 <FieldError message={clientErrors.contactPerson} />
               </div>
-              <div className="space-y-2">
-                <Label>{t('phone')} *</Label>
-                <Input
-                  value={newClientForm.phone}
-                  onChange={(e) => { setNewClientForm({ ...newClientForm, phone: e.target.value }); setClientErrors(prev => ({ ...prev, phone: '' })); }}
-                  placeholder="+91 98765 43210"
-                />
-                <FieldError message={clientErrors.phone} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">{t('phone')} *</Label>
+                  <Input value={newClientForm.phone} onChange={(e) => { setNewClientForm({ ...newClientForm, phone: e.target.value }); setClientErrors(prev => ({ ...prev, phone: '' })); }} placeholder="+91 98765 43210" className="h-8 text-sm" />
+                  <FieldError message={clientErrors.phone} />
+                </div>
+                <div>
+                  <Label className="text-xs">{t('email')} *</Label>
+                  <Input type="email" value={newClientForm.email} onChange={(e) => { setNewClientForm({ ...newClientForm, email: e.target.value }); setClientErrors(prev => ({ ...prev, email: '' })); }} placeholder="email@example.com" className="h-8 text-sm" />
+                  <FieldError message={clientErrors.email} />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>{t('email')} *</Label>
-                <Input
-                  type="email"
-                  value={newClientForm.email}
-                  onChange={(e) => { setNewClientForm({ ...newClientForm, email: e.target.value }); setClientErrors(prev => ({ ...prev, email: '' })); }}
-                  placeholder="email@example.com"
-                />
-                <FieldError message={clientErrors.email} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('address')} *</Label>
-                <Input
-                  value={newClientForm.address}
-                  onChange={(e) => { setNewClientForm({ ...newClientForm, address: e.target.value }); setClientErrors(prev => ({ ...prev, address: '' })); }}
-                  placeholder={t('fullAddress')}
-                />
+              <div>
+                <Label className="text-xs">{t('address')} *</Label>
+                <Input value={newClientForm.address} onChange={(e) => { setNewClientForm({ ...newClientForm, address: e.target.value }); setClientErrors(prev => ({ ...prev, address: '' })); }} placeholder={t('fullAddress')} className="h-8 text-sm" />
                 <FieldError message={clientErrors.address} />
               </div>
-              <div className="space-y-2">
-                <Label>GST No. *</Label>
-                <Input
-                  value={newClientForm.gstNo}
-                  onChange={(e) => { setNewClientForm({ ...newClientForm, gstNo: e.target.value }); setClientErrors(prev => ({ ...prev, gstNo: '' })); }}
-                  placeholder="07AABCA1234D1ZD"
-                />
+              <div>
+                <Label className="text-xs">GST No. *</Label>
+                <Input value={newClientForm.gstNo} onChange={(e) => { setNewClientForm({ ...newClientForm, gstNo: e.target.value }); setClientErrors(prev => ({ ...prev, gstNo: '' })); }} placeholder="33AUJPM8458P1ZR" className="h-8 text-sm font-mono" />
                 <FieldError message={clientErrors.gstNo} />
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddClientDialog(false)}>
-                {t('cancel')}
-              </Button>
-              <Button onClick={handleAddNewClient}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('addClient')}
-              </Button>
+              <Button variant="outline" size="sm" onClick={() => setShowAddClientDialog(false)}>{t('cancel')}</Button>
+              <Button size="sm" onClick={handleAddNewClient}><Plus className="mr-1 h-3 w-3" /> {t('addClient')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

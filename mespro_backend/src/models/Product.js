@@ -16,6 +16,10 @@ module.exports = (sequelize) => {
       allowNull: false,
       unique: true,
     },
+    hsn_code: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
     category: {
       type: DataTypes.STRING(50),
       allowNull: true,
