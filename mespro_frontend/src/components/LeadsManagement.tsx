@@ -1613,11 +1613,11 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
               <div>
                 <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
                 <div className="relative">
-                  <div className="flex gap-1">
+                  <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
                     <select
                       value={countryCode}
                       onChange={(e) => setCountryCode(e.target.value)}
-                      className="w-20 h-8 px-1 border border-gray-300 rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
                     >
                       <option value="+91">+91</option>
                       <option value="+1">+1</option>
@@ -1638,7 +1638,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                     <Input
                       id="mobile"
                       placeholder="XXXXX XXXXX"
-                      className="h-8 text-sm flex-1"
+                      className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
                       value={mobileValue}
                       onChange={(e) => {
                         setMobileValue(e.target.value);
