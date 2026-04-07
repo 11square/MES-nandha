@@ -83,7 +83,7 @@ export function validateFields(
     }
 
     // Phone (exactly 10 digits)
-    if (rule.phone && !PHONE_RE.test(strValue.replace(/\s/g, ''))) {
+    if (rule.phone && !PHONE_RE.test(strValue.replace(/\s/g, '').replace(/^\+\d{1,3}/, ''))) {
       errors[key] = 'Phone number must be exactly 10 digits';
       continue;
     }
