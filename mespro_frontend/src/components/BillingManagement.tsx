@@ -143,15 +143,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   // Client search and add new client state
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [showClientDropdown, setShowClientDropdown] = useState(false);
-  const [showAddClientDialog, setShowAddClientDialog] = useState(false);
-  const [newClientForm, setNewClientForm] = useState({
-    name: '',
-    contactPerson: '',
-    phone: '',
-    email: '',
-    address: '',
-    gstNo: '',
-  });
+  const [clientMobile, setClientMobile] = useState('');
 
   // Multiple item entry rows state
   interface ItemEntryRow {
@@ -372,7 +364,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   const [dispatchedBills, setDispatchedBills] = useState<Set<string>>(new Set());
   const [printedBills, setPrintedBills] = useState<Set<string>>(new Set());
   const [errors, setErrors] = useState<ValidationErrors>({});
-  const [clientErrors, setClientErrors] = useState<ValidationErrors>({});
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
 
   const [billForm, setBillForm] = useState({
@@ -591,52 +582,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   const handleSelectClient = (client: Client) => {
     setBillForm(prev => ({ ...prev, client_id: client.id, gst_number: client.gstNo || '', invoiceType: client.gstNo?.trim() ? 'b2b' : 'b2c' }));
     setClientSearchQuery(client.name);
+    setClientMobile(client.phone || '');
     setShowClientDropdown(false);
     setErrors(prev => ({ ...prev, client: '' }));
-  };
-
-  // Handle adding a new client
-  const handleAddNewClient = async () => {
-    const errs = validateFields(newClientForm, {
-      name: { required: true, label: 'Name' },
-      contactPerson: { required: true, label: 'Contact Person' },
-      phone: { required: true, phone: true, label: 'Phone' },
-      email: { required: true, email: true, label: 'Email' },
-      address: { required: true, label: 'Address' },
-      gstNo: { required: true, label: 'GST No.' },
-    });
-    if (Object.keys(errs).length) {
-      setClientErrors(errs);
-      return;
-    }
-    setClientErrors({});
-
-    try {
-      const result = await clientsService.createClient({
-        name: newClientForm.name,
-        contact_person: newClientForm.contactPerson,
-        phone: newClientForm.phone,
-        email: newClientForm.email,
-        address: newClientForm.address,
-        gst_number: newClientForm.gstNo || undefined,
-      });
-      const newClientId = String(result?.id || `CLT-${clients.length + 1}`);
-      toast.success('Client added successfully!');
-      refreshBills();
-      setBillForm(prev => ({ ...prev, client_id: newClientId }));
-      setClientSearchQuery(newClientForm.name);
-      setShowAddClientDialog(false);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to add client');
-    }
-    setNewClientForm({
-      name: '',
-      contactPerson: '',
-      phone: '',
-      email: '',
-      address: '',
-      gstNo: '',
-    });
   };
 
   // Add a new empty row for item entry
@@ -1061,11 +1009,25 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     const totals = calculateBillTotals();
 
     try {
+      // Auto-create client if it's a new (custom) client
+      let resolvedClientId = client.id === 'CUSTOM' ? null : client.id;
+      if (client.id === 'CUSTOM' && client.name && !isDraft) {
+        try {
+          const result = await clientsService.createClient({
+            name: client.name,
+            phone: clientMobile || '',
+            gst_number: billForm.gst_number || undefined,
+          });
+          if (result?.id) resolvedClientId = String(result.id);
+          refreshBills(); // refresh client list too
+        } catch (_) { /* continue even if client creation fails */ }
+      }
+
       await billingService.createBill({
         bill_no: billForm.bill_number || undefined,
         date: billForm.date,
         order_id: orderBillData ? parseOrderIdForApi(orderBillData.orderId) : null,
-        client_id: client.id === 'CUSTOM' ? null : client.id,
+        client_id: resolvedClientId,
         client_name: client.name,
         client_address: client.address || '',
         client_gst: billForm.gst_number || client.gstNo || '',
@@ -1168,6 +1130,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     setEditingItemIndex(null);
     setEditingItem(null);
     setClientSearchQuery('');
+    setClientMobile('');
     setShowClientDropdown(false);
     setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', gstRate: 18, quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setItemRowErrors({});
@@ -1972,27 +1935,20 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <div>
                     <Label className="text-xs text-gray-500">Client *</Label>
                     <div className="relative">
-                      <div className="flex gap-1">
-                        <div className="relative flex-1">
-                          <Input
-                            type="text"
-                            placeholder="Search client..."
-                            value={clientSearchQuery}
-                            onChange={(e) => {
-                              setClientSearchQuery(e.target.value);
-                              setShowClientDropdown(true);
-                              setErrors(prev => ({ ...prev, client: '' }));
-                              if (!e.target.value) setBillForm(prev => ({ ...prev, client_id: '' }));
-                            }}
-                            onFocus={() => setShowClientDropdown(true)}
-                            onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
-                            className="h-8 text-sm"
-                          />
-                        </div>
-                        <Button type="button" variant="outline" onClick={() => setShowAddClientDialog(true)} title="Add New Client" className="h-8 px-2">
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <Input
+                        type="text"
+                        placeholder="Search client..."
+                        value={clientSearchQuery}
+                        onChange={(e) => {
+                          setClientSearchQuery(e.target.value);
+                          setShowClientDropdown(true);
+                          setErrors(prev => ({ ...prev, client: '' }));
+                          if (!e.target.value) { setBillForm(prev => ({ ...prev, client_id: '' })); setClientMobile(''); }
+                        }}
+                        onFocus={() => setShowClientDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowClientDropdown(false), 200)}
+                        className="h-8 text-sm"
+                      />
                       {showClientDropdown && clientSearchQuery && (
                         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-auto">
                           {filteredClients.length > 0 ? (
@@ -2008,16 +1964,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               </div>
                             </>
                           ) : (
-                            <>
-                              <div className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer" onMouseDown={(e) => { e.preventDefault(); setBillForm(prev2 => ({ ...prev2, client_id: '' })); setShowClientDropdown(false); }}>
-                                <div className="font-medium text-blue-600 text-sm">Use "{clientSearchQuery}"</div>
-                              </div>
-                              <div className="px-3 py-2 text-center border-t border-gray-100">
-                                <Button type="button" size="sm" variant="outline" onMouseDown={(e: React.MouseEvent) => { e.preventDefault(); setNewClientForm({ ...newClientForm, name: clientSearchQuery }); setShowAddClientDialog(true); setShowClientDropdown(false); }}>
-                                  <Plus className="h-3 w-3 mr-1" /> {t('addNewClient')}
-                                </Button>
-                              </div>
-                            </>
+                            <div className="px-3 py-1.5 hover:bg-blue-50 cursor-pointer" onMouseDown={(e) => { e.preventDefault(); setBillForm(prev2 => ({ ...prev2, client_id: '' })); setShowClientDropdown(false); }}>
+                              <div className="font-medium text-blue-600 text-sm">Use "{clientSearchQuery}" as new client</div>
+                            </div>
                           )}
                         </div>
                       )}
@@ -2025,7 +1974,11 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     <FieldError message={errors.client} />
                   </div>
                   <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                    <div className="col-span-2">
+                    <div>
+                      <Label className="text-xs text-gray-500">Mobile</Label>
+                      <Input type="text" placeholder="e.g. 9876543210" value={clientMobile} onChange={(e) => setClientMobile(e.target.value.replace(/[^0-9+\s]/g, ''))} className="h-8 text-sm" maxLength={15} />
+                    </div>
+                    <div>
                       <Label className="text-xs text-gray-500">GSTIN</Label>
                       <Input type="text" placeholder="e.g. 33AUJPM8458P1ZR" value={billForm.gst_number} onChange={(e) => { const val = e.target.value.toUpperCase(); setBillForm(prev => ({ ...prev, gst_number: val, invoiceType: val.trim() ? 'b2b' : 'b2c' })); }} className="h-8 text-sm font-mono" maxLength={15} />
                     </div>
@@ -2033,7 +1986,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   {/* Selected client info display */}
                   {(() => {
                     const sel = getSelectedClient();
-                    if (!sel) return null;
+                    if (!sel || sel.id === 'CUSTOM') return null;
                     return (
                       <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
                         <p className="font-semibold text-gray-800">{sel.name}</p>
@@ -2576,54 +2529,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
             )}
           </div>
         </form>
-
-        {/* Add New Client Dialog */}
-        <Dialog open={showAddClientDialog} onOpenChange={(open: boolean) => { setShowAddClientDialog(open); if (!open) setClientErrors({}); }}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>{t('addNewClient')}</DialogTitle>
-              <DialogDescription>{t('enterNewClientDetails')}</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs">{t('companyName')} *</Label>
-                <Input value={newClientForm.name} onChange={(e) => { setNewClientForm({ ...newClientForm, name: e.target.value }); setClientErrors(prev => ({ ...prev, name: '' })); }} placeholder={t('companyName')} className="h-8 text-sm" />
-                <FieldError message={clientErrors.name} />
-              </div>
-              <div>
-                <Label className="text-xs">{t('contactPerson')} *</Label>
-                <Input value={newClientForm.contactPerson} onChange={(e) => { setNewClientForm({ ...newClientForm, contactPerson: e.target.value }); setClientErrors(prev => ({ ...prev, contactPerson: '' })); }} placeholder={t('contactPersonName')} className="h-8 text-sm" />
-                <FieldError message={clientErrors.contactPerson} />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">{t('phone')} *</Label>
-                  <Input value={newClientForm.phone} onChange={(e) => { setNewClientForm({ ...newClientForm, phone: e.target.value }); setClientErrors(prev => ({ ...prev, phone: '' })); }} placeholder="+91 98765 43210" className="h-8 text-sm" />
-                  <FieldError message={clientErrors.phone} />
-                </div>
-                <div>
-                  <Label className="text-xs">{t('email')} *</Label>
-                  <Input type="email" value={newClientForm.email} onChange={(e) => { setNewClientForm({ ...newClientForm, email: e.target.value }); setClientErrors(prev => ({ ...prev, email: '' })); }} placeholder="email@example.com" className="h-8 text-sm" />
-                  <FieldError message={clientErrors.email} />
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">{t('address')} *</Label>
-                <Input value={newClientForm.address} onChange={(e) => { setNewClientForm({ ...newClientForm, address: e.target.value }); setClientErrors(prev => ({ ...prev, address: '' })); }} placeholder={t('fullAddress')} className="h-8 text-sm" />
-                <FieldError message={clientErrors.address} />
-              </div>
-              <div>
-                <Label className="text-xs">GST No. *</Label>
-                <Input value={newClientForm.gstNo} onChange={(e) => { setNewClientForm({ ...newClientForm, gstNo: e.target.value }); setClientErrors(prev => ({ ...prev, gstNo: '' })); }} placeholder="33AUJPM8458P1ZR" className="h-8 text-sm font-mono" />
-                <FieldError message={clientErrors.gstNo} />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setShowAddClientDialog(false)}>{t('cancel')}</Button>
-              <Button size="sm" onClick={handleAddNewClient}><Plus className="mr-1 h-3 w-3" /> {t('addClient')}</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     );
   }
