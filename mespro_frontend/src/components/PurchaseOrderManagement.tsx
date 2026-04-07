@@ -40,7 +40,8 @@ import {
   Send,
   Check,
   ChevronsUpDown,
-  IndianRupee
+  IndianRupee,
+  Minus
 } from 'lucide-react';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { ConfirmDialog } from './ui/confirm-dialog';
@@ -682,17 +683,12 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     return result;
   }, [allItems]);
 
-  // New item state (search-based)
-  const [newItem, setNewItem] = useState({
-    category: '',
-    subcategory: '',
-    product: '',
-    productName: '',
-    quantity: 0,
-    unitPrice: 0,
-  });
-  const [itemSearchQuery, setItemSearchQuery] = useState('');
-  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  // Multi-row item entry (like billing)
+  const [itemEntryRows, setItemEntryRows] = useState<Array<{ id: number; itemId: string; itemName: string; category: string; subcategory: string; quantity: number; unitPrice: number; unit: string }>>([
+    { id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }
+  ]);
+  const [activeRowDropdown, setActiveRowDropdown] = useState<number | null>(null);
+  const [itemRowErrors, setItemRowErrors] = useState<Record<number, { itemId?: string; quantity?: string }>>({});
 
   // Added items list
   interface POItem {
@@ -718,39 +714,74 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     return injectedProductItems[categoryId]?.[subcategory] || [];
   };
 
-  const selectItemFromSearch = (item: any) => {
-    const catId = (item.category || 'other').toLowerCase().replace(/\s+/g, '-');
-    const unitPrice = Number(item.base_price || item.selling_price || item.unit_price || item.unitPrice) || 0;
-    setNewItem({
-      category: catId,
-      subcategory: item.subcategory || 'General',
-      product: String(item.id),
-      productName: item.name,
-      quantity: newItem.quantity || 1,
-      unitPrice,
-    });
-    setItemSearchQuery(item.name);
-    setShowItemDropdown(false);
+  // Multi-row item entry functions
+  const addNewItemRow = () => {
+    const lastRow = itemEntryRows[itemEntryRows.length - 1];
+    const errs: { itemId?: string; quantity?: string } = {};
+    if (!lastRow.itemId) errs.itemId = 'Select an item';
+    if (!lastRow.quantity || lastRow.quantity < 1) errs.quantity = 'Enter quantity';
+    if (Object.keys(errs).length) {
+      setItemRowErrors(prev => ({ ...prev, [lastRow.id]: errs }));
+      return;
+    }
+    const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
+    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
   };
 
-  const addItem = () => {
-    if (!newItem.product || !newItem.productName) return;
-    if (newItem.quantity < 1) return;
+  const updateItemRow = (rowId: number, field: string, value: string | number) => {
+    setItemEntryRows(rows => rows.map(row =>
+      row.id === rowId ? { ...row, [field]: value } : row
+    ));
+    if (field === 'itemName' || field === 'itemId') {
+      setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
+    }
+    if (field === 'quantity') {
+      setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], quantity: '' } }));
+    }
+  };
 
-    const newPOItem: POItem = {
-      id: `item-${Date.now()}`,
-      category: newItem.category,
-      subcategory: newItem.subcategory,
-      product: newItem.product,
-      productName: newItem.productName,
-      quantity: newItem.quantity,
-      unitPrice: newItem.unitPrice,
-      total: newItem.quantity * newItem.unitPrice,
-    };
+  const selectItemForRow = (rowId: number, item: any) => {
+    const catId = (item.category || 'other').toLowerCase().replace(/\s+/g, '-');
+    const unitPrice = Number(item.base_price || item.selling_price || item.unit_price || item.unitPrice) || 0;
+    setItemEntryRows(rows => rows.map(row =>
+      row.id === rowId ? { ...row, itemId: String(item.id), itemName: item.name, category: catId, subcategory: item.subcategory || 'General', unitPrice, unit: item.unit || 'Pcs' } : row
+    ));
+    setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
+    setActiveRowDropdown(null);
+  };
 
-    setAddedItems([...addedItems, newPOItem]);
-    setNewItem({ category: '', subcategory: '', product: '', productName: '', quantity: 0, unitPrice: 0 });
-    setItemSearchQuery('');
+  const removeItemRow = (rowId: number) => {
+    if (itemEntryRows.length > 1) {
+      setItemEntryRows(rows => rows.filter(row => row.id !== rowId));
+    } else {
+      setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    }
+  };
+
+  const addAllItems = () => {
+    const rowErrors: Record<number, { itemId?: string; quantity?: string }> = {};
+    itemEntryRows.forEach((row) => {
+      if (!row.itemId) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), itemId: 'Select an item' };
+      if (!row.quantity || row.quantity < 1) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), quantity: 'Enter quantity' };
+    });
+    if (Object.keys(rowErrors).length) { setItemRowErrors(rowErrors); return; }
+
+    const validRows = itemEntryRows.filter(row => row.itemId);
+    if (validRows.length === 0) return;
+
+    const newPOItems = validRows.map((row) => ({
+      id: `item-${Date.now()}-${row.id}`,
+      category: row.category,
+      subcategory: row.subcategory,
+      product: row.itemId,
+      productName: row.itemName,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+      total: row.quantity * row.unitPrice,
+    }));
+    setAddedItems([...addedItems, ...newPOItems]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setItemRowErrors({});
     setErrors(prev => { const {items: _, ...rest} = prev; return rest; });
   };
 
@@ -793,16 +824,17 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       const reorderQty = Math.max(1, Number(stockItem.reorder_level) - Number(stockItem.current_stock));
       const unitPrice = Number(stockItem.unit_price) || 0;
 
-      // Pre-select the stock item
-      setNewItem({
+      // Pre-select the stock item in first entry row
+      setItemEntryRows([{
+        id: 1,
+        itemId: stockProductId,
+        itemName: stockItem.name || '',
         category: matchedCategoryId,
         subcategory: subcat,
-        product: stockProductId,
-        productName: stockItem.name || '',
         quantity: reorderQty,
         unitPrice: unitPrice,
-      });
-      setItemSearchQuery(stockItem.name || '');
+        unit: 'Pcs',
+      }]);
 
       // Also pre-fill the vendor if supplier info is available
       if (stockItem.supplier && vendors.length > 0) {
@@ -1096,105 +1128,137 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
           {errors.items && <p className="text-sm text-red-500 mt-1">{errors.items}</p>}
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
-          {/* Item Entry - Compact Table Style */}
+          {/* Multi-Row Item Entry - Billing Style */}
           <div className="overflow-visible">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[30%]">{t('item')} *</th>
-                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[18%]">Category</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">{t('quantity')} *</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">{t('unitPrice')}</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">Amount</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">{t('quantity')} *</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">UNIT</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">PRICE/UNIT</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">AMOUNT</th>
+                  <th className="w-[60px]"></th>
                 </tr>
               </thead>
               <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="py-1 pr-2">
-                    <div className="relative">
+                {itemEntryRows.map((row, idx) => (
+                  <tr key={row.id} className="border-b border-gray-100">
+                    <td className="py-1 pr-2">
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="Search item..."
+                          value={row.itemName}
+                          onChange={(e) => {
+                            updateItemRow(row.id, 'itemName', e.target.value);
+                            updateItemRow(row.id, 'itemId', '');
+                            updateItemRow(row.id, 'category', '');
+                            updateItemRow(row.id, 'subcategory', '');
+                            updateItemRow(row.id, 'unitPrice', 0);
+                            setActiveRowDropdown(row.id);
+                          }}
+                          onFocus={() => setActiveRowDropdown(row.id)}
+                          onBlur={() => setTimeout(() => setActiveRowDropdown(null), 300)}
+                          className={`h-7 text-xs ${itemRowErrors[row.id]?.itemId ? 'border-red-400' : ''}`}
+                        />
+                        {activeRowDropdown === row.id && (
+                          <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-auto">
+                            {allItems
+                              .filter((p: any) => (p.name || '').toLowerCase().includes((row.itemName || '').toLowerCase()))
+                              .length > 0 ? (
+                              allItems
+                                .filter((p: any) => (p.name || '').toLowerCase().includes((row.itemName || '').toLowerCase()))
+                                .map((item: any) => (
+                                  <div
+                                    key={item.id}
+                                    className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      selectItemForRow(row.id, item);
+                                    }}
+                                  >
+                                    <div className="font-medium text-xs">{item.name}</div>
+                                    <div className="text-[10px] text-gray-500">{item.category}{item.subcategory ? ` > ${item.subcategory}` : ''} • ₹{Number(item.base_price || item.selling_price || item.unit_price || 0).toLocaleString()}</div>
+                                  </div>
+                                ))
+                            ) : (
+                              <div className="px-2 py-1 text-center text-gray-500 text-xs">No items found</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-1 pr-2">
                       <Input
-                        type="text"
-                        placeholder="Search item..."
-                        value={itemSearchQuery}
-                        onChange={(e) => {
-                          setItemSearchQuery(e.target.value);
-                          setNewItem({ ...newItem, product: '', productName: '', category: '', subcategory: '', unitPrice: 0 });
-                          setShowItemDropdown(true);
+                        type="number"
+                        min="1"
+                        value={row.quantity}
+                        onChange={(e) => updateItemRow(row.id, 'quantity', parseInt(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={(e) => {
+                          blockInvalidNumberKeys(e);
+                          if (e.key === 'Enter') { e.preventDefault(); addAllItems(); }
                         }}
-                        onFocus={() => setShowItemDropdown(true)}
-                        onBlur={() => setTimeout(() => setShowItemDropdown(false), 300)}
-                        className="h-7 text-xs"
+                        className={`h-7 text-xs text-center ${itemRowErrors[row.id]?.quantity ? 'border-red-400' : ''}`}
                       />
-                      {showItemDropdown && (
-                        <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                          {allItems
-                            .filter((p: any) => (p.name || '').toLowerCase().includes(itemSearchQuery.toLowerCase()))
-                            .length > 0 ? (
-                            allItems
-                              .filter((p: any) => (p.name || '').toLowerCase().includes(itemSearchQuery.toLowerCase()))
-                              .map((item: any) => (
-                                <div
-                                  key={item.id}
-                                  className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    selectItemFromSearch(item);
-                                  }}
-                                >
-                                  <div className="font-medium text-xs">{item.name}</div>
-                                  <div className="text-[10px] text-gray-500">{item.category}{item.subcategory ? ` > ${item.subcategory}` : ''} • ₹{Number(item.base_price || item.selling_price || item.unit_price || 0).toLocaleString()}</div>
-                                </div>
-                              ))
-                          ) : (
-                            <div className="px-2 py-1 text-center text-gray-500 text-xs">
-                              No items found
-                            </div>
-                          )}
-                        </div>
+                    </td>
+                    <td className="py-1 pr-2">
+                      <select
+                        value={row.unit}
+                        onChange={(e) => updateItemRow(row.id, 'unit', e.target.value)}
+                        className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white"
+                      >
+                        {['Pcs', 'Kg', 'Ltr', 'Mtr', 'Box', 'Bag', 'Set', 'Nos', 'Pair', 'Roll', 'Pack', 'Dozen', 'Ton', 'Sq.ft', 'Sq.mtr'].map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-1 pr-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Auto"
+                        value={row.unitPrice || ''}
+                        onChange={(e) => updateItemRow(row.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                        onFocus={(e) => e.target.select()}
+                        onKeyDown={(e) => {
+                          blockInvalidNumberKeys(e);
+                          if (e.key === 'Tab' && !e.shiftKey && idx === itemEntryRows.length - 1) { e.preventDefault(); addNewItemRow(); }
+                          if (e.key === 'Enter') { e.preventDefault(); addAllItems(); }
+                        }}
+                        className="h-7 text-xs text-right"
+                      />
+                    </td>
+                    <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
+                      {row.itemId && row.quantity > 0 ? `₹${(row.unitPrice * row.quantity).toLocaleString()}` : '-'}
+                    </td>
+                    <td className="py-1 flex gap-0.5 justify-center">
+                      <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeItemRow(row.id)} title="Remove row">
+                        <Minus className="h-3 w-3 text-red-500" />
+                      </Button>
+                      {idx === itemEntryRows.length - 1 && (
+                        <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={addNewItemRow} title="Add row">
+                          <Plus className="h-3 w-3 text-green-600" />
+                        </Button>
                       )}
-                    </div>
-                  </td>
-                  <td className="py-1 pr-2 text-xs text-gray-500">
-                    {newItem.category ? (
-                      <span className="truncate block">{productCategories.find(c => c.id === newItem.category)?.name || newItem.category}{newItem.subcategory ? ` > ${newItem.subcategory}` : ''}</span>
-                    ) : '-'}
-                  </td>
-                  <td className="py-1 pr-2">
-                    <Input
-                      type="number"
-                      min="0"
-                      value={newItem.quantity}
-                      onChange={(e) => setNewItem({ ...newItem, quantity: parseInt(e.target.value) || 0 })}
-                      onFocus={(e) => e.target.select()}
-                      onKeyDown={(e) => {
-                        blockInvalidNumberKeys(e);
-                        if (e.key === 'Enter' && newItem.product && newItem.quantity > 0) { e.preventDefault(); addItem(); }
-                      }}
-                      className="h-7 text-xs text-center"
-                    />
-                  </td>
-                  <td className="py-1 pr-2 text-right text-xs text-gray-600">
-                    {newItem.product ? `₹${newItem.unitPrice.toLocaleString()}` : '-'}
-                  </td>
-                  <td className="py-1 text-right text-xs font-medium text-gray-700">
-                    {newItem.product && newItem.quantity > 0 ? `₹${(newItem.unitPrice * newItem.quantity).toLocaleString()}` : '-'}
-                  </td>
-                </tr>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* Add Item Button */}
+          {/* Add Items Button */}
           <div className="flex justify-end pt-2">
             <Button
               type="button"
-              onClick={addItem}
-              disabled={!newItem.product || newItem.quantity < 1}
+              onClick={addAllItems}
+              disabled={!itemEntryRows.some(row => row.itemId)}
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
             >
               <Plus className="w-3 h-3 mr-1" />
-              {t('addItem')}
+              + {t('addItem')}
             </Button>
           </div>
 
@@ -1206,8 +1270,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                   <tr className="border-b">
                     <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
                     <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
-                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-28">Category</th>
-                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-28">Subcategory</th>
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
@@ -1215,31 +1277,24 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                   </tr>
                 </thead>
                 <tbody>
-                  {addedItems.map((item, index) => {
-                    const categoryName = productCategories.find(c => c.id === item.category)?.name || item.category;
-                    return (
-                      <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
-                        <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
-                        <td className="py-1.5 px-2 font-medium">{item.productName}</td>
-                        <td className="py-1.5 px-2 text-gray-500">{categoryName}</td>
-                        <td className="py-1.5 px-2 text-gray-500">{item.subcategory}</td>
-                        <td className="py-1.5 px-2 text-center">{item.quantity}</td>
-                        <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td className="py-1.5 px-2">
-                          <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
-                            <Trash2 className="h-3 w-3 text-red-500" />
-                          </Button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {addedItems.map((item, index) => (
+                    <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                      <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
+                      <td className="py-1.5 px-2 font-medium">{item.productName}</td>
+                      <td className="py-1.5 px-2 text-center">{item.quantity}</td>
+                      <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-1.5 px-2">
+                        <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
+                          <Trash2 className="h-3 w-3 text-red-500" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                   {/* Totals Row */}
                   <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
                     <td className="py-2 px-2"></td>
                     <td className="py-2 px-2">Total</td>
-                    <td className="py-2 px-2"></td>
-                    <td className="py-2 px-2"></td>
                     <td className="py-2 px-2 text-center">{addedItems.reduce((s, i) => s + i.quantity, 0)}</td>
                     <td className="py-2 px-2"></td>
                     <td className="py-2 px-2 text-right text-blue-700">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
