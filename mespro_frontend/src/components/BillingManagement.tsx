@@ -2083,7 +2083,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           )}
 
           {/* Items Section */}
-          <Card className="shadow-sm mb-4">
+          <Card className="shadow-sm mb-4 overflow-visible">
             <CardHeader className="py-3 px-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
@@ -2100,7 +2100,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
             </CardHeader>
             <CardContent className="px-4 pb-4 pt-0">
               {/* Item Entry Rows - Compact Table Style */}
-              <div className="overflow-x-auto">
+              <div className="overflow-visible">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
