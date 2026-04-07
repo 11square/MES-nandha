@@ -716,14 +716,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
 
   // Multi-row item entry functions
   const addNewItemRow = () => {
-    const lastRow = itemEntryRows[itemEntryRows.length - 1];
-    const errs: { itemId?: string; quantity?: string } = {};
-    if (!lastRow.itemId) errs.itemId = 'Select an item';
-    if (!lastRow.quantity || lastRow.quantity < 1) errs.quantity = 'Enter quantity';
-    if (Object.keys(errs).length) {
-      setItemRowErrors(prev => ({ ...prev, [lastRow.id]: errs }));
-      return;
-    }
     const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
     setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
   };
@@ -1223,8 +1215,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                         onFocus={(e) => e.target.select()}
                         onKeyDown={(e) => {
                           blockInvalidNumberKeys(e);
-                          if (e.key === 'Tab' && !e.shiftKey && idx === itemEntryRows.length - 1) { e.preventDefault(); addNewItemRow(); }
-                          if (e.key === 'Enter') { e.preventDefault(); addAllItems(); }
+                          if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); addNewItemRow(); }
+                          if (e.key === 'Enter') { e.preventDefault(); addNewItemRow(); }
                         }}
                         className="h-7 text-xs text-right"
                       />
