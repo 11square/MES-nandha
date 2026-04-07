@@ -1204,6 +1204,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     const isQuotation = bill.bill_no.startsWith('QTN');
     const docTitle = isQuotation ? 'Quotation' : 'Tax Invoice';
     const balance = bill.grand_total - bill.paid_amount;
+    const pdfIsIntraState = placeOfSupply.startsWith('33-');
 
     // Build item rows with serial numbers
     let totalQty = 0;
@@ -1247,17 +1248,28 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
     const hsnRows = Object.entries(hsnMap).map(([key, v]) => {
       const hsn = key.split('_')[0];
-      const halfRate = v.rate / 2;
-      return `
-      <tr>
-        <td>${hsn}</td>
-        <td class="tr">${fmtCur(v.taxable)}</td>
-        <td class="tc">${halfRate}%</td>
-        <td class="tr">${fmtCur(v.cgst)}</td>
-        <td class="tc">${halfRate}%</td>
-        <td class="tr">${fmtCur(v.sgst)}</td>
-        <td class="tr bold">${fmtCur(v.total)}</td>
-      </tr>`;
+      if (pdfIsIntraState) {
+        const halfRate = v.rate / 2;
+        return `
+        <tr>
+          <td>${hsn}</td>
+          <td class="tr">${fmtCur(v.taxable)}</td>
+          <td class="tc">${halfRate}%</td>
+          <td class="tr">${fmtCur(v.cgst)}</td>
+          <td class="tc">${halfRate}%</td>
+          <td class="tr">${fmtCur(v.sgst)}</td>
+          <td class="tr bold">${fmtCur(v.total)}</td>
+        </tr>`;
+      } else {
+        return `
+        <tr>
+          <td>${hsn}</td>
+          <td class="tr">${fmtCur(v.taxable)}</td>
+          <td class="tc">${v.rate}%</td>
+          <td class="tr">${fmtCur(v.total)}</td>
+          <td class="tr bold">${fmtCur(v.total)}</td>
+        </tr>`;
+      }
     }).join('');
 
     const hsnTotals = Object.values(hsnMap).reduce((a, v) => ({
@@ -1415,7 +1427,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       <table>
         <tr><td>Sub Total</td><td>${fmtCur(bill.subtotal)}</td></tr>
         ${bill.total_discount > 0 ? `<tr><td>Discount</td><td>- ${fmtCur(bill.total_discount)}</td></tr>` : ''}
-        ${bill.total_tax > 0 ? `<tr><td>Tax</td><td>${fmtCur(bill.total_tax)}</td></tr>` : ''}
+        ${bill.total_tax > 0 ? (pdfIsIntraState 
+          ? `<tr><td>CGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr><tr><td>SGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr>` 
+          : `<tr><td>IGST</td><td>${fmtCur(bill.total_tax)}</td></tr>`) : ''}
         <tr class="grand-total"><td>Total</td><td>${fmtCur(bill.grand_total)}</td></tr>
         <tr><td>Paid</td><td>${fmtCur(bill.paid_amount)}</td></tr>
         <tr><td>Balance</td><td>${fmtCur(balance)}</td></tr>
@@ -1428,6 +1442,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   <div class="hsn-section">
     <table class="hsn-table">
       <thead>
+        ${pdfIsIntraState ? `
         <tr>
           <th rowspan="2">HSN/SAC</th>
           <th rowspan="2">Taxable amount</th>
@@ -1440,17 +1455,27 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <th>Amount</th>
           <th>Rate</th>
           <th>Amount</th>
-        </tr>
+        </tr>` : `
+        <tr>
+          <th>HSN/SAC</th>
+          <th>Taxable amount</th>
+          <th>IGST Rate</th>
+          <th>IGST Amount</th>
+          <th>Total Tax Amount</th>
+        </tr>`}
       </thead>
       <tbody>
         ${hsnRows}
         <tr class="total-row">
           <td class="tc">Total</td>
           <td class="tr">${fmtCur(hsnTotals.taxable)}</td>
+          ${pdfIsIntraState ? `
           <td></td>
           <td class="tr">${fmtCur(hsnTotals.cgst)}</td>
           <td></td>
-          <td class="tr">${fmtCur(hsnTotals.sgst)}</td>
+          <td class="tr">${fmtCur(hsnTotals.sgst)}</td>` : `
+          <td></td>
+          <td class="tr">${fmtCur(hsnTotals.total)}</td>`}
           <td class="tr bold">${fmtCur(hsnTotals.total)}</td>
         </tr>
       </tbody>
@@ -1826,6 +1851,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     const totals = calculateBillTotals();
     const taxBreakdown = calculateTaxBreakdown();
     const hasAnyTax = billForm.items.some(item => item.tax > 0);
+    const isIntraState = billForm.place_of_supply.startsWith('33-');
     const taxableAmount = totals.subtotal - totals.totalDiscount;
 
     return (
@@ -2349,16 +2375,23 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <span>₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
                     {hasAnyTax && (
-                      <>
+                      isIntraState ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">CGST</span>
+                            <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">SGST</span>
+                            <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        </>
+                      ) : (
                         <div className="flex justify-between">
-                          <span className="text-gray-600">CGST</span>
-                          <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-600">IGST</span>
+                          <span>₹{totals.totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-600">SGST</span>
-                          <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                        </div>
-                      </>
+                      )
                     )}
                     {totals.totalAddons > 0 && (
                       <div className="flex justify-between text-blue-600">
@@ -2392,39 +2425,69 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <CardContent className="px-4 pb-4 pt-0">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-1.5 font-semibold text-gray-600" rowSpan={2}>HSN/SAC</th>
-                          <th className="text-right py-1.5 font-semibold text-gray-600" rowSpan={2}>Taxable</th>
-                          <th className="text-center py-1 font-semibold text-gray-600 border-b" colSpan={2}>CGST</th>
-                          <th className="text-center py-1 font-semibold text-gray-600 border-b" colSpan={2}>SGST</th>
-                          <th className="text-right py-1.5 font-semibold text-gray-600" rowSpan={2}>Total Tax</th>
-                        </tr>
-                        <tr className="border-b">
-                          <th className="text-center py-1 font-medium text-gray-500">Rate</th>
-                          <th className="text-right py-1 font-medium text-gray-500">Amt</th>
-                          <th className="text-center py-1 font-medium text-gray-500">Rate</th>
-                          <th className="text-right py-1 font-medium text-gray-500">Amt</th>
-                        </tr>
+                        {isIntraState ? (
+                          <>
+                            <tr className="border-b">
+                              <th className="text-left py-1.5 font-semibold text-gray-600" rowSpan={2}>HSN/SAC</th>
+                              <th className="text-right py-1.5 font-semibold text-gray-600" rowSpan={2}>Taxable</th>
+                              <th className="text-center py-1 font-semibold text-gray-600 border-b" colSpan={2}>CGST</th>
+                              <th className="text-center py-1 font-semibold text-gray-600 border-b" colSpan={2}>SGST</th>
+                              <th className="text-right py-1.5 font-semibold text-gray-600" rowSpan={2}>Total Tax</th>
+                            </tr>
+                            <tr className="border-b">
+                              <th className="text-center py-1 font-medium text-gray-500">Rate</th>
+                              <th className="text-right py-1 font-medium text-gray-500">Amt</th>
+                              <th className="text-center py-1 font-medium text-gray-500">Rate</th>
+                              <th className="text-right py-1 font-medium text-gray-500">Amt</th>
+                            </tr>
+                          </>
+                        ) : (
+                          <tr className="border-b">
+                            <th className="text-left py-1.5 font-semibold text-gray-600">HSN/SAC</th>
+                            <th className="text-right py-1.5 font-semibold text-gray-600">Taxable</th>
+                            <th className="text-center py-1.5 font-semibold text-gray-600">IGST Rate</th>
+                            <th className="text-right py-1.5 font-semibold text-gray-600">IGST Amt</th>
+                            <th className="text-right py-1.5 font-semibold text-gray-600">Total Tax</th>
+                          </tr>
+                        )}
                       </thead>
                       <tbody>
                         {taxBreakdown.map((row, idx) => (
                           <tr key={idx} className="border-b border-gray-100">
                             <td className="py-1.5 font-mono">{row.hsn}</td>
                             <td className="py-1.5 text-right">₹{row.taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="py-1.5 text-center">{row.rate / 2}%</td>
-                            <td className="py-1.5 text-right">₹{row.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="py-1.5 text-center">{row.rate / 2}%</td>
-                            <td className="py-1.5 text-right">₹{row.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            {isIntraState ? (
+                              <>
+                                <td className="py-1.5 text-center">{row.rate / 2}%</td>
+                                <td className="py-1.5 text-right">₹{row.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                <td className="py-1.5 text-center">{row.rate / 2}%</td>
+                                <td className="py-1.5 text-right">₹{row.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="py-1.5 text-center">{row.rate}%</td>
+                                <td className="py-1.5 text-right">₹{row.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              </>
+                            )}
                             <td className="py-1.5 text-right font-medium">₹{row.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                           </tr>
                         ))}
                         <tr className="bg-gray-50 font-bold border-t">
                           <td className="py-1.5">Total</td>
                           <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.taxable, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                          <td className="py-1.5"></td>
-                          <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.cgst, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                          <td className="py-1.5"></td>
-                          <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.sgst, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                          {isIntraState ? (
+                            <>
+                              <td className="py-1.5"></td>
+                              <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.cgst, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                              <td className="py-1.5"></td>
+                              <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.sgst, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="py-1.5"></td>
+                              <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            </>
+                          )}
                           <td className="py-1.5 text-right">₹{taxBreakdown.reduce((s, r) => s + r.total, 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         </tr>
                       </tbody>
