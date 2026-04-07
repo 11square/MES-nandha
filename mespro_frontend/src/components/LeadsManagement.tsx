@@ -1601,7 +1601,103 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
       {/* Lead Details + Client Info - Compact Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* Left: Lead Details */}
+        {/* Left: Client Info */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Building className="w-4 h-4" /> Client Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
+                <div className="relative">
+                  <div className="flex gap-1">
+                    <select
+                      value={countryCode}
+                      onChange={(e) => setCountryCode(e.target.value)}
+                      className="w-20 h-8 px-1 border border-gray-300 rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="+91">+91</option>
+                      <option value="+1">+1</option>
+                      <option value="+44">+44</option>
+                      <option value="+61">+61</option>
+                      <option value="+81">+81</option>
+                      <option value="+86">+86</option>
+                      <option value="+971">+971</option>
+                      <option value="+65">+65</option>
+                      <option value="+60">+60</option>
+                      <option value="+49">+49</option>
+                      <option value="+33">+33</option>
+                      <option value="+39">+39</option>
+                      <option value="+55">+55</option>
+                      <option value="+82">+82</option>
+                      <option value="+27">+27</option>
+                    </select>
+                    <Input
+                      id="mobile"
+                      placeholder="XXXXX XXXXX"
+                      className="h-8 text-sm flex-1"
+                      value={mobileValue}
+                      onChange={(e) => {
+                        setMobileValue(e.target.value);
+                        setMobileSearchQuery(e.target.value);
+                        setShowMobileDropdown(true);
+                        if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
+                      }}
+                      onFocus={() => setShowMobileDropdown(true)}
+                    />
+                  </div>
+                  {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {filteredClients.map(client => (
+                        <div
+                          key={client.id || client._id}
+                          className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
+                          onClick={() => handleClientSelect(client)}
+                        >
+                          <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
+                          <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <FieldError message={errors.mobile} />
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
+                  <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; }); }} />
+                  <FieldError message={errors.customer} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+                  <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
+                  <FieldError message={errors.contact} />
+                </div>
+                <div className="col-span-2">
+                  <Label className="text-xs text-gray-500">{t('email')}</Label>
+                  <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
+                  <FieldError message={errors.email} />
+                </div>
+              </div>
+              {/* Selected client info display */}
+              {customerValue && mobileValue && (
+                <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
+                  <p className="font-semibold text-gray-800">{customerValue}</p>
+                  {contactValue && <p className="mt-0.5">Contact: {contactValue}</p>}
+                  <p className="mt-0.5">{countryCode} {mobileValue}</p>
+                  {emailValue && <p className="mt-0.5">{emailValue}</p>}
+                  {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Right: Lead Details */}
         <Card className="shadow-sm">
           <CardHeader className="py-3 px-4">
             <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
@@ -1703,102 +1799,6 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                   </PopoverContent>
                 </Popover>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Right: Client Info */}
-        <Card className="shadow-sm">
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-              <Building className="w-4 h-4" /> Client Info
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <div className="space-y-2">
-              <div>
-                <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
-                <div className="relative">
-                  <div className="flex gap-1">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="w-20 h-8 px-1 border border-gray-300 rounded-md text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="+91">+91</option>
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+61">+61</option>
-                      <option value="+81">+81</option>
-                      <option value="+86">+86</option>
-                      <option value="+971">+971</option>
-                      <option value="+65">+65</option>
-                      <option value="+60">+60</option>
-                      <option value="+49">+49</option>
-                      <option value="+33">+33</option>
-                      <option value="+39">+39</option>
-                      <option value="+55">+55</option>
-                      <option value="+82">+82</option>
-                      <option value="+27">+27</option>
-                    </select>
-                    <Input
-                      id="mobile"
-                      placeholder="XXXXX XXXXX"
-                      className="h-8 text-sm flex-1"
-                      value={mobileValue}
-                      onChange={(e) => {
-                        setMobileValue(e.target.value);
-                        setMobileSearchQuery(e.target.value);
-                        setShowMobileDropdown(true);
-                        if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
-                      }}
-                      onFocus={() => setShowMobileDropdown(true)}
-                    />
-                  </div>
-                  {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {filteredClients.map(client => (
-                        <div
-                          key={client.id || client._id}
-                          className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
-                          onClick={() => handleClientSelect(client)}
-                        >
-                          <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
-                          <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <FieldError message={errors.mobile} />
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
-                  <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.customer} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
-                  <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.contact} />
-                </div>
-                <div className="col-span-2">
-                  <Label className="text-xs text-gray-500">{t('email')}</Label>
-                  <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.email} />
-                </div>
-              </div>
-              {/* Selected client info display */}
-              {customerValue && mobileValue && (
-                <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
-                  <p className="font-semibold text-gray-800">{customerValue}</p>
-                  {contactValue && <p className="mt-0.5">Contact: {contactValue}</p>}
-                  <p className="mt-0.5">{countryCode} {mobileValue}</p>
-                  {emailValue && <p className="mt-0.5">{emailValue}</p>}
-                  {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
