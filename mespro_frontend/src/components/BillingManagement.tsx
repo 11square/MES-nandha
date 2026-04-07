@@ -587,7 +587,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   // Handle selecting a client from dropdown
   const handleSelectClient = (client: Client) => {
-    setBillForm(prev => ({ ...prev, client_id: client.id, gst_number: client.gstNo || '' }));
+    setBillForm(prev => ({ ...prev, client_id: client.id, gst_number: client.gstNo || '', invoiceType: client.gstNo?.trim() ? 'b2b' : 'b2c' }));
     setClientSearchQuery(client.name);
     setShowClientDropdown(false);
     setErrors(prev => ({ ...prev, client: '' }));
@@ -1880,12 +1880,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     </select>
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-500">Invoice Type *</Label>
-                    <select value={billForm.invoiceType} onChange={(e) => { setBillForm(prev => ({ ...prev, invoiceType: e.target.value as 'b2b' | 'b2c' })); setErrors(prev => ({ ...prev, invoiceType: '' })); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
-                      <option value="b2b">B2B (Business to Business)</option>
-                      <option value="b2c">B2C (Business to Consumer)</option>
-                    </select>
-                    <FieldError message={errors.invoiceType} />
+                    <Label className="text-xs text-gray-500">Invoice Type</Label>
+                    <div className={`w-full h-8 px-2 flex items-center border rounded-md text-xs font-medium ${billForm.gst_number.trim() ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
+                      {billForm.gst_number.trim() ? 'B2B (Business to Business)' : 'B2C (Business to Consumer)'}
+                    </div>
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Bill Type *</Label>
@@ -1981,7 +1979,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                     <div className="col-span-2">
                       <Label className="text-xs text-gray-500">GSTIN</Label>
-                      <Input type="text" placeholder="e.g. 33AUJPM8458P1ZR" value={billForm.gst_number} onChange={(e) => setBillForm(prev => ({ ...prev, gst_number: e.target.value.toUpperCase() }))} className="h-8 text-sm font-mono" maxLength={15} />
+                      <Input type="text" placeholder="e.g. 33AUJPM8458P1ZR" value={billForm.gst_number} onChange={(e) => { const val = e.target.value.toUpperCase(); setBillForm(prev => ({ ...prev, gst_number: val, invoiceType: val.trim() ? 'b2b' : 'b2c' })); }} className="h-8 text-sm font-mono" maxLength={15} />
                     </div>
                   </div>
                   {/* Selected client info display */}
