@@ -1599,16 +1599,16 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
-      {/* Lead Details + Client Info - Compact Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        {/* Left: Client Info */}
-        <Card className="shadow-sm">
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-              <Building className="w-4 h-4" /> Client Info
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
+      {/* Lead Information - Single Card */}
+      <Card className="shadow-sm mb-4">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+            <FileText className="w-4 h-4" /> Lead Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
+            {/* Left Column */}
             <div className="space-y-2">
               <div>
                 <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
@@ -1677,13 +1677,11 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                   <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
                   <FieldError message={errors.contact} />
                 </div>
-                <div className="col-span-2">
+                <div>
                   <Label className="text-xs text-gray-500">{t('email')}</Label>
                   <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
                   <FieldError message={errors.email} />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 <div>
                   <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
                   <Input
@@ -1694,6 +1692,39 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                     className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
                   />
                   {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">{t('leadSource')}</Label>
+                  <select
+                    id="source"
+                    className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    onChange={() => errors.source && setErrors(prev => { const { source, ...rest } = prev; return rest; })}
+                  >
+                    <option value="">{t('selectSource')}</option>
+                    <option value="website">{t('website')}</option>
+                    <option value="phone">{t('phone')}</option>
+                    <option value="walkin">{t('walkin')}</option>
+                    <option value="advertisement">{t('advertisement')}</option>
+                    <option value="referral">{t('referral')}</option>
+                    <option value="inperson">{t('inperson')}</option>
+                  </select>
+                  <FieldError message={errors.source} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
+                  <Input
+                    id="required_date"
+                    type="date"
+                    className="h-8 text-sm"
+                    onChange={() => errors.required_date && setErrors(prev => { const { required_date, ...rest } = prev; return rest; })}
+                  />
+                  <FieldError message={errors.required_date} />
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">{t('state')}</Label>
@@ -1750,69 +1781,30 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                     </PopoverContent>
                   </Popover>
                 </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('address')}</Label>
-                  <textarea
-                    id="address"
-                    placeholder={t('enterCustomerAddress')}
-                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </div>
-              {/* Selected client info display */}
-              {customerValue && mobileValue && (
-                <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
-                  <p className="font-semibold text-gray-800">{customerValue}</p>
-                  {contactValue && <p className="mt-0.5">Contact: {contactValue}</p>}
-                  <p className="mt-0.5">{countryCode} {mobileValue}</p>
-                  {emailValue && <p className="mt-0.5">{emailValue}</p>}
-                  {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Right: Lead Details */}
-        <Card className="shadow-sm">
-          <CardHeader className="py-3 px-4">
-            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-              <FileText className="w-4 h-4" /> Lead Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4 pt-0">
-            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-              <div>
-                <Label className="text-xs text-gray-500">{t('leadSource')}</Label>
-                <select
-                  id="source"
-                  className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  onChange={() => errors.source && setErrors(prev => { const { source, ...rest } = prev; return rest; })}
-                >
-                  <option value="">{t('selectSource')}</option>
-                  <option value="website">{t('website')}</option>
-                  <option value="phone">{t('phone')}</option>
-                  <option value="walkin">{t('walkin')}</option>
-                  <option value="advertisement">{t('advertisement')}</option>
-                  <option value="referral">{t('referral')}</option>
-                  <option value="inperson">{t('inperson')}</option>
-                </select>
-                <FieldError message={errors.source} />
               </div>
               <div>
-                <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
-                <Input
-                  id="required_date"
-                  type="date"
-                  className="h-8 text-sm"
-                  onChange={() => errors.required_date && setErrors(prev => { const { required_date, ...rest } = prev; return rest; })}
+                <Label className="text-xs text-gray-500">{t('address')}</Label>
+                <textarea
+                  id="address"
+                  placeholder={t('enterCustomerAddress')}
+                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
-                <FieldError message={errors.required_date} />
               </div>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {/* Selected client info display */}
+          {customerValue && mobileValue && (
+            <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border mt-3">
+              <p className="font-semibold text-gray-800">{customerValue}</p>
+              {contactValue && <p className="mt-0.5">Contact: {contactValue}</p>}
+              <p className="mt-0.5">{countryCode} {mobileValue}</p>
+              {emailValue && <p className="mt-0.5">{emailValue}</p>}
+              {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Items Section */}
       <Card className={`shadow-sm mb-4 overflow-visible ${errors.products ? 'border-red-400' : ''}`}>
