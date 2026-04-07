@@ -28,7 +28,10 @@ import {
   Pencil,
   Camera,
   Upload,
-  X
+  X,
+  LayoutGrid,
+  List,
+  LayoutList
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Dispatch, BillForDispatch } from '../types';
@@ -48,6 +51,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'stock'>('stock');
+  const [viewMode, setViewMode] = useState<'tile' | 'grid' | 'list'>('tile');
   const [showAddDispatch, setShowAddDispatch] = useState(false);
   const [isBillPrefilledDispatch, setIsBillPrefilledDispatch] = useState(false);
   const [billOrderNumber, setBillOrderNumber] = useState('');
@@ -595,70 +599,147 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
     }
   };
 
+  const generateLRPdf = (dispatch: Dispatch) => {
+    const printWindow = window.open('', '_blank', 'width=800,height=1100');
+    if (!printWindow) {
+      toast.error('Please allow popups to generate LR PDF');
+      return;
+    }
+    const lrNo = dispatch.lr_number || `LR-${dispatch.id}`;
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Lorry Receipt - ${lrNo}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, Helvetica, sans-serif; color: #111; font-size: 13px; line-height: 1.5; margin: 0; padding: 0; }
+    .page { width: 210mm; min-height: 297mm; padding: 12mm 14mm; margin: 0 auto; }
+    .header { text-align: center; border-bottom: 2px solid #222; padding-bottom: 14px; margin-bottom: 20px; }
+    .header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; letter-spacing: 1px; }
+    .header .lr-no { font-size: 15px; font-weight: 600; color: #333; }
+    .header .company { font-size: 12px; color: #555; margin-top: 4px; }
+    .two-col { display: flex; gap: 20px; margin-bottom: 16px; }
+    .two-col .col { flex: 1; }
+    .section { margin-bottom: 18px; }
+    .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #333; border-bottom: 1px solid #999; padding-bottom: 4px; margin-bottom: 10px; letter-spacing: 0.5px; }
+    .info-table { width: 100%; border-collapse: collapse; }
+    .info-table td { padding: 6px 10px; font-size: 12.5px; border: 1px solid #ccc; vertical-align: top; }
+    .info-table td.lbl { font-weight: 600; width: 160px; background: #f7f7f7; color: #333; }
+    .items-table { width: 100%; border-collapse: collapse; margin-top: 6px; }
+    .items-table th { background: #f0f0f0; padding: 8px 10px; border: 1px solid #999; font-size: 12px; font-weight: 700; text-transform: uppercase; text-align: left; }
+    .items-table td { padding: 8px 10px; border: 1px solid #ccc; font-size: 12.5px; }
+    .signature-section { display: flex; justify-content: space-between; margin-top: 50px; padding-top: 10px; }
+    .sig-box { width: 200px; text-align: center; }
+    .sig-box .line { border-top: 1px solid #333; margin-top: 50px; padding-top: 6px; font-size: 11px; font-weight: 600; }
+    .footer { margin-top: 30px; text-align: center; font-size: 11px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+    @media print { body { padding: 0; } @page { margin: 0; size: A4; } }
+  </style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <h1>LORRY RECEIPT (LR)</h1>
+    <div class="lr-no">LR No: ${lrNo}</div>
+    <div class="company">MES Pro - Manufacturing Execution System</div>
+  </div>
+
+  <div class="two-col">
+    <div class="col">
+      <div class="section">
+        <div class="section-title">Dispatch Information</div>
+        <table class="info-table">
+          <tr><td class="lbl">Dispatch ID</td><td>${dispatch.id}</td></tr>
+          ${dispatch.invoice_no ? `<tr><td class="lbl">Invoice No</td><td>${dispatch.invoice_no}</td></tr>` : ''}
+          ${dispatch.order_id ? `<tr><td class="lbl">Order ID</td><td>${dispatch.order_id}</td></tr>` : ''}
+          <tr><td class="lbl">Dispatch Date</td><td>${dispatch.dispatch_date ? new Date(dispatch.dispatch_date).toLocaleDateString('en-IN') : '-'}</td></tr>
+          ${dispatch.expected_delivery ? `<tr><td class="lbl">Expected Delivery</td><td>${new Date(dispatch.expected_delivery).toLocaleDateString('en-IN')}</td></tr>` : ''}
+          <tr><td class="lbl">Status</td><td><strong>${dispatch.status}</strong></td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="col">
+      <div class="section">
+        <div class="section-title">Transport Details</div>
+        <table class="info-table">
+          <tr><td class="lbl">Transporter</td><td>${dispatch.transporter || '-'}</td></tr>
+          <tr><td class="lbl">Vehicle No</td><td>${dispatch.vehicle_no || '-'}</td></tr>
+          <tr><td class="lbl">Driver Name</td><td>${dispatch.driver_name || '-'}</td></tr>
+          <tr><td class="lbl">Driver Phone</td><td>${dispatch.driver_phone || '-'}</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Customer Details</div>
+    <table class="info-table">
+      <tr><td class="lbl">Customer</td><td><strong>${dispatch.customer}</strong></td></tr>
+      <tr><td class="lbl">Delivery Address</td><td>${dispatch.address || '-'}</td></tr>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Consignment Details</div>
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th style="width:40px">#</th>
+          <th>Product / Items</th>
+          <th style="width:100px">Quantity</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(dispatch.product || dispatch.items || '-').split(',').map((item: string, idx: number) => {
+          const trimmed = item.trim();
+          const match = trimmed.match(/^(.+?)\s*x\s*(\d+)$/i);
+          const name = match ? match[1].trim() : trimmed;
+          const qty = match ? match[2] : '-';
+          return `<tr><td>${idx + 1}</td><td>${name}</td><td>${qty}</td></tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+    ${dispatch.quantity ? `<div style="margin-top:6px; font-size:12px; font-weight:600;">Total Quantity: ${dispatch.quantity} units</div>` : ''}
+  </div>
+
+  <div class="signature-section">
+    <div class="sig-box">
+      <div class="line">Consignor's Signature</div>
+    </div>
+    <div class="sig-box">
+      <div class="line">Transporter's Signature</div>
+    </div>
+    <div class="sig-box">
+      <div class="line">Consignee's Signature</div>
+    </div>
+  </div>
+
+  <div class="footer">Generated on ${new Date().toLocaleString('en-IN')}</div>
+</div>
+</body>
+</html>`;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.onload = () => { printWindow.print(); };
+  };
+
+  const handleCreateLRAndDispatch = async (dispatch: Dispatch) => {
+    try {
+      const lrNumber = `LR-${Date.now()}`;
+      await dispatchService.updateDispatch(dispatch.id, {
+        lr_number: lrNumber,
+        status: 'In Transit',
+      });
+      toast.success('LR created & status set to In Transit');
+      await refreshDispatches();
+      // Generate the LR PDF with updated data
+      generateLRPdf({ ...dispatch, lr_number: lrNumber, status: 'In Transit' });
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to create LR');
+    }
+  };
+
   const handleDownloadLR = (dispatch: Dispatch) => {
-    const lrContent = `
-      <html>
-      <head>
-        <title>Lorry Receipt - ${dispatch.lr_number || 'N/A'}</title>
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
-          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 16px; margin-bottom: 24px; }
-          .header h1 { margin: 0 0 4px; font-size: 24px; }
-          .header p { margin: 0; color: #666; font-size: 14px; }
-          .section { margin-bottom: 20px; }
-          .section-title { font-weight: bold; font-size: 14px; color: #555; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
-          .row { display: flex; margin-bottom: 6px; }
-          .label { font-weight: 600; width: 180px; color: #555; font-size: 14px; }
-          .value { font-size: 14px; }
-          .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #ddd; padding-top: 12px; }
-          @media print { body { padding: 20px; } }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>LORRY RECEIPT (LR)</h1>
-          <p>LR Number: ${dispatch.lr_number || 'N/A'}</p>
-        </div>
-        <div class="section">
-          <div class="section-title">Dispatch Information</div>
-          <div class="row"><span class="label">Dispatch ID:</span><span class="value">${dispatch.id}</span></div>
-          <div class="row"><span class="label">Order ID:</span><span class="value">${dispatch.order_id || '-'}</span></div>
-          ${dispatch.invoice_no ? `<div class="row"><span class="label">Invoice No:</span><span class="value">${dispatch.invoice_no}</span></div>` : ''}
-          <div class="row"><span class="label">Status:</span><span class="value">${dispatch.status}</span></div>
-          <div class="row"><span class="label">Dispatch Date:</span><span class="value">${dispatch.dispatch_date ? new Date(dispatch.dispatch_date).toLocaleDateString() : '-'}</span></div>
-          ${dispatch.expected_delivery ? `<div class="row"><span class="label">Expected Delivery:</span><span class="value">${new Date(dispatch.expected_delivery).toLocaleDateString()}</span></div>` : ''}
-        </div>
-        <div class="section">
-          <div class="section-title">Customer Details</div>
-          <div class="row"><span class="label">Customer:</span><span class="value">${dispatch.customer}</span></div>
-          <div class="row"><span class="label">Delivery Address:</span><span class="value">${dispatch.address}</span></div>
-        </div>
-        <div class="section">
-          <div class="section-title">Consignment Details</div>
-          <div class="row"><span class="label">Product / Items:</span><span class="value">${dispatch.product || dispatch.items || '-'}</span></div>
-          ${dispatch.quantity ? `<div class="row"><span class="label">Quantity:</span><span class="value">${dispatch.quantity} units</span></div>` : ''}
-        </div>
-        <div class="section">
-          <div class="section-title">Transport Details</div>
-          <div class="row"><span class="label">Transporter:</span><span class="value">${dispatch.transporter || '-'}</span></div>
-          <div class="row"><span class="label">Vehicle No:</span><span class="value">${dispatch.vehicle_no || '-'}</span></div>
-          <div class="row"><span class="label">Driver Name:</span><span class="value">${dispatch.driver_name || '-'}</span></div>
-          <div class="row"><span class="label">Driver Phone:</span><span class="value">${dispatch.driver_phone || '-'}</span></div>
-        </div>
-        <div class="footer">Generated on ${new Date().toLocaleString()}</div>
-      </body>
-      </html>
-    `;
-    const blob = new Blob([lrContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `LR_${dispatch.lr_number || dispatch.id}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    toast.success(language === 'en' ? 'LR downloaded successfully' : 'LR வெற்றிகரமாக பதிவிறக்கப்பட்டது');
+    generateLRPdf(dispatch);
   };
 
   const handleShareDispatch = async (dispatch: Dispatch) => {
@@ -848,7 +929,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
             </Button>
           </>
         ) : (
-          <Button className="flex-1 bg-blue-600 hover:bg-blue-700" size="sm">
+          <Button className="flex-1 bg-blue-600 hover:bg-blue-700" size="sm" onClick={() => handleCreateLRAndDispatch(dispatch)}>
             <Plus className="w-4 h-4 mr-2" />
             Create LR & Dispatch
           </Button>
@@ -882,6 +963,96 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
         </Button>
       </div>
     </motion.div>
+  );
+
+  const renderDispatchGridCard = (dispatch: Dispatch) => (
+    <motion.div
+      key={dispatch.id}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="p-4 rounded-lg border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all bg-white"
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded-md flex items-center justify-center text-white">
+            <Truck className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-xs text-blue-600 font-semibold">{dispatch.id}</span>
+            {dispatch.invoice_no && <span className="text-xs text-slate-400 ml-1">• {dispatch.invoice_no}</span>}
+          </div>
+        </div>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${getStatusColor(dispatch.status)}`}>
+          {dispatch.status}
+        </span>
+      </div>
+      <h3 className="text-sm font-semibold text-slate-900 truncate">{dispatch.customer}</h3>
+      <p className="text-xs text-slate-500 truncate mt-0.5">{dispatch.product || dispatch.items}</p>
+      {dispatch.quantity && <p className="text-[10px] text-slate-400 mt-0.5">{dispatch.quantity} units</p>}
+      <div className="text-xs text-slate-500 mt-2 space-y-0.5">
+        {dispatch.transporter && <p className="truncate">🚚 {dispatch.transporter} {dispatch.vehicle_no ? `• ${dispatch.vehicle_no}` : ''}</p>}
+        {dispatch.dispatch_date && <p>📅 {new Date(dispatch.dispatch_date).toLocaleDateString()}</p>}
+      </div>
+      <div className="flex items-center gap-1 mt-3 pt-3 border-t border-slate-100">
+        {dispatch.lr_number ? (
+          <Button variant="outline" size="sm" className="flex-1 h-7 text-xs" onClick={() => handleDownloadLR(dispatch)}>
+            <Download className="w-3 h-3 mr-1" />LR
+          </Button>
+        ) : (
+          <Button size="sm" className="flex-1 h-7 text-xs bg-blue-600 hover:bg-blue-700" onClick={() => handleCreateLRAndDispatch(dispatch)}>
+            <Plus className="w-3 h-3 mr-1" />LR & Dispatch
+          </Button>
+        )}
+        <Button variant="ghost" size="sm" className="w-7 h-7 p-0" onClick={() => setViewDispatch(dispatch)}><Eye className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="w-7 h-7 p-0 text-blue-500" onClick={() => openEditDialog(dispatch)}><Pencil className="w-3.5 h-3.5" /></Button>
+        <Button variant="ghost" size="sm" className="w-7 h-7 p-0 text-red-500" onClick={() => setDeleteDispatchId(dispatch.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+      </div>
+    </motion.div>
+  );
+
+  const renderDispatchListRow = (dispatch: Dispatch) => (
+    <motion.tr
+      key={dispatch.id}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="hover:bg-slate-50 border-b border-slate-100"
+    >
+      <td className="px-4 py-3 text-sm font-medium text-blue-600">{dispatch.id}</td>
+      <td className="px-4 py-3 text-sm">{dispatch.invoice_no || '-'}</td>
+      <td className="px-4 py-3">
+        <div className="text-sm font-medium text-slate-900">{dispatch.customer}</div>
+        <div className="text-xs text-slate-500 truncate max-w-[200px]">{dispatch.address}</div>
+      </td>
+      <td className="px-4 py-3 text-sm text-slate-700 max-w-[180px] truncate">{dispatch.product || dispatch.items}</td>
+      <td className="px-4 py-3 text-sm text-slate-600">{dispatch.quantity || '-'}</td>
+      <td className="px-4 py-3 text-sm text-slate-700">{dispatch.lr_number || '-'}</td>
+      <td className="px-4 py-3 text-sm text-slate-700">{dispatch.transporter || '-'}</td>
+      <td className="px-4 py-3 text-sm text-slate-600">{dispatch.dispatch_date ? new Date(dispatch.dispatch_date).toLocaleDateString() : '-'}</td>
+      <td className="px-4 py-3">
+        <Select value={dispatch.status} onValueChange={(value: string) => handleStatusChange(dispatch, value)}>
+          <SelectTrigger className={`w-auto h-6 text-[10px] font-medium border-0 px-2 py-0 rounded-full gap-1 ${getStatusColor(dispatch.status)}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Ready to Dispatch">Ready to Dispatch</SelectItem>
+            <SelectItem value="In Transit">In Transit</SelectItem>
+            <SelectItem value="Delivered">Delivered</SelectItem>
+          </SelectContent>
+        </Select>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1">
+          {dispatch.lr_number ? (
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleDownloadLR(dispatch)} title="Download LR"><Download className="w-3.5 h-3.5" /></Button>
+          ) : (
+            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600" onClick={() => handleCreateLRAndDispatch(dispatch)} title="Create LR & Dispatch"><Plus className="w-3.5 h-3.5 mr-1" />LR</Button>
+          )}
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => setViewDispatch(dispatch)}><Eye className="w-3.5 h-3.5" /></Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-blue-500" onClick={() => openEditDialog(dispatch)}><Pencil className="w-3.5 h-3.5" /></Button>
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500" onClick={() => setDeleteDispatchId(dispatch.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+        </div>
+      </td>
+    </motion.tr>
   );
 
   return (
@@ -924,7 +1095,29 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
       
       <div className="w-full">
         <div className='flex justify-between items-center'>
-        <div></div>
+        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('tile')}
+            className={`p-2 rounded-md transition-all ${viewMode === 'tile' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+            title="Tile View"
+          >
+            <LayoutGrid className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+            title="Grid View"
+          >
+            <LayoutList className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+            title="List View"
+          >
+            <List className="w-4 h-4" />
+          </button>
+        </div>
          <Button 
           className="bg-blue-600 hover:bg-blue-700"
           onClick={() => {
@@ -1007,11 +1200,41 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
             </motion.div>
           </div>
 
-          {/* Dispatch Cards */}
+          {/* Dispatch Cards / Grid / List */}
           {stockDispatches.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {stockDispatches.map(dispatch => renderDispatchCard(dispatch, 'stock'))}
-            </div>
+            viewMode === 'list' ? (
+              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">ID</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Invoice</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Customer</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Product</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Qty</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">LR No</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Transporter</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Date</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Status</th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-slate-600 uppercase">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stockDispatches.map(dispatch => renderDispatchListRow(dispatch))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {stockDispatches.map(dispatch => renderDispatchGridCard(dispatch))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {stockDispatches.map(dispatch => renderDispatchCard(dispatch, 'stock'))}
+              </div>
+            )
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
