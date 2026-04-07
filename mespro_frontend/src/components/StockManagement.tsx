@@ -58,7 +58,10 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
     unit: 'pieces',
     buying_price: '',
     selling_price: '',
-    supplier: ''
+    supplier: '',
+    description: '',
+    brand: '',
+    location: '',
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -92,6 +95,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [isFromProduct, setIsFromProduct] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string>('');
+  const [stockItemSearchOpen, setStockItemSearchOpen] = useState(false);
 
   const resetStockForm = () => {
     setStockForm({
@@ -106,7 +110,10 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       unit: 'pieces',
       buying_price: '',
       selling_price: '',
-      supplier: ''
+      supplier: '',
+      description: '',
+      brand: '',
+      location: '',
     });
     setIsFromProduct(false);
     setSelectedItemId('');
@@ -176,7 +183,10 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       unit: item.unit || 'pieces',
       buying_price: String(item.buying_price || item.unit_price || ''),
       selling_price: String(item.selling_price || item.unit_price || ''),
-      supplier: item.supplier || ''
+      supplier: item.supplier || '',
+      description: item.description || '',
+      brand: item.brand || '',
+      location: item.location || '',
     });
     setErrors({});
     setShowEditStock(true);
@@ -422,12 +432,17 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       category: item.category || '',
       subcategory: item.subcategory || '',
       sku: item.sku || '',
+      hsn_sac: item.hsn_sac || '',
+      gst_rate: String(item.gst_rate ?? '18'),
       current_stock: '',
       reorder_level: '',
       unit: mapUnit(item.unit || 'pieces'),
       buying_price: String(item.buying_price || item.unit_price || ''),
       selling_price: String(item.selling_price || item.unit_price || ''),
-      supplier: item.supplier || ''
+      supplier: item.supplier || '',
+      description: item.description || '',
+      brand: item.brand || '',
+      location: item.location || '',
     });
   };
 
@@ -444,298 +459,333 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
   const lowStockCount = stockListItems.filter(item => item.status === 'Low Stock' || item.status === 'Critical').length;
   const totalItems = stockListItems.reduce((sum, item) => sum + Number(item.current_stock), 0);
 
-  // Full-screen Add Stock Form
+  // Full-screen Add Stock Form - Billing-style compact layout
   if (showAddStock) {
+    const margin = Number(stockForm.selling_price || 0) - Number(stockForm.buying_price || 0);
+    const marginPct = Number(stockForm.buying_price) > 0 ? ((margin / Number(stockForm.buying_price)) * 100).toFixed(1) : '0';
+    const stockValue = Number(stockForm.current_stock || 0) * Number(stockForm.selling_price || 0);
+
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setShowAddStock(false);
-              resetStockForm();
-              setErrors({});
-            }}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('back')}
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => { setShowAddStock(false); resetStockForm(); setErrors({}); }}>
+            ← {t('back')}
           </Button>
-          <h2 className="text-2xl font-bold text-slate-900">
-            {t('addNewStockItem')}
-          </h2>
+          <h1 className="text-xl font-bold">{t('addNewStockItem')}</h1>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('stockDetails')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Item Name - Dropdown from products or manual entry */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('itemName')} *</Label>
-                {allProducts.length > 0 ? (
-                  <>
-                    <select
-                      value={isFromProduct ? selectedItemId : '__manual__'}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === '__manual__') {
-                          setIsFromProduct(false);
-                          setSelectedItemId('');
-                          setStockForm({ ...stockForm, name: '', category: '', subcategory: '', sku: '', unit: 'pieces', buying_price: '', selling_price: '' });
-                          setErrors(prev => ({ ...prev, name: '' }));
-                          return;
-                        }
-                        const idx = Number(val);
-                        const product = allProducts[idx];
-                        if (product) {
-                          setIsFromProduct(true);
-                          setSelectedItemId(val);
-                          const catObj = productCategories.find(c => c.id === product.category || c.name === product.category);
-                          const categoryName = catObj?.name || product.category || '';
-                          const mappedUnit = mapUnit(product.unit);
-                          setStockForm({
-                            ...stockForm,
-                            name: product.name,
-                            category: categoryName,
-                            subcategory: product.subcategory || '',
-                            sku: product.sku || '',
-                            hsn_sac: product.hsn_code || product.hsn_sac || '',
-                            unit: mappedUnit,
-                            selling_price: String(product.selling_price || product.base_price || ''),
-                            buying_price: String(product.base_price || ''),
-                          });
-                          setErrors(prev => ({ ...prev, name: '', category: '' }));
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                    >
-                      <option value="__manual__">{t('orEnterManually')}</option>
-                      {allProducts.map((p: any, idx: number) => (
-                        <option key={idx} value={String(idx)}>{p.name}{p.sku ? ` (${p.sku})` : ''}</option>
-                      ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left Column: Item Details + Classification */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Item Details Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Item Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  {/* Item Name */}
+                  <div className="col-span-2">
+                    <Label className="text-xs text-gray-500">{t('itemName')} *</Label>
+                    {allProducts.length > 0 && !isFromProduct ? (
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          value={stockForm.name}
+                          onChange={(e) => { setStockForm({...stockForm, name: e.target.value}); setErrors(prev => ({...prev, name: ''})); }}
+                          onFocus={() => setStockItemSearchOpen(true)}
+                          onBlur={() => setTimeout(() => setStockItemSearchOpen(false), 200)}
+                          placeholder="Search or type item name..."
+                          className="h-8 text-sm"
+                        />
+                        {stockItemSearchOpen && stockForm.name && (
+                          <div className="absolute z-50 w-full mt-0.5 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                            {allProducts.filter(p => p.name.toLowerCase().includes(stockForm.name.toLowerCase())).map((p, idx) => (
+                              <div key={idx} className="px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 border-b border-gray-50" onMouseDown={() => {
+                                const catObj = productCategories.find(c => c.id === p.category || c.name === p.category);
+                                const categoryName = catObj?.name || p.category || '';
+                                setStockForm({...stockForm, name: p.name, category: categoryName, subcategory: p.subcategory || '', sku: p.sku || '', hsn_sac: p.hsn_code || p.hsn_sac || '', unit: mapUnit(p.unit), selling_price: String(p.selling_price || ''), buying_price: String(p.base_price || '')});
+                                setIsFromProduct(true);
+                                setSelectedItemId(String(idx));
+                                setErrors(prev => ({...prev, name: '', category: ''}));
+                              }}>
+                                <div className="font-medium">{p.name}</div>
+                                <div className="text-[10px] text-gray-500">{p.sku ? `SKU: ${p.sku}` : ''} {p.category ? `• ${p.category}` : ''}</div>
+                              </div>
+                            ))}
+                            {allProducts.filter(p => p.name.toLowerCase().includes(stockForm.name.toLowerCase())).length === 0 && (
+                              <div className="px-3 py-2 text-xs text-gray-500 text-center">No matching products - will add as new item</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex gap-2 items-center">
+                        <Input value={stockForm.name} readOnly={isFromProduct} onChange={(e) => { setStockForm({...stockForm, name: e.target.value}); setErrors(prev => ({...prev, name: ''})); }} placeholder="Enter item name" className={`h-8 text-sm ${isFromProduct ? 'bg-gray-50' : ''}`} />
+                        {isFromProduct && <Button type="button" variant="ghost" size="sm" className="h-8 text-xs text-blue-600" onClick={() => { setIsFromProduct(false); setSelectedItemId(''); }}>Change</Button>}
+                      </div>
+                    )}
+                    {isFromProduct && <p className="text-[10px] text-emerald-600 mt-0.5">✓ Auto-filled from existing product</p>}
+                    <FieldError message={errors.name} />
+                  </div>
+
+                  {/* Description */}
+                  <div className="col-span-2">
+                    <Label className="text-xs text-gray-500">Description</Label>
+                    <Input value={stockForm.description} onChange={(e) => setStockForm({...stockForm, description: e.target.value})} placeholder="Brief item description..." className="h-8 text-sm" />
+                  </div>
+
+                  {/* SKU */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('skuCode')} *</Label>
+                    <div className="flex gap-1">
+                      <Input value={stockForm.sku} onChange={(e) => { setStockForm({...stockForm, sku: e.target.value}); setErrors(prev => ({...prev, sku: ''})); }} placeholder="ACC-MRK-001" className={`h-8 text-sm font-mono ${isFromProduct ? 'bg-gray-50' : ''}`} readOnly={isFromProduct} />
+                      {!isFromProduct && <Button type="button" variant="outline" size="sm" className="h-8 text-xs px-2" onClick={() => setStockForm({...stockForm, sku: generateSKU()})}>Auto</Button>}
+                    </div>
+                    <FieldError message={errors.sku} />
+                  </div>
+
+                  {/* Brand */}
+                  <div>
+                    <Label className="text-xs text-gray-500">Brand</Label>
+                    <Input value={stockForm.brand} onChange={(e) => setStockForm({...stockForm, brand: e.target.value})} placeholder="Brand name" className="h-8 text-sm" />
+                  </div>
+
+                  {/* HSN/SAC */}
+                  <div>
+                    <Label className="text-xs text-gray-500">HSN/SAC Code</Label>
+                    <Input value={stockForm.hsn_sac} onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})} placeholder="e.g. 39261019" className="h-8 text-sm font-mono" maxLength={20} />
+                  </div>
+
+                  {/* GST Rate */}
+                  <div>
+                    <Label className="text-xs text-gray-500">GST Rate (%)</Label>
+                    <select value={stockForm.gst_rate} onChange={(e) => setStockForm({...stockForm, gst_rate: e.target.value})} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      <option value="0">0%</option>
+                      <option value="5">5%</option>
+                      <option value="12">12%</option>
+                      <option value="18">18%</option>
+                      <option value="28">28%</option>
                     </select>
-                    {!isFromProduct && (
-                      <Input 
-                        value={stockForm.name}
-                        onChange={(e) => { setStockForm({...stockForm, name: e.target.value}); setErrors(prev => ({...prev, name: ''})); }}
-                        placeholder={t('enterItemName')}
-                        className="mt-2"
-                      />
-                    )}
-                    {isFromProduct && (
-                      <p className="text-xs text-emerald-600 flex items-center gap-1 mt-1">
-                        ✓ {t('autoFilledFromProduct')}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <Input 
-                    value={stockForm.name}
-                    onChange={(e) => { setStockForm({...stockForm, name: e.target.value}); setErrors(prev => ({...prev, name: ''})); }}
-                    placeholder={t('enterItemName')}
-                  />
-                )}
-                <FieldError message={errors.name} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('skuCode')} *</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={stockForm.sku}
-                    onChange={(e) => { setStockForm({...stockForm, sku: e.target.value}); setErrors(prev => ({...prev, sku: ''})); }}
-                    placeholder="ACC-MRK-001"
-                    readOnly={isFromProduct}
-                    className={isFromProduct ? 'bg-gray-50' : ''}
-                  />
-                  {!isFromProduct && (
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setStockForm({...stockForm, sku: generateSKU()})}
-                    >
-                      {t('generate')}
-                    </Button>
-                  )}
+                  </div>
                 </div>
-                {isFromProduct && <p className="text-xs text-slate-500">Auto-filled from product</p>}
-                <FieldError message={errors.sku} />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* HSN/SAC Code & GST Rate */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>HSN/SAC Code</Label>
-                <Input
-                  value={stockForm.hsn_sac}
-                  onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
-                  placeholder="e.g. 39261019"
-                  maxLength={20}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>GST Rate (%)</Label>
-                <select
-                  value={stockForm.gst_rate}
-                  onChange={(e) => setStockForm({...stockForm, gst_rate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="0">0%</option>
-                  <option value="5">5%</option>
-                  <option value="12">12%</option>
-                  <option value="18">18%</option>
-                  <option value="28">28%</option>
-                </select>
-              </div>
-            </div>
+            {/* Classification Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Boxes className="w-4 h-4" /> Classification
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  {/* Category */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('category')} *</Label>
+                    {isFromProduct ? (
+                      <Input value={stockForm.category} readOnly className="h-8 text-sm bg-gray-50" />
+                    ) : (
+                      <select value={stockForm.category} onChange={(e) => { setStockForm({...stockForm, category: e.target.value, subcategory: ''}); setErrors(prev => ({...prev, category: ''})); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                        <option value="">Select category</option>
+                        {categories.filter(c => c !== 'all').map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                      </select>
+                    )}
+                    <FieldError message={errors.category} />
+                  </div>
 
-            {/* Category & Subcategory - auto-filled when product selected */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('category')} *</Label>
-                {isFromProduct ? (
-                  <>
-                    <Input value={stockForm.category} readOnly className="bg-gray-50" />
-                    <p className="text-xs text-slate-500">Auto-filled from product</p>
-                  </>
-                ) : (
-                  <Select 
-                    value={stockForm.category} 
-                    onValueChange={(value: string) => { setStockForm({...stockForm, category: value, subcategory: ''}); setErrors(prev => ({...prev, category: ''})); }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectCategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.filter(c => c !== 'all').map((cat) => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-                <FieldError message={errors.category} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('subcategory')}</Label>
-                {isFromProduct ? (
-                  <>
-                    <Input value={stockForm.subcategory} readOnly className="bg-gray-50" />
-                    <p className="text-xs text-slate-500">Auto-filled from product</p>
-                  </>
-                ) : (
-                  <Select 
-                    value={stockForm.subcategory} 
-                    onValueChange={(value: string) => setStockForm({...stockForm, subcategory: value})}
-                    disabled={!stockForm.category}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder={t('selectSubcategory')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(subcategoriesByCategory[stockForm.category] || []).map((sub) => (
-                        <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </div>
+                  {/* Subcategory */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('subcategory')}</Label>
+                    {isFromProduct ? (
+                      <Input value={stockForm.subcategory} readOnly className="h-8 text-sm bg-gray-50" />
+                    ) : (
+                      <select value={stockForm.subcategory} onChange={(e) => setStockForm({...stockForm, subcategory: e.target.value})} disabled={!stockForm.category} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-50">
+                        <option value="">Select subcategory</option>
+                        {(subcategoriesByCategory[stockForm.category] || []).map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                      </select>
+                    )}
+                  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>{t('currentStock')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.current_stock}
-                  onChange={(e) => { setStockForm({...stockForm, current_stock: e.target.value}); setErrors(prev => ({...prev, current_stock: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0"
-                />
-                <FieldError message={errors.current_stock} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('reorderLevel')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.reorder_level}
-                  onChange={(e) => { setStockForm({...stockForm, reorder_level: e.target.value}); setErrors(prev => ({...prev, reorder_level: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0"
-                />
-                <FieldError message={errors.reorder_level} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('unit')} *</Label>
-                <Select 
-                  value={stockForm.unit} 
-                  onValueChange={(value: string) => { setStockForm({...stockForm, unit: value}); setErrors(prev => ({...prev, unit: ''})); }}
-                  disabled={isFromProduct}
-                >
-                  <SelectTrigger className={isFromProduct ? 'bg-gray-50' : ''}>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((unit) => (
-                      <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {isFromProduct && <p className="text-xs text-slate-500">Auto-filled from product</p>}
-                {errors.unit && <FieldError message={errors.unit} />}
-              </div>
-            </div>
+                  {/* Supplier */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('supplier')}</Label>
+                    <select value={stockForm.supplier} onChange={(e) => setStockForm({...stockForm, supplier: e.target.value})} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      <option value="">Select supplier</option>
+                      {suppliers.map(sup => <option key={sup} value={sup}>{sup}</option>)}
+                    </select>
+                  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('buyingPrice')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.buying_price}
-                  onChange={(e) => { setStockForm({...stockForm, buying_price: e.target.value}); setErrors(prev => ({...prev, buying_price: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                />
-                {isFromProduct && stockForm.buying_price && <p className="text-xs text-slate-500">Pre-filled from product base price</p>}
-                <FieldError message={errors.buying_price} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('sellingPrice')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.selling_price}
-                  onChange={(e) => { setStockForm({...stockForm, selling_price: e.target.value}); setErrors(prev => ({...prev, selling_price: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                />
-                {isFromProduct && stockForm.selling_price && <p className="text-xs text-slate-500">Pre-filled from product selling price</p>}
-                <FieldError message={errors.selling_price} />
-              </div>
-            </div>
+                  {/* Storage Location */}
+                  <div>
+                    <Label className="text-xs text-gray-500">Storage Location</Label>
+                    <Input value={stockForm.location} onChange={(e) => setStockForm({...stockForm, location: e.target.value})} placeholder="e.g. Warehouse A, Rack 3" className="h-8 text-sm" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button variant="outline" onClick={() => {
-                setShowAddStock(false);
-                resetStockForm();
-                setErrors({});
-              }}>
-                {t('cancel')}
-              </Button>
-              <Button 
-                onClick={handleAddStock} 
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={!stockForm.name || !stockForm.category || !stockForm.current_stock || !stockForm.reorder_level || !stockForm.buying_price || !stockForm.selling_price}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {t('addStockItem')}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            {/* Stock & Pricing Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" /> Stock & Pricing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                  {/* Current Stock */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('currentStock')} *</Label>
+                    <Input type="number" value={stockForm.current_stock} onChange={(e) => { setStockForm({...stockForm, current_stock: e.target.value}); setErrors(prev => ({...prev, current_stock: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0" className="h-8 text-sm" />
+                    <FieldError message={errors.current_stock} />
+                  </div>
+
+                  {/* Reorder Level */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('reorderLevel')} *</Label>
+                    <Input type="number" value={stockForm.reorder_level} onChange={(e) => { setStockForm({...stockForm, reorder_level: e.target.value}); setErrors(prev => ({...prev, reorder_level: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0" className="h-8 text-sm" />
+                    <FieldError message={errors.reorder_level} />
+                  </div>
+
+                  {/* Unit */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('unit')} *</Label>
+                    <select value={stockForm.unit} onChange={(e) => { setStockForm({...stockForm, unit: e.target.value}); setErrors(prev => ({...prev, unit: ''})); }} disabled={isFromProduct} className={`w-full h-8 px-2 border border-gray-300 rounded-md text-sm ${isFromProduct ? 'bg-gray-50' : ''}`}>
+                      {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                    </select>
+                    <FieldError message={errors.unit} />
+                  </div>
+
+                  {/* Buying Price */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('buyingPrice')} *</Label>
+                    <Input type="number" value={stockForm.buying_price} onChange={(e) => { setStockForm({...stockForm, buying_price: e.target.value}); setErrors(prev => ({...prev, buying_price: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0.00" className="h-8 text-sm" />
+                    <FieldError message={errors.buying_price} />
+                  </div>
+
+                  {/* Selling Price */}
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('sellingPrice')} *</Label>
+                    <Input type="number" value={stockForm.selling_price} onChange={(e) => { setStockForm({...stockForm, selling_price: e.target.value}); setErrors(prev => ({...prev, selling_price: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0.00" className="h-8 text-sm" />
+                    <FieldError message={errors.selling_price} />
+                  </div>
+
+                  {/* Margin Display */}
+                  <div>
+                    <Label className="text-xs text-gray-500">Margin</Label>
+                    <div className={`h-8 flex items-center px-2 border rounded-md text-sm font-medium ${margin >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                      ₹{margin.toLocaleString('en-IN')} ({marginPct}%)
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column: Summary */}
+          <div className="space-y-4">
+            {/* Quick Summary */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Item</span>
+                    <span className="font-medium truncate ml-2">{stockForm.name || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">SKU</span>
+                    <span className="font-mono text-xs">{stockForm.sku || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Category</span>
+                    <span>{stockForm.category || '-'}</span>
+                  </div>
+                  {stockForm.subcategory && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Subcategory</span>
+                      <span>{stockForm.subcategory}</span>
+                    </div>
+                  )}
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Stock Qty</span>
+                      <span className="font-medium">{stockForm.current_stock || '0'} {stockForm.unit}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">HSN/SAC</span>
+                      <span className="font-mono text-xs">{stockForm.hsn_sac || '-'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">GST</span>
+                      <span>{stockForm.gst_rate}%</span>
+                    </div>
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Buying Price</span>
+                      <span>₹{Number(stockForm.buying_price || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Selling Price</span>
+                      <span>₹{Number(stockForm.selling_price || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
+                      <span>Stock Value</span>
+                      <span className="text-blue-700">₹{stockValue.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Status Preview */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Status Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                {(() => {
+                  const cs = Number(stockForm.current_stock || 0);
+                  const rl = Number(stockForm.reorder_level || 0);
+                  const status = computeStatus(cs, rl);
+                  return (
+                    <div className="text-center py-2">
+                      <Badge className={`${getStatusColor(status)} text-sm px-3 py-1`}>{status}</Badge>
+                      {status === 'Low Stock' && <p className="text-xs text-amber-600 mt-2">Stock is below reorder level</p>}
+                      {status === 'Critical' && <p className="text-xs text-red-600 mt-2">Stock is critically low!</p>}
+                      {status === 'Out of Stock' && <p className="text-xs text-gray-600 mt-2">No stock available</p>}
+                      {status === 'In Stock' && <p className="text-xs text-emerald-600 mt-2">Stock is healthy</p>}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setShowAddStock(false); resetStockForm(); setErrors({}); }}>
+            {t('cancel')}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleAddStock}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={!stockForm.name || !stockForm.category || !stockForm.current_stock || !stockForm.reorder_level || !stockForm.buying_price || !stockForm.selling_price}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            {t('addStockItem')}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -854,236 +904,223 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
     );
   }
 
-  // Full-screen Edit Stock Form
+  // Full-screen Edit Stock Form - Billing-style compact layout
   if (showEditStock && editingItem) {
+    const margin = Number(stockForm.selling_price || 0) - Number(stockForm.buying_price || 0);
+    const marginPct = Number(stockForm.buying_price) > 0 ? ((margin / Number(stockForm.buying_price)) * 100).toFixed(1) : '0';
+    const stockValue = Number(stockForm.current_stock || 0) * Number(stockForm.selling_price || 0);
+
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setShowEditStock(false);
-              setEditingItem(null);
-              resetStockForm();
-              setErrors({});
-            }}
-            className="flex items-center gap-2"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            {t('back')}
+      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+        {/* Header */}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => { setShowEditStock(false); setEditingItem(null); resetStockForm(); setErrors({}); }}>
+            ← {t('back')}
           </Button>
-          <h2 className="text-2xl font-bold text-slate-900">
-            {t('editStockItem')}
-          </h2>
+          <h1 className="text-xl font-bold">{t('editStockItem')}</h1>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('stockDetails')}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('itemName')} *</Label>
-                <Input 
-                  value={stockForm.name}
-                  onChange={(e) => { setStockForm({...stockForm, name: e.target.value}); setErrors(prev => ({...prev, name: ''})); }}
-                  placeholder={t('enterItemName')}
-                />
-                <FieldError message={errors.name} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('skuCode')} *</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={stockForm.sku}
-                    onChange={(e) => { setStockForm({...stockForm, sku: e.target.value}); setErrors(prev => ({...prev, sku: ''})); }}
-                    placeholder="ACC-MRK-001"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => setStockForm({...stockForm, sku: generateSKU()})}
-                  >
-                    {t('generate')}
-                  </Button>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Item Details Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Package className="w-4 h-4" /> Item Details
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  <div className="col-span-2">
+                    <Label className="text-xs text-gray-500">{t('itemName')} *</Label>
+                    <Input value={stockForm.name} onChange={(e) => { setStockForm({...stockForm, name: e.target.value}); setErrors(prev => ({...prev, name: ''})); }} placeholder="Enter item name" className="h-8 text-sm" />
+                    <FieldError message={errors.name} />
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-xs text-gray-500">Description</Label>
+                    <Input value={stockForm.description} onChange={(e) => setStockForm({...stockForm, description: e.target.value})} placeholder="Brief item description..." className="h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('skuCode')} *</Label>
+                    <div className="flex gap-1">
+                      <Input value={stockForm.sku} onChange={(e) => { setStockForm({...stockForm, sku: e.target.value}); setErrors(prev => ({...prev, sku: ''})); }} placeholder="ACC-MRK-001" className="h-8 text-sm font-mono" />
+                      <Button type="button" variant="outline" size="sm" className="h-8 text-xs px-2" onClick={() => setStockForm({...stockForm, sku: generateSKU()})}>Auto</Button>
+                    </div>
+                    <FieldError message={errors.sku} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Brand</Label>
+                    <Input value={stockForm.brand} onChange={(e) => setStockForm({...stockForm, brand: e.target.value})} placeholder="Brand name" className="h-8 text-sm" />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">HSN/SAC Code</Label>
+                    <Input value={stockForm.hsn_sac} onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})} placeholder="e.g. 39261019" className="h-8 text-sm font-mono" maxLength={20} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">GST Rate (%)</Label>
+                    <select value={stockForm.gst_rate} onChange={(e) => setStockForm({...stockForm, gst_rate: e.target.value})} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      <option value="0">0%</option>
+                      <option value="5">5%</option>
+                      <option value="12">12%</option>
+                      <option value="18">18%</option>
+                      <option value="28">28%</option>
+                    </select>
+                  </div>
                 </div>
-                <FieldError message={errors.sku} />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* HSN/SAC Code & GST Rate */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>HSN/SAC Code</Label>
-                <Input
-                  value={stockForm.hsn_sac}
-                  onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
-                  placeholder="e.g. 39261019"
-                  maxLength={20}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>GST Rate (%)</Label>
-                <select
-                  value={stockForm.gst_rate}
-                  onChange={(e) => setStockForm({...stockForm, gst_rate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                >
-                  <option value="0">0%</option>
-                  <option value="5">5%</option>
-                  <option value="12">12%</option>
-                  <option value="18">18%</option>
-                  <option value="28">28%</option>
-                </select>
-              </div>
-            </div>
+            {/* Classification Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <Boxes className="w-4 h-4" /> Classification
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('category')} *</Label>
+                    <select value={stockForm.category} onChange={(e) => { setStockForm({...stockForm, category: e.target.value, subcategory: ''}); setErrors(prev => ({...prev, category: ''})); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      <option value="">Select category</option>
+                      {categories.filter(c => c !== 'all').map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                    </select>
+                    <FieldError message={errors.category} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('subcategory')}</Label>
+                    <select value={stockForm.subcategory} onChange={(e) => setStockForm({...stockForm, subcategory: e.target.value})} disabled={!stockForm.category} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-50">
+                      <option value="">Select subcategory</option>
+                      {(subcategoriesByCategory[stockForm.category] || []).map(sub => <option key={sub} value={sub}>{sub}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('supplier')}</Label>
+                    <select value={stockForm.supplier} onChange={(e) => setStockForm({...stockForm, supplier: e.target.value})} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      <option value="">Select supplier</option>
+                      {suppliers.map(sup => <option key={sup} value={sup}>{sup}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Storage Location</Label>
+                    <Input value={stockForm.location} onChange={(e) => setStockForm({...stockForm, location: e.target.value})} placeholder="e.g. Warehouse A, Rack 3" className="h-8 text-sm" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('category')} *</Label>
-                <Select 
-                  value={stockForm.category} 
-                  onValueChange={(value: string) => { setStockForm({...stockForm, category: value, subcategory: ''}); setErrors(prev => ({...prev, category: ''})); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectCategory')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.filter(c => c !== 'all').map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FieldError message={errors.category} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('subcategory')}</Label>
-                <Select 
-                  value={stockForm.subcategory} 
-                  onValueChange={(value: string) => setStockForm({...stockForm, subcategory: value})}
-                  disabled={!stockForm.category}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectSubcategory')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(subcategoriesByCategory[stockForm.category] || []).map((sub) => (
-                      <SelectItem key={sub} value={sub}>{sub}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+            {/* Stock & Pricing Card */}
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" /> Stock & Pricing
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="grid grid-cols-3 gap-x-3 gap-y-2">
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('currentStock')} *</Label>
+                    <Input type="number" value={stockForm.current_stock} onChange={(e) => { setStockForm({...stockForm, current_stock: e.target.value}); setErrors(prev => ({...prev, current_stock: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0" className="h-8 text-sm" />
+                    <FieldError message={errors.current_stock} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('reorderLevel')} *</Label>
+                    <Input type="number" value={stockForm.reorder_level} onChange={(e) => { setStockForm({...stockForm, reorder_level: e.target.value}); setErrors(prev => ({...prev, reorder_level: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0" className="h-8 text-sm" />
+                    <FieldError message={errors.reorder_level} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('unit')} *</Label>
+                    <select value={stockForm.unit} onChange={(e) => { setStockForm({...stockForm, unit: e.target.value}); setErrors(prev => ({...prev, unit: ''})); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      {units.map(unit => <option key={unit} value={unit}>{unit}</option>)}
+                    </select>
+                    <FieldError message={errors.unit} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('buyingPrice')} *</Label>
+                    <Input type="number" value={stockForm.buying_price} onChange={(e) => { setStockForm({...stockForm, buying_price: e.target.value}); setErrors(prev => ({...prev, buying_price: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0.00" className="h-8 text-sm" />
+                    <FieldError message={errors.buying_price} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">{t('sellingPrice')} *</Label>
+                    <Input type="number" value={stockForm.selling_price} onChange={(e) => { setStockForm({...stockForm, selling_price: e.target.value}); setErrors(prev => ({...prev, selling_price: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0.00" className="h-8 text-sm" />
+                    <FieldError message={errors.selling_price} />
+                  </div>
+                  <div>
+                    <Label className="text-xs text-gray-500">Margin</Label>
+                    <div className={`h-8 flex items-center px-2 border rounded-md text-sm font-medium ${margin >= 0 ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                      ₹{margin.toLocaleString('en-IN')} ({marginPct}%)
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>{t('currentStock')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.current_stock}
-                  onChange={(e) => { setStockForm({...stockForm, current_stock: e.target.value}); setErrors(prev => ({...prev, current_stock: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0"
-                />
-                <FieldError message={errors.current_stock} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('reorderLevel')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.reorder_level}
-                  onChange={(e) => { setStockForm({...stockForm, reorder_level: e.target.value}); setErrors(prev => ({...prev, reorder_level: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0"
-                />
-                <FieldError message={errors.reorder_level} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('unit')} *</Label>
-                <Select 
-                  value={stockForm.unit} 
-                  onValueChange={(value: string) => { setStockForm({...stockForm, unit: value}); setErrors(prev => ({...prev, unit: ''})); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {units.map((unit) => (
-                      <SelectItem key={unit} value={unit}>{unit}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.unit && <FieldError message={errors.unit} />}
-              </div>
-            </div>
+          {/* Right Column: Summary */}
+          <div className="space-y-4">
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Summary</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-600">Item</span><span className="font-medium truncate ml-2">{stockForm.name || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600">SKU</span><span className="font-mono text-xs">{stockForm.sku || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-600">Category</span><span>{stockForm.category || '-'}</span></div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between"><span className="text-gray-600">Stock Qty</span><span className="font-medium">{stockForm.current_stock || '0'} {stockForm.unit}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">GST</span><span>{stockForm.gst_rate}%</span></div>
+                  </div>
+                  <div className="border-t pt-2 mt-2">
+                    <div className="flex justify-between"><span className="text-gray-600">Buying Price</span><span>₹{Number(stockForm.buying_price || 0).toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between"><span className="text-gray-600">Selling Price</span><span>₹{Number(stockForm.selling_price || 0).toLocaleString('en-IN')}</span></div>
+                    <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
+                      <span>Stock Value</span><span className="text-blue-700">₹{stockValue.toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="shadow-sm">
+              <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Status Preview</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4 pt-0">
+                {(() => {
+                  const cs = Number(stockForm.current_stock || 0);
+                  const rl = Number(stockForm.reorder_level || 0);
+                  const status = computeStatus(cs, rl);
+                  return (
+                    <div className="text-center py-2">
+                      <Badge className={`${getStatusColor(status)} text-sm px-3 py-1`}>{status}</Badge>
+                      {status === 'Low Stock' && <p className="text-xs text-amber-600 mt-2">Stock is below reorder level</p>}
+                      {status === 'Critical' && <p className="text-xs text-red-600 mt-2">Stock is critically low!</p>}
+                      {status === 'Out of Stock' && <p className="text-xs text-gray-600 mt-2">No stock available</p>}
+                      {status === 'In Stock' && <p className="text-xs text-emerald-600 mt-2">Stock is healthy</p>}
+                    </div>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('buyingPrice')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.buying_price}
-                  onChange={(e) => { setStockForm({...stockForm, buying_price: e.target.value}); setErrors(prev => ({...prev, buying_price: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                />
-                <FieldError message={errors.buying_price} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('sellingPrice')} *</Label>
-                <Input 
-                  type="number"
-                  value={stockForm.selling_price}
-                  onChange={(e) => { setStockForm({...stockForm, selling_price: e.target.value}); setErrors(prev => ({...prev, selling_price: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                />
-                <FieldError message={errors.selling_price} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('supplier')}</Label>
-                <Select 
-                  value={stockForm.supplier} 
-                  onValueChange={(value: string) => setStockForm({...stockForm, supplier: value})}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={t('selectSupplier')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {suppliers.map((sup) => (
-                      <SelectItem key={sup} value={sup}>{sup}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button variant="outline" onClick={() => {
-                setShowEditStock(false);
-                setEditingItem(null);
-                resetStockForm();
-                setErrors({});
-              }}>
-                {t('cancel')}
-              </Button>
-              <Button 
-                onClick={handleUpdateStock} 
-                className="bg-blue-600 hover:bg-blue-700 text-white"
-                disabled={!stockForm.name || !stockForm.category || !stockForm.current_stock || !stockForm.reorder_level || !stockForm.buying_price || !stockForm.selling_price}
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                {t('updateStockItem')}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Action Buttons */}
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setShowEditStock(false); setEditingItem(null); resetStockForm(); setErrors({}); }}>
+            {t('cancel')}
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleUpdateStock}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            disabled={!stockForm.name || !stockForm.category || !stockForm.current_stock || !stockForm.reorder_level || !stockForm.buying_price || !stockForm.selling_price}
+          >
+            <Edit className="w-4 h-4 mr-1" />
+            {t('updateStockItem')}
+          </Button>
+        </div>
       </div>
     );
   }
@@ -1212,11 +1249,12 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       </div>
       <div className="flex gap-3">
         <Button 
-          className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
+          variant="outline"
+          className="shadow-sm"
           onClick={() => navigate('/products')}
         >
-          <Package className="w-4 h-4 mr-2" />
-          {t('products')}
+          <Boxes className="w-4 h-4 mr-2" />
+          Categories
         </Button>
         <Button 
           className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg transition-all"
