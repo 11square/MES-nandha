@@ -10,6 +10,7 @@ import { Label } from './ui/label';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { Textarea } from './ui/textarea';
 import { translations, Language } from '../translations';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { 
   Search, 
   Truck, 
@@ -31,7 +32,8 @@ import {
   X,
   LayoutGrid,
   List,
-  LayoutList
+  LayoutList,
+  ArrowLeft
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Dispatch, BillForDispatch } from '../types';
@@ -405,6 +407,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
       setActiveTab(dispatchForm.dispatch_type);
       setShowAddDispatch(false);
       resetDispatchForm();
+      setErrors({});
     } catch (err: any) {
       toast.error(err?.message || 'Failed to create dispatch');
     }
@@ -1057,6 +1060,417 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
 
   return (
     <div className="space-y-6">
+      {showAddDispatch ? (
+      /* ─── FULL-PAGE CREATE DISPATCH FORM ─── */
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => { setShowAddDispatch(false); resetDispatchForm(); setErrors({}); }} className="gap-2">
+            <ArrowLeft className="w-4 h-4" />
+            {language === 'en' ? 'Back' : 'பின்செல்'}
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{t('createNewDispatch')}</h1>
+            <p className="text-sm text-muted-foreground">{language === 'en' ? 'Fill in the dispatch details below' : 'கீழே அனுப்புதல் விவரங்களை நிரப்பவும்'}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Order & Items */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Order Information */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Package className="w-4 h-4 text-blue-600" />
+                  {language === 'en' ? 'Order Information' : 'ஆர்டர் தகவல்'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t('orderId')}{dispatchForm.dispatch_type === 'production' ? ' *' : ''}</Label>
+                    <Input
+                      value={isBillPrefilledDispatch ? (billOrderNumber || dispatchForm.order_id) : dispatchForm.order_id}
+                      onChange={(e) => { setDispatchForm({...dispatchForm, order_id: e.target.value}); setErrors(prev => ({...prev, order_id: ''})); }}
+                      placeholder="Enter order ID"
+                      readOnly={isBillPrefilledDispatch}
+                      className={isBillPrefilledDispatch ? 'bg-gray-50' : ''}
+                    />
+                    <FieldError message={errors.order_id} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('invoiceNo')}</Label>
+                    <Input 
+                      value={dispatchForm.invoice_no}
+                      onChange={(e) => setDispatchForm({...dispatchForm, invoice_no: e.target.value})}
+                      placeholder="INV-2026-XXX"
+                      readOnly={isBillPrefilledDispatch}
+                      className={isBillPrefilledDispatch ? 'bg-gray-50' : ''}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('customer')} *</Label>
+                    <Input 
+                      value={dispatchForm.customer}
+                      onChange={(e) => { setDispatchForm({...dispatchForm, customer: e.target.value}); setErrors(prev => ({...prev, customer: ''})); }}
+                      placeholder={t('customerName')}
+                    />
+                    <FieldError message={errors.customer} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Items */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Box className="w-4 h-4 text-blue-600" />
+                  {dispatchForm.dispatch_type === 'production' ? t('product') : t('items')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {dispatchForm.dispatch_type === 'production' ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>{t('product')} *</Label>
+                      <Input 
+                        value={dispatchForm.product}
+                        onChange={(e) => { setDispatchForm({...dispatchForm, product: e.target.value}); setErrors(prev => ({...prev, product: ''})); }}
+                        placeholder={t('productName')}
+                      />
+                      <FieldError message={errors.product} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>{t('quantity')} *</Label>
+                      <Input 
+                        type="number"
+                        value={dispatchForm.quantity}
+                        onChange={(e) => { setDispatchForm({...dispatchForm, quantity: e.target.value}); setErrors(prev => ({...prev, quantity: ''})); }}
+                        onKeyDown={blockInvalidNumberKeys}
+                        placeholder="0"
+                      />
+                      <FieldError message={errors.quantity} />
+                    </div>
+                  </div>
+                ) : isBillPrefilledDispatch ? (
+                  <div className="space-y-3">
+                    <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                      Items are loaded from selected invoice.
+                    </div>
+                    {dispatchForm.product ? (
+                      <div className="flex flex-wrap gap-2">
+                        {dispatchForm.product.split(', ').filter(Boolean).map((item, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm font-medium">
+                            <Package className="w-3.5 h-3.5 text-blue-500" />
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500">
+                        No invoice items available.
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <div className="relative" ref={stockDropdownRef}>
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                      <Input
+                        value={stockSearchQuery}
+                        onChange={(e) => { setStockSearchQuery(e.target.value); setShowStockDropdown(true); }}
+                        onFocus={() => setShowStockDropdown(true)}
+                        placeholder={t('searchItem')}
+                        className="pl-10"
+                      />
+                      {showStockDropdown && (() => {
+                        const selectedNames = new Set(dispatchForm.product ? dispatchForm.product.split(', ').filter(Boolean).map(n => n.toLowerCase()) : []);
+                        const available = filteredStockItems.filter(item => !selectedNames.has((item.name || '').toLowerCase()));
+                        return available.length > 0 ? (
+                          <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                            {available.map((item) => (
+                              <button
+                                key={item.id}
+                                type="button"
+                                className="w-full text-left px-3 py-2.5 hover:bg-blue-50 flex items-center gap-3 text-sm border-b border-gray-50 last:border-0 transition-colors"
+                                onClick={() => {
+                                  const currentItems = dispatchForm.product ? dispatchForm.product.split(', ').filter(Boolean) : [];
+                                  const updated = [...currentItems, item.name].join(', ');
+                                  setDispatchForm({...dispatchForm, product: updated});
+                                  setStockSearchQuery('');
+                                  setShowStockDropdown(false);
+                                  setErrors(prev => ({...prev, product: ''}));
+                                }}
+                              >
+                                <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                                  <Package className="w-4 h-4 text-blue-500" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-gray-900 truncate">{item.name}</div>
+                                  <div className="text-xs text-gray-500">{item.sku}{item.category ? ` • ${item.category}` : ''}</div>
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  <div className="text-xs font-medium text-gray-700">{item.current_stock} {item.unit}</div>
+                                  {item.selling_price > 0 && <div className="text-xs text-green-600">₹{Number(item.selling_price).toLocaleString()}</div>}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : null;
+                      })()}
+                    </div>
+                    {dispatchForm.product && (
+                      <div className="flex flex-wrap gap-2">
+                        {dispatchForm.product.split(', ').filter(Boolean).map((item, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-sm font-medium">
+                            <Package className="w-3.5 h-3.5 text-blue-500" />
+                            {item}
+                            <button type="button" className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-blue-200 text-blue-500 hover:text-red-600 transition-colors" onClick={() => {
+                              const items = dispatchForm.product.split(', ').filter((_, i) => i !== idx);
+                              setDispatchForm({...dispatchForm, product: items.join(', ')});
+                            }}>
+                              <span className="text-sm leading-none">×</span>
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    <FieldError message={errors.product} />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Transport Details */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-blue-600" />
+                  {language === 'en' ? 'Transport Details' : 'போக்குவரத்து விவரங்கள்'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{t('transporter')} *</Label>
+                    {showAddTransporter ? (
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Transporter name"
+                          value={newTransporterName}
+                          onChange={(e) => setNewTransporterName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTransporter(); } }}
+                          autoFocus
+                        />
+                        <Button type="button" size="sm" onClick={handleAddTransporter} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                        <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddTransporter(false); setNewTransporterName(''); }} className="h-9 px-3">
+                          ✕
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        <Select 
+                          value={dispatchForm.transporter} 
+                          onValueChange={(value: string) => { setDispatchForm({...dispatchForm, transporter: value}); setErrors(prev => ({...prev, transporter: ''})); }}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder={t('selectTransporter')} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {transporters.map((tr) => (
+                              <SelectItem key={tr} value={tr}>{tr}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button type="button" size="sm" variant="outline" onClick={() => setShowAddTransporter(true)} title="Add new transporter" className="h-9 px-3">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                    <FieldError message={errors.transporter} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{t('vehicleNumber')}</Label>
+                    <Input 
+                      value={dispatchForm.vehicle_no}
+                      onChange={(e) => { setDispatchForm({...dispatchForm, vehicle_no: e.target.value}); setErrors(prev => ({...prev, vehicle_no: ''})); }}
+                      placeholder="MH-01-XX-1234"
+                    />
+                    <FieldError message={errors.vehicle_no} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>{language === 'en' ? 'Driver Name' : 'டிரைவர் பெயர்'}</Label>
+                    <Input 
+                      value={dispatchForm.driver_name}
+                      onChange={(e) => { setDispatchForm({...dispatchForm, driver_name: e.target.value}); setErrors(prev => ({...prev, driver_name: ''})); }}
+                      placeholder={language === 'en' ? 'Driver name' : 'டிரைவர் பெயர்'}
+                    />
+                    <FieldError message={errors.driver_name} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>{language === 'en' ? 'Driver Phone' : 'டிரைவர் தொலைபேசி'}</Label>
+                    <Input 
+                      value={dispatchForm.driver_phone}
+                      onChange={(e) => { setDispatchForm({...dispatchForm, driver_phone: e.target.value}); setErrors(prev => ({...prev, driver_phone: ''})); }}
+                      placeholder="+91 XXXXX XXXXX"
+                    />
+                    <FieldError message={errors.driver_phone} />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Right Column - LR, Dates, Address */}
+          <div className="space-y-6">
+            {/* LR Details */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Package className="w-4 h-4 text-blue-600" />
+                  {t('lrNumber')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t('lrNumber')} <span className="text-xs text-muted-foreground font-normal">{language === 'en' ? '(or upload image)' : '(அல்லது படம் பதிவேற்றவும்)'}</span></Label>
+                  <Input 
+                    value={dispatchForm.lr_number}
+                    onChange={(e) => { setDispatchForm({...dispatchForm, lr_number: e.target.value}); setErrors(prev => ({...prev, lr_number: ''})); }}
+                    placeholder="LR-2024-XXX"
+                  />
+                  <FieldError message={errors.lr_number} />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">{language === 'en' ? 'LR Image' : 'LR படம்'}</Label>
+                  {lrImagePreview ? (
+                    <div className="relative inline-block">
+                      <img src={lrImagePreview} alt="LR" className="w-full max-w-[200px] h-auto object-cover rounded-lg border" />
+                      <button
+                        type="button"
+                        onClick={() => removeLrImage(true)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        ref={lrFileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleLrImageSelect(file, true);
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => lrFileInputRef.current?.click()}
+                        className="flex items-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        {language === 'en' ? 'Upload' : 'பதிவேற்று'}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openCamera(true)}
+                        className="flex items-center gap-1.5"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        {language === 'en' ? 'Camera' : 'கேமரா'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Dates */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  {language === 'en' ? 'Schedule' : 'அட்டவணை'}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label>{t('dispatchDate')} *</Label>
+                  <Input 
+                    type="date"
+                    value={dispatchForm.dispatch_date}
+                    onChange={(e) => { setDispatchForm({...dispatchForm, dispatch_date: e.target.value}); setErrors(prev => ({...prev, dispatch_date: ''})); }}
+                  />
+                  <FieldError message={errors.dispatch_date} />
+                </div>
+                <div className="space-y-2">
+                  <Label>{t('expectedDelivery')}</Label>
+                  <Input 
+                    type="date"
+                    value={dispatchForm.expected_delivery}
+                    onChange={(e) => { setDispatchForm({...dispatchForm, expected_delivery: e.target.value}); setErrors(prev => ({...prev, expected_delivery: ''})); }}
+                  />
+                  <FieldError message={errors.expected_delivery} />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Delivery Address */}
+            <Card>
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base font-semibold flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-blue-600" />
+                  {t('deliveryAddress')}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Textarea 
+                  value={dispatchForm.address}
+                  onChange={(e) => { setDispatchForm({...dispatchForm, address: e.target.value}); setErrors(prev => ({...prev, address: ''})); }}
+                  placeholder={t('fullDeliveryAddress')}
+                  rows={4}
+                />
+                <FieldError message={errors.address} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-3 pt-2 pb-4 border-t">
+          <Button variant="outline" onClick={() => { setShowAddDispatch(false); resetDispatchForm(); setErrors({}); }}>
+            {t('cancel')}
+          </Button>
+          <Button 
+            onClick={handleCreateDispatch} 
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8"
+            disabled={
+              !dispatchForm.customer
+              || !dispatchForm.product
+              || !dispatchForm.dispatch_date
+              || (dispatchForm.dispatch_type === 'production' && (!dispatchForm.order_id || !dispatchForm.quantity))
+            }
+          >
+            <Truck className="w-4 h-4 mr-2" />
+            {t('createDispatch')}
+          </Button>
+        </div>
+      </div>
+      ) : (
+      <>
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -1254,350 +1668,8 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
           )}
         </div>
       </div>
-
-      {/* Create New Dispatch Dialog */}
-      <Dialog open={showAddDispatch} onOpenChange={(open: boolean) => {
-        setShowAddDispatch(open);
-        if (!open) resetDispatchForm();
-        setErrors({});
-      }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{t('createNewDispatch')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>{t('orderId')}{dispatchForm.dispatch_type === 'production' ? ' *' : ''}</Label>
-                <Input
-                  value={isBillPrefilledDispatch ? (billOrderNumber || dispatchForm.order_id) : dispatchForm.order_id}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, order_id: e.target.value}); setErrors(prev => ({...prev, order_id: ''})); }}
-                  placeholder="Enter order ID"
-                  readOnly={isBillPrefilledDispatch}
-                  className={isBillPrefilledDispatch ? 'bg-gray-50' : ''}
-                />
-                <FieldError message={errors.order_id} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('invoiceNo')}</Label>
-                <Input 
-                  value={dispatchForm.invoice_no}
-                  onChange={(e) => setDispatchForm({...dispatchForm, invoice_no: e.target.value})}
-                  placeholder="INV-2026-XXX"
-                  readOnly={isBillPrefilledDispatch}
-                  className={isBillPrefilledDispatch ? 'bg-gray-50' : ''}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('customer')}</Label>
-                <Input 
-                  value={dispatchForm.customer}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, customer: e.target.value}); setErrors(prev => ({...prev, customer: ''})); }}
-                  placeholder={t('customerName')}
-                />
-                <FieldError message={errors.customer} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{dispatchForm.dispatch_type === 'production' 
-                  ? (t('product')) 
-                  : (t('items'))}</Label>
-                {dispatchForm.dispatch_type === 'production' ? (
-                  <Input 
-                    value={dispatchForm.product}
-                    onChange={(e) => { setDispatchForm({...dispatchForm, product: e.target.value}); setErrors(prev => ({...prev, product: ''})); }}
-                    placeholder={t('productName')}
-                  />
-                ) : isBillPrefilledDispatch ? (
-                  <div className="space-y-2">
-                    <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
-                      Items are loaded from selected invoice.
-                    </div>
-                    {dispatchForm.product ? (
-                      <div className="flex flex-wrap gap-1.5">
-                        {dispatchForm.product.split(', ').filter(Boolean).map((item, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-medium">
-                            <Package className="w-3 h-3 text-blue-500" />
-                            {item}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="rounded-md border border-dashed border-gray-300 px-3 py-2 text-xs text-gray-500">
-                        No invoice items available.
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="relative" ref={stockDropdownRef}>
-                    <Input
-                      value={stockSearchQuery}
-                      onChange={(e) => { setStockSearchQuery(e.target.value); setShowStockDropdown(true); }}
-                      onFocus={() => setShowStockDropdown(true)}
-                      placeholder={t('searchItem')}
-                      className="w-full"
-                    />
-                    {dispatchForm.product && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {dispatchForm.product.split(', ').filter(Boolean).map((item, idx) => (
-                          <span key={idx} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-medium">
-                            <Package className="w-3 h-3 text-blue-500" />
-                            {item}
-                            <button type="button" className="ml-0.5 inline-flex items-center justify-center w-4 h-4 rounded-full hover:bg-blue-200 text-blue-500 hover:text-red-600 transition-colors" onClick={() => {
-                              const items = dispatchForm.product.split(', ').filter((_, i) => i !== idx);
-                              setDispatchForm({...dispatchForm, product: items.join(', ')});
-                            }}>
-                              <span className="text-sm leading-none">×</span>
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                    {showStockDropdown && (() => {
-                      const selectedNames = new Set(dispatchForm.product ? dispatchForm.product.split(', ').filter(Boolean).map(n => n.toLowerCase()) : []);
-                      const available = filteredStockItems.filter(item => !selectedNames.has((item.name || '').toLowerCase()));
-                      return available.length > 0 ? (
-                        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl max-h-52 overflow-y-auto">
-                          {available.map((item) => (
-                            <button
-                              key={item.id}
-                              type="button"
-                              className="w-full text-left px-3 py-2.5 hover:bg-blue-50 flex items-center gap-3 text-sm border-b border-gray-50 last:border-0 transition-colors"
-                              onClick={() => {
-                                const currentItems = dispatchForm.product ? dispatchForm.product.split(', ').filter(Boolean) : [];
-                                const updated = [...currentItems, item.name].join(', ');
-                                setDispatchForm({...dispatchForm, product: updated});
-                                setStockSearchQuery('');
-                                setShowStockDropdown(false);
-                                setErrors(prev => ({...prev, product: ''}));
-                              }}
-                            >
-                              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                                <Package className="w-4 h-4 text-blue-500" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="font-medium text-gray-900 truncate">{item.name}</div>
-                                <div className="text-xs text-gray-500">{item.sku}{item.category ? ` • ${item.category}` : ''}</div>
-                              </div>
-                              <div className="flex-shrink-0 text-right">
-                                <div className="text-xs font-medium text-gray-700">{item.current_stock} {item.unit}</div>
-                                {item.selling_price > 0 && <div className="text-xs text-green-600">₹{Number(item.selling_price).toLocaleString()}</div>}
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                )}
-                <FieldError message={errors.product} />
-              </div>
-              {dispatchForm.dispatch_type === 'production' && (
-                <div className="space-y-2">
-                  <Label>{t('quantity')}</Label>
-                  <Input 
-                    type="number"
-                    value={dispatchForm.quantity}
-                    onChange={(e) => { setDispatchForm({...dispatchForm, quantity: e.target.value}); setErrors(prev => ({...prev, quantity: ''})); }}
-                    onKeyDown={blockInvalidNumberKeys}
-                    placeholder="0"
-                  />
-                  <FieldError message={errors.quantity} />
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('lrNumber')} <span className="text-xs text-muted-foreground font-normal">{language === 'en' ? '(or upload LR image below)' : '(அல்லது கீழே LR படம் பதிவேற்றவும்)'}</span></Label>
-                <Input 
-                  value={dispatchForm.lr_number}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, lr_number: e.target.value}); setErrors(prev => ({...prev, lr_number: ''})); }}
-                  placeholder="LR-2024-XXX"
-                />
-                <FieldError message={errors.lr_number} />
-                {/* LR Image Upload */}
-                <div className="space-y-2">
-                  <Label className="text-xs text-muted-foreground">{language === 'en' ? 'LR Image' : 'LR படம்'}</Label>
-                  {lrImagePreview ? (
-                    <div className="relative inline-block">
-                      <img src={lrImagePreview} alt="LR" className="w-32 h-24 object-cover rounded-lg border" />
-                      <button
-                        type="button"
-                        onClick={() => removeLrImage(true)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="flex gap-2">
-                      <input
-                        ref={lrFileInputRef}
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleLrImageSelect(file, true);
-                        }}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => lrFileInputRef.current?.click()}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        <Upload className="w-3 h-3" />
-                        {language === 'en' ? 'Upload' : 'பதிவேற்று'}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openCamera(true)}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        <Camera className="w-3 h-3" />
-                        {language === 'en' ? 'Camera' : 'கேமரா'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-                <FieldError message={errors.lr_number} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('transporter')} *</Label>
-                {showAddTransporter ? (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Transporter name"
-                      value={newTransporterName}
-                      onChange={(e) => setNewTransporterName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTransporter(); } }}
-                      autoFocus
-                    />
-                    <Button type="button" size="sm" onClick={handleAddTransporter} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddTransporter(false); setNewTransporterName(''); }} className="h-9 px-3">
-                      ✕
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Select 
-                      value={dispatchForm.transporter} 
-                      onValueChange={(value: string) => { setDispatchForm({...dispatchForm, transporter: value}); setErrors(prev => ({...prev, transporter: ''})); }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('selectTransporter')} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {transporters.map((tr) => (
-                          <SelectItem key={tr} value={tr}>{tr}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setShowAddTransporter(true)} title="Add new transporter" className="h-9 px-3">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-                <FieldError message={errors.transporter} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>{t('vehicleNumber')}</Label>
-                <Input 
-                  value={dispatchForm.vehicle_no}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, vehicle_no: e.target.value}); setErrors(prev => ({...prev, vehicle_no: ''})); }}
-                  placeholder="MH-01-XX-1234"
-                />
-                <FieldError message={errors.vehicle_no} />
-              </div>
-              <div className="space-y-2">
-                <Label>{language === 'en' ? 'Driver Name' : 'டிரைவர் பெயர்'}</Label>
-                <Input 
-                  value={dispatchForm.driver_name}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, driver_name: e.target.value}); setErrors(prev => ({...prev, driver_name: ''})); }}
-                  placeholder={language === 'en' ? 'Driver name' : 'டிரைவர் பெயர்'}
-                />
-                <FieldError message={errors.driver_name} />
-              </div>
-              <div className="space-y-2">
-                <Label>{language === 'en' ? 'Driver Phone' : 'டிரைவர் தொலைபேசி'}</Label>
-                <Input 
-                  value={dispatchForm.driver_phone}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, driver_phone: e.target.value}); setErrors(prev => ({...prev, driver_phone: ''})); }}
-                  placeholder="+91 XXXXX XXXXX"
-                />
-                <FieldError message={errors.driver_phone} />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>{t('dispatchDate')}</Label>
-                <Input 
-                  type="date"
-                  value={dispatchForm.dispatch_date}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, dispatch_date: e.target.value}); setErrors(prev => ({...prev, dispatch_date: ''})); }}
-                />
-                <FieldError message={errors.dispatch_date} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('expectedDelivery')}</Label>
-                <Input 
-                  type="date"
-                  value={dispatchForm.expected_delivery}
-                  onChange={(e) => { setDispatchForm({...dispatchForm, expected_delivery: e.target.value}); setErrors(prev => ({...prev, expected_delivery: ''})); }}
-                />
-                <FieldError message={errors.expected_delivery} />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>{t('deliveryAddress')}</Label>
-              <Textarea 
-                value={dispatchForm.address}
-                onChange={(e) => { setDispatchForm({...dispatchForm, address: e.target.value}); setErrors(prev => ({...prev, address: ''})); }}
-                placeholder={t('fullDeliveryAddress')}
-                rows={2}
-              />
-              <FieldError message={errors.address} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowAddDispatch(false);
-              resetDispatchForm();
-            }}>
-              {t('cancel')}
-            </Button>
-            <Button 
-              onClick={handleCreateDispatch} 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={
-                !dispatchForm.customer
-                || !dispatchForm.product
-                || !dispatchForm.dispatch_date
-                || !dispatchForm.address
-                || (dispatchForm.dispatch_type === 'production' && (!dispatchForm.order_id || !dispatchForm.quantity))
-              }
-            >
-              <Truck className="w-4 h-4 mr-2" />
-              {t('createDispatch')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      </>
+      )}
 
       {/* View Dispatch Detail Dialog */}
       <Dialog open={!!viewDispatch} onOpenChange={(open: boolean) => { if (!open) setViewDispatch(null); }}>
