@@ -405,6 +405,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   const [showAddonForm, setShowAddonForm] = useState(false);
   const [editingAddonIndex, setEditingAddonIndex] = useState<number | null>(null);
   const [editingAddon, setEditingAddon] = useState<{ title: string; description: string; amount: number } | null>(null);
+  const [posSearch, setPosSearch] = useState('');
+  const [posOpen, setPosOpen] = useState(false);
 
   const [currentItem, setCurrentItem] = useState({
     itemId: '',
@@ -1899,11 +1901,28 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     <Input type="date" value={billForm.date} onChange={(e) => { setBillForm(prev => ({ ...prev, date: e.target.value })); setErrors(prev => ({ ...prev, date: '' })); }} className="h-8 text-sm" />
                     <FieldError message={errors.date} />
                   </div>
-                  <div>
+                  <div className="relative">
                     <Label className="text-xs text-gray-500">Place of Supply</Label>
-                    <select value={billForm.place_of_supply} onChange={(e) => setBillForm(prev => ({ ...prev, place_of_supply: e.target.value }))} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
-                      {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <input
+                      type="text"
+                      value={posOpen ? posSearch : billForm.place_of_supply}
+                      onChange={(e) => { setPosSearch(e.target.value); setPosOpen(true); }}
+                      onFocus={() => { setPosSearch(''); setPosOpen(true); }}
+                      onBlur={() => setTimeout(() => setPosOpen(false), 150)}
+                      placeholder="Search state..."
+                      className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs"
+                    />
+                    {posOpen && (
+                      <div className="absolute z-50 w-full mt-0.5 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                        {INDIAN_STATES.filter(s => s.toLowerCase().includes(posSearch.toLowerCase())).map(s => (
+                          <div
+                            key={s}
+                            className={`px-2 py-1.5 text-xs cursor-pointer hover:bg-blue-50 ${s === billForm.place_of_supply ? 'bg-blue-100 font-semibold' : ''}`}
+                            onMouseDown={() => { setBillForm(prev => ({ ...prev, place_of_supply: s })); setPosOpen(false); setPosSearch(''); }}
+                          >{s}</div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Invoice Type</Label>
