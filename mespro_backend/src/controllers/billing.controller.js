@@ -1,4 +1,4 @@
-const { Bill, BillItem, Payment, Client, CreditOutstanding, Transaction } = require('../models');
+const { Bill, BillItem, Payment, Client, CreditOutstanding, Transaction, StockItem } = require('../models');
 const createCrudController = require('./base.controller');
 const ApiResponse = require('../utils/ApiResponse');
 const { sequelize } = require('../models');
@@ -12,7 +12,7 @@ const baseController = createCrudController(Bill, {
     { model: Payment, as: 'payments' },
   ],
   searchFields: ['bill_no', 'client_name'],
-  defaultOrder: [['date', 'DESC']],
+  defaultOrder: [['created_at', 'DESC']],
 });
 
 module.exports = {
@@ -131,6 +131,29 @@ module.exports = {
         );
       }
 
+      // Stock deduction: auto for invoices, optional for quotations
+      const isInvoice = (billData.bill_no || '').startsWith('INV');
+      const shouldDeductStock = isInvoice || billData.deduct_stock === true;
+      if (shouldDeductStock && billData.status !== 'draft' && items && items.length > 0) {
+        const stockItems = await StockItem.findAll({
+          where: applyBusinessScope(req),
+          transaction: t,
+        });
+        for (const item of items) {
+          const itemName = (item.name || '').trim().toLowerCase();
+          if (!itemName) continue;
+          const matched = stockItems.find(s => (s.name || '').trim().toLowerCase() === itemName);
+          if (matched) {
+            const qty = parseFloat(item.quantity) || 0;
+            const newStock = Math.max(0, parseFloat(matched.current_stock || 0) - qty);
+            let status = 'In Stock';
+            if (newStock <= 0) status = 'Out of Stock';
+            else if (newStock <= parseFloat(matched.reorder_level || 0)) status = 'Low Stock';
+            await matched.update({ current_stock: newStock, status }, { transaction: t });
+          }
+        }
+      }
+
       // Handle payment based on payment type (skip for drafts)
       if (billData.status !== 'draft' && billData.payment_type === 'cash') {
         // Cash bill: auto-create payment record and mark as paid
@@ -207,7 +230,7 @@ module.exports = {
       const data = await Payment.findAndCountAll({
         where: applyBusinessScope(req),
         include: [{ model: Bill, as: 'bill', attributes: ['id', 'bill_no', 'grand_total'] }],
-        order: [['date', 'DESC']],
+        order: [['created_at', 'DESC']],
         limit,
         offset,
         distinct: true,
