@@ -1903,15 +1903,18 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   </div>
                   <div className="relative">
                     <Label className="text-xs text-gray-500">Place of Supply</Label>
-                    <input
-                      type="text"
-                      value={posOpen ? posSearch : billForm.place_of_supply}
-                      onChange={(e) => { setPosSearch(e.target.value); setPosOpen(true); }}
-                      onFocus={() => { setPosSearch(''); setPosOpen(true); }}
-                      onBlur={() => setTimeout(() => setPosOpen(false), 150)}
-                      placeholder="Search state..."
-                      className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs"
-                    />
+                    <div className="relative">
+                      <input
+                        type="text"
+                        value={posOpen ? posSearch : billForm.place_of_supply}
+                        onChange={(e) => { setPosSearch(e.target.value); setPosOpen(true); }}
+                        onFocus={() => { setPosSearch(''); setPosOpen(true); }}
+                        onBlur={() => setTimeout(() => setPosOpen(false), 150)}
+                        placeholder="Search state..."
+                        className="w-full h-8 px-2 pr-7 border border-gray-300 rounded-md text-xs"
+                      />
+                      <svg className="absolute right-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </div>
                     {posOpen && (
                       <div className="absolute z-50 w-full mt-0.5 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
                         {INDIAN_STATES.filter(s => s.toLowerCase().includes(posSearch.toLowerCase())).map(s => (
