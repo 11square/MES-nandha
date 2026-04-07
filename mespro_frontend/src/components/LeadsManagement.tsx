@@ -1683,6 +1683,82 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                   <FieldError message={errors.email} />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+                  <Input
+                    value={gstNumber}
+                    onChange={handleGstChange}
+                    placeholder="e.g. 33AUJPM8458P1ZR"
+                    maxLength={15}
+                    className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                  />
+                  {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('state')}</Label>
+                  <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                        {stateValue || t('enterState')}
+                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder={t('searchState')} />
+                        <CommandList>
+                          <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
+                          <CommandGroup>
+                            {getAllStates().map(s => (
+                              <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
+                                <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
+                                {s}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('district')}</Label>
+                  <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                        {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
+                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder={t('searchDistrict')} />
+                        <CommandList>
+                          <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
+                          <CommandGroup>
+                            {availableDistricts.map(d => (
+                              <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
+                                <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
+                                {d}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('address')}</Label>
+                  <textarea
+                    id="address"
+                    placeholder={t('enterCustomerAddress')}
+                    className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
               {/* Selected client info display */}
               {customerValue && mobileValue && (
                 <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
@@ -1732,72 +1808,6 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
                   onChange={() => errors.required_date && setErrors(prev => { const { required_date, ...rest } = prev; return rest; })}
                 />
                 <FieldError message={errors.required_date} />
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
-                <Input
-                  value={gstNumber}
-                  onChange={handleGstChange}
-                  placeholder="e.g. 33AUJPM8458P1ZR"
-                  maxLength={15}
-                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
-                />
-                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('state')}</Label>
-                <Popover open={stateOpen} onOpenChange={setStateOpen}>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
-                      {stateValue || t('enterState')}
-                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder={t('searchState')} />
-                      <CommandList>
-                        <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
-                        <CommandGroup>
-                          {getAllStates().map(s => (
-                            <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
-                              <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
-                              {s}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('district')}</Label>
-                <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
-                  <PopoverTrigger asChild>
-                    <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
-                      {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
-                      <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                    <Command>
-                      <CommandInput placeholder={t('searchDistrict')} />
-                      <CommandList>
-                        <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
-                        <CommandGroup>
-                          {availableDistricts.map(d => (
-                            <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
-                              <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
-                              {d}
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
               </div>
             </div>
           </CardContent>
@@ -2048,26 +2058,16 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
         </Card>
       )}
 
-      {/* Address, Notes & Actions */}
+      {/* Notes */}
       <Card className="shadow-sm mb-4">
         <CardContent className="px-4 py-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-gray-500">{t('address')}</Label>
-              <textarea
-                id="address"
-                placeholder={t('enterCustomerAddress')}
-                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-gray-500">{t('notesSpecialRequirements')}</Label>
-              <textarea
-                id="notes"
-                placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')}
-                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
+          <div>
+            <Label className="text-xs text-gray-500">{t('notesSpecialRequirements')}</Label>
+            <textarea
+              id="notes"
+              placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')}
+              className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
           </div>
         </CardContent>
       </Card>
