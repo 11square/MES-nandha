@@ -36,5 +36,5 @@ systemctl reload nginx
 
 echo ""
 echo "=== Deployment Complete ==="
-echo "Frontend: http://72.60.99.225:8085/"
-echo "Backend:  http://72.60.99.225:3006/api/"
+echo "Frontend: https://ramcooindustries.online/"
+echo "Backend:  https://ramcooindustries.online/api/"
