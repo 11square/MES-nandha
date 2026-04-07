@@ -60,6 +60,7 @@ interface StockItem {
   subcategory: string;
   sku: string;
   hsnSac: string;
+  gstRate: number;
   currentStock: number;
   unit: string;
   unitPrice: number;
@@ -158,13 +159,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     itemId: string;
     itemName: string;
     hsnSac: string;
+    gstRate: number;
     quantity: number;
     unit: string;
     price: number;
     discount: number;
   }
   const [itemEntryRows, setItemEntryRows] = useState<ItemEntryRow[]>([
-    { id: 1, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }
+    { id: 1, itemId: '', itemName: '', hsnSac: '', gstRate: 18, quantity: 1, unit: 'Pcs', price: 0, discount: 0 }
   ]);
   const [activeRowDropdown, setActiveRowDropdown] = useState<number | null>(null);
   const itemInputRefs = useRef<{ [key: number]: HTMLInputElement | null }>({});
@@ -309,6 +311,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         subcategory: item.subcategory || '',
         sku: item.sku || '',
         hsnSac: item.hsn_sac || item.hsnSac || '',
+        gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
         currentStock: item.current_stock ?? item.currentStock ?? 0,
         unit: item.unit || '',
         unitPrice: Number(item.selling_price) || Number(item.unit_price) || Number(item.unitPrice) || 0,
@@ -645,7 +648,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       return;
     }
     const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
-    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
+    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', hsnSac: '', gstRate: 18, quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setTimeout(() => {
       itemInputRefs.current[newId]?.focus();
     }, 100);
@@ -667,7 +670,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   // Select item for a specific row
   const selectItemForRow = (rowId: number, stock: typeof stockItems[0]) => {
     setItemEntryRows(rows => rows.map(row => 
-      row.id === rowId ? { ...row, itemId: stock.id, itemName: stock.name, hsnSac: stock.hsnSac || '', price: stock.unitPrice, unit: stock.unit || 'Pcs' } : row
+      row.id === rowId ? { ...row, itemId: stock.id, itemName: stock.name, hsnSac: stock.hsnSac || '', gstRate: stock.gstRate ?? 18, price: stock.unitPrice, unit: stock.unit || 'Pcs' } : row
     ));
     setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
     setActiveRowDropdown(null);
@@ -681,7 +684,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       setItemEntryRows(rows => rows.filter(row => row.id !== rowId));
     } else {
       // Reset the only row if quantity is not 0
-      setItemEntryRows([{ id: 1, itemId: '', itemName: '', quantity: 0, price: 0, discount: 0 }]);
+      setItemEntryRows([{ id: 1, itemId: '', itemName: '', quantity: 0, price: 0, discount: 0, gstRate: 18 }]);
     }
   };
 
@@ -706,7 +709,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
     // Build new items list first (outside updater for reliable side effects)
     const newItems: BillItem[] = [];
-    const currentGst = billForm.gst;
     for (const row of validRows) {
       const stock = getSelectedStock(row.itemId);
       if (!stock) {
@@ -720,10 +722,11 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       }
 
       const unitPrice = row.price > 0 ? row.price : stock.unitPrice;
+      const itemGstRate = row.gstRate ?? stock.gstRate ?? 18;
       const subtotal = unitPrice * row.quantity;
       const discountAmount = (subtotal * row.discount) / 100;
       const taxableAmount = subtotal - discountAmount;
-      const taxAmount = (taxableAmount * currentGst) / 100;
+      const taxAmount = (taxableAmount * itemGstRate) / 100;
       const total = taxableAmount + taxAmount;
 
       newItems.push({
@@ -737,7 +740,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         unit: row.unit || stock.unit || 'Pcs',
         unit_price: unitPrice,
         discount: row.discount,
-        tax: currentGst,
+        tax: itemGstRate,
         total: Math.round(total),
       });
     }
@@ -750,7 +753,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       setErrors(prev => ({ ...prev, items: '' }));
       setItemRowErrors({});
       // Reset to single empty row only after successful add
-      setItemEntryRows([{ id: 1, itemId: '', itemName: '', quantity: 0, price: 0, discount: 0 }]);
+      setItemEntryRows([{ id: 1, itemId: '', itemName: '', quantity: 0, price: 0, discount: 0, gstRate: 18 }]);
     }
   };
 
@@ -850,25 +853,26 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   // Calculate tax breakdown by HSN/SAC code
   const calculateTaxBreakdown = () => {
-    const gstRate = billForm.gst;
-    const halfRate = gstRate / 2;
-    const hsnMap: Record<string, { hsn: string; taxable: number; cgst: number; sgst: number; total: number }> = {};
+    const hsnMap: Record<string, { hsn: string; rate: number; taxable: number; cgst: number; sgst: number; total: number }> = {};
     
     billForm.items.forEach(item => {
       const hsn = item.hsn_sac || '-';
+      const itemRate = item.tax || 0;
+      const halfRate = itemRate / 2;
       const itemSubtotal = item.unit_price * item.quantity;
       const discountAmt = (itemSubtotal * item.discount) / 100;
       const taxable = itemSubtotal - discountAmt;
       const cgst = (taxable * halfRate) / 100;
       const sgst = (taxable * halfRate) / 100;
       
-      if (!hsnMap[hsn]) {
-        hsnMap[hsn] = { hsn, taxable: 0, cgst: 0, sgst: 0, total: 0 };
+      const key = `${hsn}_${itemRate}`;
+      if (!hsnMap[key]) {
+        hsnMap[key] = { hsn, rate: itemRate, taxable: 0, cgst: 0, sgst: 0, total: 0 };
       }
-      hsnMap[hsn].taxable += taxable;
-      hsnMap[hsn].cgst += cgst;
-      hsnMap[hsn].sgst += sgst;
-      hsnMap[hsn].total += cgst + sgst;
+      hsnMap[key].taxable += taxable;
+      hsnMap[key].cgst += cgst;
+      hsnMap[key].sgst += sgst;
+      hsnMap[key].total += cgst + sgst;
     });
     
     return Object.values(hsnMap);
@@ -979,7 +983,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         due_date: billForm.due_date,
         notes: billForm.notes,
         created_by: billForm.created_by,
-        gst_rate: billForm.gst,
+        gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
         place_of_supply: billForm.place_of_supply,
         terms_conditions: billForm.terms_conditions,
         state: billForm.place_of_supply,
@@ -1019,14 +1023,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         {
           date: billForm.date,
           client: clientValue,
-          gst: billForm.gst,
           invoiceType: billForm.invoiceType,
           payment_type: billForm.payment_type,
         },
         {
           date: { required: true, label: 'Date' },
           client: { required: true, label: 'Client' },
-          gst: { required: true, numeric: true, min: 0, label: 'GST' },
           invoiceType: { required: true, label: 'Invoice Type' },
           payment_type: { required: true, label: 'Bill Type' },
         }
@@ -1078,14 +1080,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         due_date: billForm.due_date,
         notes: billForm.notes,
         created_by: billForm.created_by,
-        gst_rate: billForm.gst,
+        gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
         place_of_supply: billForm.place_of_supply,
         terms_conditions: billForm.terms_conditions,
         state: billForm.place_of_supply,
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
-      setActiveTab(billForm.gst > 0 ? 'gst-bills' : 'non-gst-bills');
+      setActiveTab(billForm.items.some(i => i.tax > 0) ? 'gst-bills' : 'non-gst-bills');
       refreshBills();
       resetBillForm();
       setShowCreateBill(false);
@@ -1165,7 +1167,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     setEditingItem(null);
     setClientSearchQuery('');
     setShowClientDropdown(false);
-    setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', gstRate: 18, quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setItemRowErrors({});
     setActiveRowDropdown(null);
     setAddons([]);
@@ -1226,32 +1228,37 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </tr>`;
     }).join('');
 
-    // HSN/SAC tax breakdown - group items by hsn_sac
-    const hsnMap: Record<string, { taxable: number; cgst: number; sgst: number; total: number }> = {};
+    // HSN/SAC tax breakdown - group items by hsn_sac + tax rate
+    const hsnMap: Record<string, { rate: number; taxable: number; cgst: number; sgst: number; total: number }> = {};
     bill.items.forEach(item => {
       const hsn = item.hsn_sac || '-';
+      const itemRate = item.tax || 0;
       const taxablePrice = item.unit_price * (1 - (item.discount || 0) / 100);
       const taxableAmt = taxablePrice * item.quantity;
-      const halfRate = (item.tax || 0) / 2;
+      const halfRate = itemRate / 2;
       const halfTax = taxableAmt * (halfRate / 100);
-      if (!hsnMap[hsn]) hsnMap[hsn] = { taxable: 0, cgst: 0, sgst: 0, total: 0 };
-      hsnMap[hsn].taxable += taxableAmt;
-      hsnMap[hsn].cgst += halfTax;
-      hsnMap[hsn].sgst += halfTax;
-      hsnMap[hsn].total += halfTax * 2;
+      const key = `${hsn}_${itemRate}`;
+      if (!hsnMap[key]) hsnMap[key] = { rate: itemRate, taxable: 0, cgst: 0, sgst: 0, total: 0 };
+      hsnMap[key].taxable += taxableAmt;
+      hsnMap[key].cgst += halfTax;
+      hsnMap[key].sgst += halfTax;
+      hsnMap[key].total += halfTax * 2;
     });
 
-    const halfGstRate = bill.gst_rate / 2;
-    const hsnRows = Object.entries(hsnMap).map(([hsn, v]) => `
+    const hsnRows = Object.entries(hsnMap).map(([key, v]) => {
+      const hsn = key.split('_')[0];
+      const halfRate = v.rate / 2;
+      return `
       <tr>
         <td>${hsn}</td>
         <td class="tr">${fmtCur(v.taxable)}</td>
-        <td class="tc">${halfGstRate}%</td>
+        <td class="tc">${halfRate}%</td>
         <td class="tr">${fmtCur(v.cgst)}</td>
-        <td class="tc">${halfGstRate}%</td>
+        <td class="tc">${halfRate}%</td>
         <td class="tr">${fmtCur(v.sgst)}</td>
         <td class="tr bold">${fmtCur(v.total)}</td>
-      </tr>`).join('');
+      </tr>`;
+    }).join('');
 
     const hsnTotals = Object.values(hsnMap).reduce((a, v) => ({
       taxable: a.taxable + v.taxable, cgst: a.cgst + v.cgst, sgst: a.sgst + v.sgst, total: a.total + v.total
@@ -1408,7 +1415,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       <table>
         <tr><td>Sub Total</td><td>${fmtCur(bill.subtotal)}</td></tr>
         ${bill.total_discount > 0 ? `<tr><td>Discount</td><td>- ${fmtCur(bill.total_discount)}</td></tr>` : ''}
-        ${bill.total_tax > 0 ? `<tr><td>Tax (${bill.gst_rate}%)</td><td>${fmtCur(bill.total_tax)}</td></tr>` : ''}
+        ${bill.total_tax > 0 ? `<tr><td>Tax</td><td>${fmtCur(bill.total_tax)}</td></tr>` : ''}
         <tr class="grand-total"><td>Total</td><td>${fmtCur(bill.grand_total)}</td></tr>
         <tr><td>Paid</td><td>${fmtCur(bill.paid_amount)}</td></tr>
         <tr><td>Balance</td><td>${fmtCur(balance)}</td></tr>
@@ -1417,7 +1424,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   </div>
 
   <!-- HSN/SAC Tax Breakdown -->
-  ${bill.gst_rate > 0 ? `
+  ${bill.total_tax > 0 ? `
   <div class="hsn-section">
     <table class="hsn-table">
       <thead>
@@ -1538,7 +1545,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     });
     setClientSearchQuery(client ? client.name : (bill.client_name || ''));
     setActiveTab(bill.gst_rate > 0 ? 'gst-bills' : 'non-gst-bills');
-    setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', hsnSac: '', gstRate: 18, quantity: 1, unit: 'Pcs', price: 0, discount: 0 }]);
     setItemRowErrors({});
     setActiveRowDropdown(null);
     setEditingItemIndex(null);
@@ -1555,14 +1562,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       {
         date: billForm.date,
         client: clientValue,
-        gst: billForm.gst,
         invoiceType: billForm.invoiceType,
         payment_type: billForm.payment_type,
       },
       {
         date: { required: true, label: 'Date' },
         client: { required: true, label: 'Client' },
-        gst: { required: true, numeric: true, min: 0, label: 'GST' },
         invoiceType: { required: true, label: 'Invoice Type' },
         payment_type: { required: true, label: 'Bill Type' },
       }
@@ -1594,10 +1599,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         grand_total: Math.round(totals.grandTotal),
         payment_type: billForm.payment_type,
         notes: billForm.notes,
-        gst_rate: billForm.gst,
+        gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
       });
       toast.success('Bill updated successfully!');
-      setActiveTab(billForm.gst > 0 ? 'gst-bills' : 'non-gst-bills');
+      setActiveTab(billForm.items.some(i => i.tax > 0) ? 'gst-bills' : 'non-gst-bills');
       refreshBills();
     } catch (err: any) {
       toast.error(err.message || 'Failed to update bill');
@@ -1743,7 +1748,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-gray-600">GST:</span>
-                      <Badge variant="outline">{viewingBill.gst_rate}%</Badge>
+                      <Badge variant="outline">Per Item</Badge>
                     </div>
                     <p className="text-gray-500 text-sm">Created by: {viewingBill.created_by}</p>
                   </div>
@@ -1791,7 +1796,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <span>-₹{viewingBill.total_discount.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">GST ({viewingBill.gst_rate}%):</span>
+                      <span className="text-gray-600">GST:</span>
                       <span>₹{viewingBill.total_tax.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between font-bold text-xl border-t pt-3">
@@ -1820,7 +1825,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   if (showCreateBill) {
     const totals = calculateBillTotals();
     const taxBreakdown = calculateTaxBreakdown();
-    const halfGst = billForm.gst / 2;
+    const hasAnyTax = billForm.items.some(item => item.tax > 0);
     const taxableAmount = totals.subtotal - totals.totalDiscount;
 
     return (
@@ -1873,17 +1878,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     <select value={billForm.place_of_supply} onChange={(e) => setBillForm(prev => ({ ...prev, place_of_supply: e.target.value }))} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
                       {INDIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
-                  </div>
-                  <div>
-                    <Label className="text-xs text-gray-500">GST % *</Label>
-                    <select value={billForm.gst} onChange={(e) => { setBillForm(prev => ({ ...prev, gst: Number(e.target.value) })); setErrors(prev => ({ ...prev, gst: '' })); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
-                      <option value={0}>0%</option>
-                      <option value={5}>5%</option>
-                      <option value={12}>12%</option>
-                      <option value={18}>18%</option>
-                      <option value={28}>28%</option>
-                    </select>
-                    <FieldError message={errors.gst} />
                   </div>
                   <div>
                     <Label className="text-xs text-gray-500">Invoice Type *</Label>
@@ -2064,13 +2058,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[28%]">Item *</th>
-                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">HSN/SAC</th>
-                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">Qty *</th>
-                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Unit</th>
-                      <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">Price/Unit</th>
-                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">Disc %</th>
-                      <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">Amount</th>
+                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[24%]">Item *</th>
+                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">HSN/SAC</th>
+                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">Qty *</th>
+                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">Unit</th>
+                      <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[11%]">Price/Unit</th>
+                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">Disc %</th>
+                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">GST %</th>
+                      <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Amount</th>
                       <th className="w-[8%]"></th>
                     </tr>
                   </thead>
@@ -2080,7 +2075,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       const rowSubtotal = rowPrice * row.quantity;
                       const rowDiscAmt = (rowSubtotal * row.discount) / 100;
                       const rowTaxable = rowSubtotal - rowDiscAmt;
-                      const rowTax = (rowTaxable * billForm.gst) / 100;
+                      const rowItemGst = row.gstRate ?? 18;
+                      const rowTax = (rowTaxable * rowItemGst) / 100;
                       const rowTotal = rowTaxable + rowTax;
                       return (
                         <tr key={row.id} className="border-b border-gray-100">
@@ -2160,6 +2156,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               }}
                             />
                           </td>
+                          <td className="py-1 pr-2">
+                            <select value={row.gstRate} onChange={(e) => updateItemRow(row.id, 'gstRate', Number(e.target.value))} className="w-full h-7 px-1 border border-gray-300 rounded-md text-xs text-center">
+                              <option value={0}>0%</option>
+                              <option value={5}>5%</option>
+                              <option value={12}>12%</option>
+                              <option value={18}>18%</option>
+                              <option value={28}>28%</option>
+                            </select>
+                          </td>
                           <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
                             {row.itemId ? `₹${Math.round(rowTotal).toLocaleString()}` : '-'}
                           </td>
@@ -2204,7 +2209,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         <th className="text-center py-2 px-2 font-semibold text-gray-600 w-12">Unit</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Price/Unit</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Taxable</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-16">GST</th>
+                        <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Final Rate</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Amount</th>
                         <th className="w-16"></th>
@@ -2234,7 +2239,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               ) : `₹${item.unit_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                             </td>
                             <td className="py-1.5 px-2 text-right text-gray-600">₹{itemTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="py-1.5 px-2 text-right text-gray-600">₹{(itemGstAmt / item.quantity).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 px-2 text-center text-gray-600">{item.tax}%</td>
                             <td className="py-1.5 px-2 text-right font-medium">₹{finalRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="py-1.5 px-2">
@@ -2345,14 +2350,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <span>Taxable Amount</span>
                       <span>₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                     </div>
-                    {billForm.gst > 0 && (
+                    {hasAnyTax && (
                       <>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">CGST ({halfGst}%)</span>
+                          <span className="text-gray-600">CGST</span>
                           <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div className="flex justify-between">
-                          <span className="text-gray-600">SGST ({halfGst}%)</span>
+                          <span className="text-gray-600">SGST</span>
                           <span>₹{(totals.totalTax / 2).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                         </div>
                       </>
@@ -2381,7 +2386,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
               </Card>
 
               {/* Tax Breakdown by HSN */}
-              {billForm.gst > 0 && taxBreakdown.length > 0 && (
+              {hasAnyTax && taxBreakdown.length > 0 && (
                 <Card className="shadow-sm">
                   <CardHeader className="py-3 px-4">
                     <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Tax Breakdown</CardTitle>
@@ -2408,9 +2413,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                           <tr key={idx} className="border-b border-gray-100">
                             <td className="py-1.5 font-mono">{row.hsn}</td>
                             <td className="py-1.5 text-right">₹{row.taxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="py-1.5 text-center">{halfGst}%</td>
+                            <td className="py-1.5 text-center">{row.rate / 2}%</td>
                             <td className="py-1.5 text-right">₹{row.cgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="py-1.5 text-center">{halfGst}%</td>
+                            <td className="py-1.5 text-center">{row.rate / 2}%</td>
                             <td className="py-1.5 text-right">₹{row.sgst.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="py-1.5 text-right font-medium">₹{row.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                           </tr>

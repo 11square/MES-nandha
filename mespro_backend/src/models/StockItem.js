@@ -28,6 +28,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    gst_rate: {
+      type: DataTypes.DECIMAL(5, 2),
+      allowNull: true,
+      defaultValue: 18,
+    },
     current_stock: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,

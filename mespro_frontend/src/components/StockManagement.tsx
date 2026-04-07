@@ -52,6 +52,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
     subcategory: '',
     sku: '',
     hsn_sac: '',
+    gst_rate: '18',
     current_stock: '',
     reorder_level: '',
     unit: 'pieces',
@@ -99,6 +100,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       subcategory: '',
       sku: '',
       hsn_sac: '',
+      gst_rate: '18',
       current_stock: '',
       reorder_level: '',
       unit: 'pieces',
@@ -141,6 +143,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
         subcategory: stockForm.subcategory,
         sku: stockForm.sku || generateSKU(),
         hsn_sac: stockForm.hsn_sac,
+        gst_rate: Number(stockForm.gst_rate) || 0,
         current_stock: currentStock,
         reorder_level: reorderLevel,
         unit: stockForm.unit,
@@ -167,6 +170,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       subcategory: item.subcategory || '',
       sku: item.sku || '',
       hsn_sac: item.hsn_sac || '',
+      gst_rate: String(item.gst_rate ?? '18'),
       current_stock: String(item.current_stock || ''),
       reorder_level: String(item.reorder_level || ''),
       unit: item.unit || 'pieces',
@@ -199,6 +203,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
         subcategory: stockForm.subcategory,
         sku: stockForm.sku,
         hsn_sac: stockForm.hsn_sac,
+        gst_rate: Number(stockForm.gst_rate) || 0,
         current_stock: currentStock,
         reorder_level: reorderLevel,
         unit: stockForm.unit,
@@ -562,15 +567,31 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
               </div>
             </div>
 
-            {/* HSN/SAC Code */}
-            <div className="space-y-2">
-              <Label>HSN/SAC Code</Label>
-              <Input
-                value={stockForm.hsn_sac}
-                onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
-                placeholder="e.g. 39261019"
-                maxLength={20}
-              />
+            {/* HSN/SAC Code & GST Rate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>HSN/SAC Code</Label>
+                <Input
+                  value={stockForm.hsn_sac}
+                  onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
+                  placeholder="e.g. 39261019"
+                  maxLength={20}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>GST Rate (%)</Label>
+                <select
+                  value={stockForm.gst_rate}
+                  onChange={(e) => setStockForm({...stockForm, gst_rate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="0">0%</option>
+                  <option value="5">5%</option>
+                  <option value="12">12%</option>
+                  <option value="18">18%</option>
+                  <option value="28">28%</option>
+                </select>
+              </div>
             </div>
 
             {/* Category & Subcategory - auto-filled when product selected */}
@@ -763,6 +784,10 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                   </div>
                 )}
                 <div>
+                  <Label className="text-sm text-slate-500">GST Rate</Label>
+                  <p className="text-base font-medium text-slate-900 mt-1">{viewingItem.gst_rate ?? 18}%</p>
+                </div>
+                <div>
                   <Label className="text-sm text-slate-500">{t('category')}</Label>
                   <p className="text-base font-medium text-slate-900 mt-1">
                     <Badge variant="outline">{viewingItem.category}</Badge>
@@ -889,15 +914,31 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
               </div>
             </div>
 
-            {/* HSN/SAC Code */}
-            <div className="space-y-2">
-              <Label>HSN/SAC Code</Label>
-              <Input
-                value={stockForm.hsn_sac}
-                onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
-                placeholder="e.g. 39261019"
-                maxLength={20}
-              />
+            {/* HSN/SAC Code & GST Rate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>HSN/SAC Code</Label>
+                <Input
+                  value={stockForm.hsn_sac}
+                  onChange={(e) => setStockForm({...stockForm, hsn_sac: e.target.value})}
+                  placeholder="e.g. 39261019"
+                  maxLength={20}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>GST Rate (%)</Label>
+                <select
+                  value={stockForm.gst_rate}
+                  onChange={(e) => setStockForm({...stockForm, gst_rate: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                >
+                  <option value="0">0%</option>
+                  <option value="5">5%</option>
+                  <option value="12">12%</option>
+                  <option value="18">18%</option>
+                  <option value="28">28%</option>
+                </select>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
