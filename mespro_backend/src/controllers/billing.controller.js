@@ -35,7 +35,59 @@ module.exports = {
       }
 
       // Update bill header fields
+      const oldPaymentStatus = bill.payment_status;
       await bill.update(billData, { transaction: t });
+
+      // Handle payment_status change to 'paid' — create transaction for remaining balance
+      if (billData.payment_status === 'paid' && oldPaymentStatus !== 'paid') {
+        const grandTotal = parseFloat(bill.grand_total || 0);
+        
+        // Calculate how much was already recorded in transactions
+        const allTransactions = await Transaction.findAll({
+          where: applyBusinessScope(req, { reference: bill.bill_no, type: 'income' }),
+          attributes: ['amount'],
+          transaction: t,
+        });
+        const totalRecorded = allTransactions.reduce((sum, tx) => sum + parseFloat(tx.amount || 0), 0);
+        const remaining = grandTotal - totalRecorded;
+
+        if (remaining > 0) {
+          const paymentMethod = bill.payment_method || 'cash';
+          
+          // Create payment record
+          await Payment.create({
+            bill_id: bill.id,
+            bill_no: bill.bill_no,
+            client_name: bill.client_name,
+            date: new Date().toISOString().split('T')[0],
+            amount: remaining,
+            method: paymentMethod,
+            reference: `Payment for ${bill.bill_no}`,
+            status: 'completed',
+            business_id: req.currentBusiness,
+          }, { transaction: t });
+
+          // Create finance transaction
+          await Transaction.create({
+            date: new Date().toISOString().split('T')[0],
+            type: 'income',
+            category: 'Sales',
+            description: `Payment received for invoice ${bill.bill_no} - ${bill.client_name}`,
+            amount: remaining,
+            payment_method: paymentMethod,
+            reference: bill.bill_no,
+            client_name: bill.client_name,
+            client_id: bill.client_id,
+            status: 'completed',
+            business_id: req.currentBusiness,
+          }, { transaction: t });
+
+          // Update paid_amount to grand_total
+          await bill.update({
+            paid_amount: grandTotal,
+          }, { transaction: t });
+        }
+      }
 
       // Replace bill items: delete old, insert new
       if (items && Array.isArray(items)) {
@@ -180,6 +232,8 @@ module.exports = {
           amount: cashAmount,
           payment_method: billData.payment_method || 'cash',
           reference: bill.bill_no,
+          client_name: billData.client_name,
+          client_id: billData.client_id,
           status: 'completed',
           business_id: req.currentBusiness,
         }, { transaction: t });
