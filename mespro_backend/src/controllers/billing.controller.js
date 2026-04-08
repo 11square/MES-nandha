@@ -195,20 +195,8 @@ module.exports = {
 
       // Handle payment based on payment type (skip for drafts)
       if (billData.status !== 'draft' && billData.payment_type === 'cash') {
-        // Cash bill: auto-create payment record and mark as paid
+        // Cash bill: create finance transaction and mark as paid
         const cashAmount = parseFloat(billData.grand_total || 0);
-        await Payment.create({
-          bill_id: bill.id,
-          bill_no: bill.bill_no,
-          client_name: billData.client_name,
-          date: billData.date,
-          amount: cashAmount,
-          method: billData.payment_method || 'cash',
-          reference: `Cash payment for ${bill.bill_no}`,
-          received_by: billData.created_by || null,
-          status: 'completed',
-          business_id: req.currentBusiness,
-        }, { transaction: t });
 
         // Create finance transaction for cash bill
         await Transaction.create({
