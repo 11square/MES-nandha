@@ -1606,189 +1606,183 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
-            {/* Left Column */}
-            <div className="space-y-2">
-              <div>
-                <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
-                <div className="relative">
-                  <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
-                    >
-                      <option value="+91">+91</option>
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+61">+61</option>
-                      <option value="+81">+81</option>
-                      <option value="+86">+86</option>
-                      <option value="+971">+971</option>
-                      <option value="+65">+65</option>
-                      <option value="+60">+60</option>
-                      <option value="+49">+49</option>
-                      <option value="+33">+33</option>
-                      <option value="+39">+39</option>
-                      <option value="+55">+55</option>
-                      <option value="+82">+82</option>
-                      <option value="+27">+27</option>
-                    </select>
-                    <Input
-                      id="mobile"
-                      placeholder="XXXXX XXXXX"
-                      className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
-                      value={mobileValue}
-                      onChange={(e) => {
-                        setMobileValue(e.target.value);
-                        setMobileSearchQuery(e.target.value);
-                        setShowMobileDropdown(true);
-                        if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
-                      }}
-                      onFocus={() => setShowMobileDropdown(true)}
-                    />
-                  </div>
-                  {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {filteredClients.map(client => (
-                        <div
-                          key={client.id || client._id}
-                          className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
-                          onClick={() => handleClientSelect(client)}
-                        >
-                          <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
-                          <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <FieldError message={errors.mobile} />
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
-                  <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.customer} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
-                  <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.contact} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('email')}</Label>
-                  <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.email} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-2">
+            {/* Row 1: Mobile (span 2) | Lead Source | Required Date */}
+            <div className="col-span-2">
+              <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
+              <div className="relative">
+                <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="+91">+91</option>
+                    <option value="+1">+1</option>
+                    <option value="+44">+44</option>
+                    <option value="+61">+61</option>
+                    <option value="+81">+81</option>
+                    <option value="+86">+86</option>
+                    <option value="+971">+971</option>
+                    <option value="+65">+65</option>
+                    <option value="+60">+60</option>
+                    <option value="+49">+49</option>
+                    <option value="+33">+33</option>
+                    <option value="+39">+39</option>
+                    <option value="+55">+55</option>
+                    <option value="+82">+82</option>
+                    <option value="+27">+27</option>
+                  </select>
                   <Input
-                    value={gstNumber}
-                    onChange={handleGstChange}
-                    placeholder="e.g. 33AUJPM8458P1ZR"
-                    maxLength={15}
-                    className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                    id="mobile"
+                    placeholder="XXXXX XXXXX"
+                    className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                    value={mobileValue}
+                    onChange={(e) => {
+                      setMobileValue(e.target.value);
+                      setMobileSearchQuery(e.target.value);
+                      setShowMobileDropdown(true);
+                      if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; });
+                    }}
+                    onFocus={() => setShowMobileDropdown(true)}
                   />
-                  {gstError && <p className="text-xs text-red-500">{gstError}</p>}
                 </div>
+                {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {filteredClients.map(client => (
+                      <div
+                        key={client.id || client._id}
+                        className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
+                        onClick={() => handleClientSelect(client)}
+                      >
+                        <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
+                        <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              <FieldError message={errors.mobile} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('leadSource')}</Label>
+              <select
+                id="source"
+                className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={() => errors.source && setErrors(prev => { const { source, ...rest } = prev; return rest; })}
+              >
+                <option value="">{t('selectSource')}</option>
+                <option value="website">{t('website')}</option>
+                <option value="phone">{t('phone')}</option>
+                <option value="walkin">{t('walkin')}</option>
+                <option value="advertisement">{t('advertisement')}</option>
+                <option value="referral">{t('referral')}</option>
+                <option value="inperson">{t('inperson')}</option>
+              </select>
+              <FieldError message={errors.source} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
+              <Input
+                id="required_date"
+                type="date"
+                className="h-8 text-sm"
+                onChange={() => errors.required_date && setErrors(prev => { const { required_date, ...rest } = prev; return rest; })}
+              />
+              <FieldError message={errors.required_date} />
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('leadSource')}</Label>
-                  <select
-                    id="source"
-                    className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onChange={() => errors.source && setErrors(prev => { const { source, ...rest } = prev; return rest; })}
-                  >
-                    <option value="">{t('selectSource')}</option>
-                    <option value="website">{t('website')}</option>
-                    <option value="phone">{t('phone')}</option>
-                    <option value="walkin">{t('walkin')}</option>
-                    <option value="advertisement">{t('advertisement')}</option>
-                    <option value="referral">{t('referral')}</option>
-                    <option value="inperson">{t('inperson')}</option>
-                  </select>
-                  <FieldError message={errors.source} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
-                  <Input
-                    id="required_date"
-                    type="date"
-                    className="h-8 text-sm"
-                    onChange={() => errors.required_date && setErrors(prev => { const { required_date, ...rest } = prev; return rest; })}
-                  />
-                  <FieldError message={errors.required_date} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('state')}</Label>
-                  <Popover open={stateOpen} onOpenChange={setStateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
-                        {stateValue || t('enterState')}
-                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t('searchState')} />
-                        <CommandList>
-                          <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
-                          <CommandGroup>
-                            {getAllStates().map(s => (
-                              <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
-                                <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
-                                {s}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('district')}</Label>
-                  <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
-                        {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
-                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t('searchDistrict')} />
-                        <CommandList>
-                          <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
-                          <CommandGroup>
-                            {availableDistricts.map(d => (
-                              <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
-                                <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
-                                {d}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('address')}</Label>
-                <textarea
-                  id="address"
-                  placeholder={t('enterCustomerAddress')}
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
+            {/* Row 2: Business Name | Contact Person | State | District */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
+              <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; }); }} />
+              <FieldError message={errors.customer} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
+              <FieldError message={errors.contact} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('state')}</Label>
+              <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {stateValue || t('enterState')}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchState')} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {getAllStates().map(s => (
+                          <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
+                            {s}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('district')}</Label>
+              <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchDistrict')} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {availableDistricts.map(d => (
+                          <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
+                            {d}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Row 3: Email | GST Number | Address (span 2) */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('email')}</Label>
+              <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
+              <FieldError message={errors.email} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+              <Input
+                value={gstNumber}
+                onChange={handleGstChange}
+                placeholder="e.g. 33AUJPM8458P1ZR"
+                maxLength={15}
+                className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+              />
+              {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs text-gray-500">{t('address')}</Label>
+              <textarea
+                id="address"
+                placeholder={t('enterCustomerAddress')}
+                className="w-full h-8 px-3 py-1.5 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
 
@@ -2983,207 +2977,201 @@ function EditLeadForm({ lead, categories = [], allProducts = [], onClose, onSucc
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
-            {/* Left Column */}
-            <div className="space-y-2">
-              <div>
-                <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
-                <div className="relative">
-                  <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
-                    >
-                      <option value="+91">+91</option>
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+61">+61</option>
-                      <option value="+81">+81</option>
-                      <option value="+86">+86</option>
-                      <option value="+971">+971</option>
-                      <option value="+65">+65</option>
-                      <option value="+60">+60</option>
-                      <option value="+49">+49</option>
-                      <option value="+33">+33</option>
-                      <option value="+39">+39</option>
-                      <option value="+55">+55</option>
-                      <option value="+82">+82</option>
-                      <option value="+27">+27</option>
-                    </select>
-                    <Input
-                      id="edit-mobile"
-                      placeholder="XXXXX XXXXX"
-                      className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
-                      value={mobile}
-                      onChange={(e) => { setMobile(e.target.value); setShowMobileDropdown(true); if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; }); }}
-                      onFocus={() => setShowMobileDropdown(true)}
-                    />
-                  </div>
-                  {showMobileDropdown && mobile && filteredClients.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {filteredClients.map(client => (
-                        <div
-                          key={client.id || client._id}
-                          className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
-                          onClick={() => handleClientSelect(client)}
-                        >
-                          <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
-                          <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <FieldError message={errors.mobile} />
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
-                  <Input id="edit-customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerName} onChange={(e) => { setCustomerName(e.target.value); if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.customer} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
-                  <Input id="edit-contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactPerson} onChange={(e) => { setContactPerson(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.contact} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('email')} *</Label>
-                  <Input id="edit-email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
-                  <FieldError message={errors.email} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-2">
+            {/* Row 1: Mobile (span 2) | Lead Source | Required Date */}
+            <div className="col-span-2">
+              <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
+              <div className="relative">
+                <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
+                  <select
+                    value={countryCode}
+                    onChange={(e) => setCountryCode(e.target.value)}
+                    className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
+                  >
+                    <option value="+91">+91</option>
+                    <option value="+1">+1</option>
+                    <option value="+44">+44</option>
+                    <option value="+61">+61</option>
+                    <option value="+81">+81</option>
+                    <option value="+86">+86</option>
+                    <option value="+971">+971</option>
+                    <option value="+65">+65</option>
+                    <option value="+60">+60</option>
+                    <option value="+49">+49</option>
+                    <option value="+33">+33</option>
+                    <option value="+39">+39</option>
+                    <option value="+55">+55</option>
+                    <option value="+82">+82</option>
+                    <option value="+27">+27</option>
+                  </select>
                   <Input
-                    value={gstNumber}
-                    onChange={handleGstChange}
-                    placeholder="e.g. 33AUJPM8458P1ZR"
-                    maxLength={15}
-                    className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                    id="edit-mobile"
+                    placeholder="XXXXX XXXXX"
+                    className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                    value={mobile}
+                    onChange={(e) => { setMobile(e.target.value); setShowMobileDropdown(true); if (errors.mobile) setErrors(prev => { const { mobile, ...rest } = prev; return rest; }); }}
+                    onFocus={() => setShowMobileDropdown(true)}
                   />
-                  {gstError && <p className="text-xs text-red-500">{gstError}</p>}
                 </div>
+                {showMobileDropdown && mobile && filteredClients.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {filteredClients.map(client => (
+                      <div
+                        key={client.id || client._id}
+                        className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
+                        onClick={() => handleClientSelect(client)}
+                      >
+                        <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
+                        <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              <FieldError message={errors.mobile} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('leadSource')} *</Label>
+              <select
+                id="edit-source"
+                className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={source}
+                onChange={(e) => { setSource(e.target.value); if (errors.source) setErrors(prev => { const { source, ...rest } = prev; return rest; }); }}
+              >
+                <option value="">{t('selectSource')}</option>
+                {source && !knownLeadSources.includes(source) && (
+                  <option value={source}>{source}</option>
+                )}
+                <option value="website">{t('website')}</option>
+                <option value="phone">{t('phone')}</option>
+                <option value="walkin">{t('walkin')}</option>
+                <option value="advertisement">{t('advertisement')}</option>
+                <option value="referral">{t('referral')}</option>
+                <option value="inperson">{t('inperson')}</option>
+              </select>
+              <FieldError message={errors.source} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
+              <Input
+                id="edit-required-date"
+                type="date"
+                value={requiredDate}
+                onChange={(e) => setRequiredDate(e.target.value)}
+                className="h-8 text-sm"
+              />
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('leadSource')} *</Label>
-                  <select
-                    id="edit-source"
-                    className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={source}
-                    onChange={(e) => { setSource(e.target.value); if (errors.source) setErrors(prev => { const { source, ...rest } = prev; return rest; }); }}
-                  >
-                    <option value="">{t('selectSource')}</option>
-                    {source && !knownLeadSources.includes(source) && (
-                      <option value={source}>{source}</option>
-                    )}
-                    <option value="website">{t('website')}</option>
-                    <option value="phone">{t('phone')}</option>
-                    <option value="walkin">{t('walkin')}</option>
-                    <option value="advertisement">{t('advertisement')}</option>
-                    <option value="referral">{t('referral')}</option>
-                    <option value="inperson">{t('inperson')}</option>
-                  </select>
-                  <FieldError message={errors.source} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
-                  <Input
-                    id="edit-required-date"
-                    type="date"
-                    value={requiredDate}
-                    onChange={(e) => setRequiredDate(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('status')} *</Label>
-                  <select
-                    id="edit-status"
-                    className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={status}
-                    onChange={(e) => { setStatus(e.target.value); if (errors.status) setErrors(prev => { const { status, ...rest } = prev; return rest; }); }}
-                  >
-                    <option value="">{t('selectStatus')}</option>
-                    <option value="New">{t('new')}</option>
-                    <option value="Contacted">{t('contacted')}</option>
-                    <option value="Qualified">{t('qualified')}</option>
-                    <option value="Converted">{t('converted')}</option>
-                    <option value="Rejected">{t('rejected')}</option>
-                  </select>
-                  <FieldError message={errors.status} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('state')}</Label>
-                  <Popover open={stateOpen} onOpenChange={setStateOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
-                        {stateValue || t('enterState')}
-                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t('searchState')} />
-                        <CommandList>
-                          <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
-                          <CommandGroup>
-                            {getAllStates().map(s => (
-                              <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
-                                <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
-                                {s}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                  {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('district')}</Label>
-                  <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
-                    <PopoverTrigger asChild>
-                      <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
-                        {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
-                        <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder={t('searchDistrict')} />
-                        <CommandList>
-                          <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
-                          <CommandGroup>
-                            {availableDistricts.map(d => (
-                              <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
-                                <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
-                                {d}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('address')}</Label>
-                <textarea
-                  id="edit-address"
-                  placeholder={t('enterCustomerAddress')}
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
-              </div>
+            {/* Row 2: Business Name | Contact Person | Status | State */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
+              <Input id="edit-customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerName} onChange={(e) => { setCustomerName(e.target.value); if (errors.customer) setErrors(prev => { const { customer, ...rest } = prev; return rest; }); }} />
+              <FieldError message={errors.customer} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Input id="edit-contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactPerson} onChange={(e) => { setContactPerson(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
+              <FieldError message={errors.contact} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('status')} *</Label>
+              <select
+                id="edit-status"
+                className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={status}
+                onChange={(e) => { setStatus(e.target.value); if (errors.status) setErrors(prev => { const { status, ...rest } = prev; return rest; }); }}
+              >
+                <option value="">{t('selectStatus')}</option>
+                <option value="New">{t('new')}</option>
+                <option value="Contacted">{t('contacted')}</option>
+                <option value="Qualified">{t('qualified')}</option>
+                <option value="Converted">{t('converted')}</option>
+                <option value="Rejected">{t('rejected')}</option>
+              </select>
+              <FieldError message={errors.status} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('state')}</Label>
+              <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {stateValue || t('enterState')}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchState')} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {getAllStates().map(s => (
+                          <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
+                            {s}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
+            </div>
+
+            {/* Row 3: Email | GST Number | District | Address */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('email')} *</Label>
+              <Input id="edit-email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={email} onChange={(e) => { setEmail(e.target.value); if (errors.email) setErrors(prev => { const { email, ...rest } = prev; return rest; }); }} />
+              <FieldError message={errors.email} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+              <Input
+                value={gstNumber}
+                onChange={handleGstChange}
+                placeholder="e.g. 33AUJPM8458P1ZR"
+                maxLength={15}
+                className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+              />
+              {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('district')}</Label>
+              <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchDistrict')} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {availableDistricts.map(d => (
+                          <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
+                            {d}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('address')}</Label>
+              <textarea
+                id="edit-address"
+                placeholder={t('enterCustomerAddress')}
+                className="w-full h-8 px-3 py-1.5 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
             </div>
           </div>
         </CardContent>
