@@ -504,52 +504,13 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   return (
     <div className="space-y-6">
       {/* Page Heading with Actions */}
-      <div className="flex justify-between items-start">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">{t('leadsTitle')}</h1>
-          <p className="text-muted-foreground">{t('trackAndManageSalesLeads')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">{t('leadsTitle')}</h1>
+          <p className="text-gray-600 mt-1">{t('trackAndManageSalesLeads')}</p>
         </div>
         
       </div>
-
-      {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        
-        <div className="flex justify-between items-start">
-          <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-gray-100 rounded-lg w-fit">
-            <TabsTrigger value="leads" className="px-4 py-2">
-              {t('leads')}
-            </TabsTrigger>
-            <TabsTrigger value="followups" className="px-4 py-2">
-              {t('followups')}
-            </TabsTrigger>
-          </TabsList>
-          <div className="flex items-center gap-3">
-            {activeTab === 'leads' && (
-              <Button 
-                variant="outline"
-                onClick={() => onNavigate('orders')}
-              >
-                {t('viewOrders')}
-              </Button>
-            )}
-            {activeTab === 'leads' && (canApprove) && (
-              <Button 
-                className="bg-blue-600 hover:bg-blue-700"
-                onClick={() => setShowCreateLead(true)}
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                {t('createLead')}
-              </Button>
-            )}
-            {activeTab === 'followups' && (
-              <AddActivityDialog leads={leads} onSuccess={refreshLeads} />
-            )}
-          </div>
-        </div>
-
-        {/* Leads Tab Content */}
-        <TabsContent value="leads" className="space-y-6">
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -636,6 +597,44 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
           </SelectContent>
         </Select>
       </div>
+
+      {/* Main Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+
+      <div className="flex justify-between items-start">
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-gray-100 rounded-lg w-fit">
+          <TabsTrigger value="leads" className="px-4 py-2">
+            {t('leads')} ({filteredLeads.length})
+          </TabsTrigger>
+          <TabsTrigger value="followups" className="px-4 py-2">
+            {t('followups')}
+          </TabsTrigger>
+        </TabsList>
+        <div className="flex items-center gap-3">
+          {activeTab === 'leads' && (
+            <Button 
+              variant="outline"
+              onClick={() => onNavigate('orders')}
+            >
+              {t('viewOrders')}
+            </Button>
+          )}
+          {activeTab === 'leads' && (canApprove) && (
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => setShowCreateLead(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {t('createLead')}
+            </Button>
+          )}
+          {activeTab === 'followups' && (
+            <AddActivityDialog leads={leads} onSuccess={refreshLeads} />
+          )}
+        </div>
+      </div>
+
+        <TabsContent value="leads" className="mt-4">
       {/* Leads Table */}
       <Card>
         <CardHeader>
