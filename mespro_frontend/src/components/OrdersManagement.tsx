@@ -1603,170 +1603,164 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4 pt-0">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-6 gap-y-2">
-            {/* Left Column */}
-            <div className="space-y-2">
-              <div>
-                <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
-                <div className="relative">
-                  <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
-                    <select
-                      className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
-                      defaultValue="+91"
-                    >
-                      <option value="+91">+91</option>
-                      <option value="+1">+1</option>
-                      <option value="+44">+44</option>
-                      <option value="+61">+61</option>
-                      <option value="+81">+81</option>
-                      <option value="+86">+86</option>
-                      <option value="+971">+971</option>
-                      <option value="+65">+65</option>
-                      <option value="+60">+60</option>
-                      <option value="+49">+49</option>
-                      <option value="+33">+33</option>
-                      <option value="+39">+39</option>
-                      <option value="+55">+55</option>
-                      <option value="+82">+82</option>
-                      <option value="+27">+27</option>
-                    </select>
-                    <Input
-                      id="mobile"
-                      placeholder="XXXXX XXXXX"
-                      className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
-                      value={mobileValue}
-                      onChange={(e) => {
-                        setMobileValue(e.target.value);
-                        setShowMobileDropdown(true);
-                        if (errors.mobile) setErrors(prev => ({ ...prev, mobile: '' }));
-                      }}
-                      onFocus={() => setShowMobileDropdown(true)}
-                    />
-                  </div>
-                  {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
-                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                      {filteredClients.map(client => (
-                        <div
-                          key={client.id || client._id}
-                          className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
-                          onClick={() => handleClientSelect(client)}
-                        >
-                          <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
-                          <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                <FieldError message={errors.mobile} />
-              </div>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
-                  <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => ({ ...prev, customer: '' })); }} />
-                  <FieldError message={errors.customer} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
-                  <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => ({ ...prev, contact: '' })); }} />
-                  <FieldError message={errors.contact} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('email')} *</Label>
-                  <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }} />
-                  <FieldError message={errors.email} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-2">
+            {/* Row 1: Mobile (span 2) | Order Source | Required Date */}
+            <div className="col-span-2">
+              <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
+              <div className="relative">
+                <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
+                  <select
+                    className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
+                    defaultValue="+91"
+                  >
+                    <option value="+91">+91</option>
+                    <option value="+1">+1</option>
+                    <option value="+44">+44</option>
+                    <option value="+61">+61</option>
+                    <option value="+81">+81</option>
+                    <option value="+86">+86</option>
+                    <option value="+971">+971</option>
+                    <option value="+65">+65</option>
+                    <option value="+60">+60</option>
+                    <option value="+49">+49</option>
+                    <option value="+33">+33</option>
+                    <option value="+39">+39</option>
+                    <option value="+55">+55</option>
+                    <option value="+82">+82</option>
+                    <option value="+27">+27</option>
+                  </select>
                   <Input
-                    value={gstNumber}
-                    onChange={handleGstChange}
-                    placeholder="e.g. 33AUJPM8458P1ZR"
-                    maxLength={15}
-                    className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                    id="mobile"
+                    placeholder="XXXXX XXXXX"
+                    className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                    value={mobileValue}
+                    onChange={(e) => {
+                      setMobileValue(e.target.value);
+                      setShowMobileDropdown(true);
+                      if (errors.mobile) setErrors(prev => ({ ...prev, mobile: '' }));
+                    }}
+                    onFocus={() => setShowMobileDropdown(true)}
                   />
-                  {gstError && <p className="text-xs text-red-500">{gstError}</p>}
                 </div>
+                {showMobileDropdown && mobileValue && filteredClients.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {filteredClients.map(client => (
+                      <div
+                        key={client.id || client._id}
+                        className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
+                        onClick={() => handleClientSelect(client)}
+                      >
+                        <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
+                        <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+              <FieldError message={errors.mobile} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('orderSource')} *</Label>
+              <select
+                id="source"
+                defaultValue={leadData?.source ? leadData.source.toLowerCase() : ''}
+                className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={() => errors.source && setErrors(prev => ({ ...prev, source: '' }))}
+              >
+                <option value="">{t('selectSource')}</option>
+                <option value="website">{t('website')}</option>
+                <option value="phone">{t('phone')}</option>
+                <option value="walkin">{t('walkin')}</option>
+                <option value="advertisement">{t('advertisement')}</option>
+                <option value="referral">{t('referral')}</option>
+                <option value="inperson">{t('inperson')}</option>
+              </select>
+              <FieldError message={errors.source} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
+              <Input
+                id="requiredDate"
+                type="date"
+                value={requiredDate}
+                onChange={(e) => setRequiredDate(e.target.value)}
+                className="h-8 text-sm"
+              />
             </div>
 
-            {/* Right Column */}
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
-                <div>
-                  <Label className="text-xs text-gray-500">{t('orderSource')} *</Label>
-                  <select
-                    id="source"
-                    defaultValue={leadData?.source ? leadData.source.toLowerCase() : ''}
-                    className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onChange={() => errors.source && setErrors(prev => ({ ...prev, source: '' }))}
-                  >
-                    <option value="">{t('selectSource')}</option>
-                    <option value="website">{t('website')}</option>
-                    <option value="phone">{t('phone')}</option>
-                    <option value="walkin">{t('walkin')}</option>
-                    <option value="advertisement">{t('advertisement')}</option>
-                    <option value="referral">{t('referral')}</option>
-                    <option value="inperson">{t('inperson')}</option>
-                  </select>
-                  <FieldError message={errors.source} />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
-                  <Input
-                    id="requiredDate"
-                    type="date"
-                    value={requiredDate}
-                    onChange={(e) => setRequiredDate(e.target.value)}
-                    className="h-8 text-sm"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('state')}</Label>
-                  <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
-                    <SelectTrigger className="h-8 text-xs border border-gray-300">
-                      <SelectValue placeholder={t('enterState')} />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {getAllStates().map(s => (
-                        <SelectItem key={s} value={s}>{s}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
-                </div>
-                <div>
-                  <Label className="text-xs text-gray-500">{t('district')}</Label>
-                  {availableDistricts.length > 0 ? (
-                    <Select value={districtValue} onValueChange={setDistrictValue}>
-                      <SelectTrigger className="h-8 text-xs border border-gray-300">
-                        <SelectValue placeholder={t('enterDistrict')} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-60">
-                        {availableDistricts.map(d => (
-                          <SelectItem key={d} value={d}>{d}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Input
-                      value={districtValue}
-                      onChange={(e) => setDistrictValue(e.target.value)}
-                      placeholder={t('enterDistrict')}
-                      className="h-8 text-sm"
-                    />
-                  )}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('address')}</Label>
-                <textarea
-                  id="address"
-                  defaultValue={leadData?.address || ''}
-                  placeholder={t('enterCustomerAddress')}
-                  className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            {/* Row 2: Business Name | Contact Person | State | District */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
+              <Input id="customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerValue} onChange={(e) => { setCustomerValue(e.target.value); if (errors.customer) setErrors(prev => ({ ...prev, customer: '' })); }} />
+              <FieldError message={errors.customer} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => ({ ...prev, contact: '' })); }} />
+              <FieldError message={errors.contact} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('state')}</Label>
+              <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
+                <SelectTrigger className="h-8 text-xs border border-gray-300">
+                  <SelectValue placeholder={t('enterState')} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {getAllStates().map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('district')}</Label>
+              {availableDistricts.length > 0 ? (
+                <Select value={districtValue} onValueChange={setDistrictValue}>
+                  <SelectTrigger className="h-8 text-xs border border-gray-300">
+                    <SelectValue placeholder={t('enterDistrict')} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {availableDistricts.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={districtValue}
+                  onChange={(e) => setDistrictValue(e.target.value)}
+                  placeholder={t('enterDistrict')}
+                  className="h-8 text-sm"
                 />
-              </div>
+              )}
+            </div>
+
+            {/* Row 3: Email | GST Number | Address (span 2) */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('email')} *</Label>
+              <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }} />
+              <FieldError message={errors.email} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+              <Input
+                value={gstNumber}
+                onChange={handleGstChange}
+                placeholder="e.g. 33AUJPM8458P1ZR"
+                maxLength={15}
+                className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+              />
+              {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs text-gray-500">{t('address')}</Label>
+              <textarea
+                id="address"
+                defaultValue={leadData?.address || ''}
+                placeholder={t('enterCustomerAddress')}
+                className="w-full h-8 px-3 py-1.5 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
           </div>
 
@@ -2349,148 +2343,205 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <div className="grid gap-4 py-2">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-mobile">{t('mobile')} *</Label>
-            <div className="relative">
-              <Input 
-                id="edit-mobile" 
-                placeholder="+91 XXXXX XXXXX" 
-                className="border border-gray-300"
-                value={mobile}
-                onChange={(e) => { setMobile(e.target.value); setShowMobileDropdown(true); setErrors(prev => ({ ...prev, mobile: '' })); }}
-                onFocus={() => setShowMobileDropdown(true)}
-              />
-              {showMobileDropdown && mobile && filteredClients.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                  {filteredClients.map(client => (
-                    <div
-                      key={client.id || client._id}
-                      className="px-3 py-2 cursor-pointer hover:bg-blue-50"
-                      onClick={() => handleClientSelect(client)}
-                    >
-                      <p className="text-sm font-medium text-gray-900">{String(client.name || client.customer_name || client.client_name || '')}</p>
-                      <p className="text-xs text-gray-500">{String(client.phone || client.mobile || '')}</p>
-                    </div>
-                  ))}
+      {/* Order Information - Single Card */}
+      <Card className="shadow-sm mb-4">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+            <FileText className="w-4 h-4" /> Order Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-2">
+            {/* Row 1: Mobile (span 2) | Order Source | Required Date */}
+            <div className="col-span-2">
+              <Label className="text-xs text-gray-500">{t('mobile')} *</Label>
+              <div className="relative">
+                <div className="flex items-center h-8 border border-gray-300 rounded-md focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent overflow-hidden">
+                  <select
+                    className="h-full px-1 text-xs bg-gray-50 border-r border-gray-300 focus:outline-none cursor-pointer"
+                    defaultValue="+91"
+                  >
+                    <option value="+91">+91</option>
+                    <option value="+1">+1</option>
+                    <option value="+44">+44</option>
+                    <option value="+61">+61</option>
+                    <option value="+81">+81</option>
+                    <option value="+86">+86</option>
+                    <option value="+971">+971</option>
+                    <option value="+65">+65</option>
+                    <option value="+60">+60</option>
+                    <option value="+49">+49</option>
+                    <option value="+33">+33</option>
+                    <option value="+39">+39</option>
+                    <option value="+55">+55</option>
+                    <option value="+82">+82</option>
+                    <option value="+27">+27</option>
+                  </select>
+                  <Input
+                    id="edit-mobile"
+                    placeholder="XXXXX XXXXX"
+                    className="h-full text-sm flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-none"
+                    value={mobile}
+                    onChange={(e) => { setMobile(e.target.value); setShowMobileDropdown(true); setErrors(prev => ({ ...prev, mobile: '' })); }}
+                    onFocus={() => setShowMobileDropdown(true)}
+                  />
                 </div>
+                {showMobileDropdown && mobile && filteredClients.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                    {filteredClients.map(client => (
+                      <div
+                        key={client.id || client._id}
+                        className="px-3 py-1.5 cursor-pointer hover:bg-gray-100 border-b border-gray-50"
+                        onClick={() => handleClientSelect(client)}
+                      >
+                        <div className="font-medium text-sm">{String(client.name || client.customer_name || client.client_name || '')}</div>
+                        <div className="text-[10px] text-gray-500">{String(client.phone || client.mobile || '')}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <FieldError message={errors.mobile} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('orderSource')} *</Label>
+              <select
+                id="edit-source"
+                className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={source}
+                onChange={(e) => { setSource(e.target.value); setErrors(prev => ({ ...prev, source: '' })); }}
+              >
+                <option value="">{t('selectSource')}</option>
+                <option value="website">{t('website')}</option>
+                <option value="phone">{t('phone')}</option>
+                <option value="walkin">{t('walkin')}</option>
+                <option value="advertisement">{t('advertisement')}</option>
+                <option value="referral">{t('referral')}</option>
+                <option value="inperson">{t('inperson')}</option>
+              </select>
+              <FieldError message={errors.source} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('requiredDate')}</Label>
+              <Input
+                id="edit-required-date"
+                type="date"
+                value={requiredDate}
+                onChange={(e) => setRequiredDate(e.target.value)}
+                className="h-8 text-sm"
+              />
+            </div>
+
+            {/* Row 2: Business Name | Contact Person | Status | State */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('businessName')} *</Label>
+              <Input id="edit-customer" placeholder={t('enterBusinessName')} className="h-8 text-sm" value={customerName} onChange={(e) => { setCustomerName(e.target.value); setErrors(prev => ({ ...prev, customer: '' })); }} />
+              <FieldError message={errors.customer} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Input id="edit-contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactPerson} onChange={(e) => { setContactPerson(e.target.value); setErrors(prev => ({ ...prev, contact: '' })); }} />
+              <FieldError message={errors.contact} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('status')} *</Label>
+              <select
+                id="edit-status"
+                className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                value={status}
+                onChange={(e) => { setStatus(e.target.value); setErrors(prev => ({ ...prev, status: '' })); }}
+              >
+                <option value="">{t('selectStatus')}</option>
+                <option value="Pending">{t('pending')}</option>
+                <option value="Confirmed">{t('confirmed')}</option>
+                <option value="In Production">{t('inProduction')}</option>
+                <option value="Ready">{t('ready')}</option>
+                <option value="Dispatched">{t('dispatched')}</option>
+                <option value="Delivered">{t('delivered')}</option>
+                <option value="Bill">{t('bill')}</option>
+                <option value="Cancelled">{t('cancelled')}</option>
+              </select>
+              <FieldError message={errors.status} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('state')}</Label>
+              <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
+                <SelectTrigger className="h-8 text-xs border border-gray-300">
+                  <SelectValue placeholder={t('enterState')} />
+                </SelectTrigger>
+                <SelectContent className="max-h-60">
+                  {getAllStates().map(s => (
+                    <SelectItem key={s} value={s}>{s}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
+            </div>
+
+            {/* Row 3: Email | GST Number | District | Address */}
+            <div>
+              <Label className="text-xs text-gray-500">{t('email')} *</Label>
+              <Input id="edit-email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={email} onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }} />
+              <FieldError message={errors.email} />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+              <Input
+                value={gstNumber}
+                onChange={handleGstChange}
+                placeholder="e.g. 33AUJPM8458P1ZR"
+                maxLength={15}
+                className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+              />
+              {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('district')}</Label>
+              {availableDistricts.length > 0 ? (
+                <Select value={districtValue} onValueChange={setDistrictValue}>
+                  <SelectTrigger className="h-8 text-xs border border-gray-300">
+                    <SelectValue placeholder={t('enterDistrict')} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {availableDistricts.map(d => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={districtValue}
+                  onChange={(e) => setDistrictValue(e.target.value)}
+                  placeholder={t('enterDistrict')}
+                  className="h-8 text-sm"
+                />
               )}
             </div>
-            <FieldError message={errors.mobile} />
+            <div>
+              <Label className="text-xs text-gray-500">{t('address')}</Label>
+              <textarea
+                id="edit-address"
+                placeholder={t('enterCustomerAddress')}
+                className="w-full h-8 px-3 py-1.5 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+              />
+            </div>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-customer">{t('businessName')} *</Label>
-            <Input 
-              id="edit-customer" 
-              placeholder={t('enterBusinessName')} 
-              className="border border-gray-300"
-              value={customerName}
-              onChange={(e) => { setCustomerName(e.target.value); setErrors(prev => ({ ...prev, customer: '' })); }}
-            />
-            <FieldError message={errors.customer} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('gstNumber')}</Label>
-            <Input
-              value={gstNumber}
-              onChange={handleGstChange}
-              placeholder={t('enterGstNumber')}
-              maxLength={15}
-              className={`border border-gray-300${gstError ? ' border-red-500' : ''}`}
-            />
-            {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-contact">{t('contactPerson')} *</Label>
-            <Input 
-              id="edit-contact" 
-              placeholder={t('enterContactPerson')} 
-              className="border border-gray-300"
-              value={contactPerson}
-              onChange={(e) => { setContactPerson(e.target.value); setErrors(prev => ({ ...prev, contact: '' })); }}
-            />
-            <FieldError message={errors.contact} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-email">{t('email')} *</Label>
-            <Input 
-              id="edit-email" 
-              type="email" 
-              placeholder="email@example.com" 
-              className="border border-gray-300"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }}
-            />
-            <FieldError message={errors.email} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-source">{t('orderSource')} *</Label>
-            <select
-              id="edit-source"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={source}
-              onChange={(e) => { setSource(e.target.value); setErrors(prev => ({ ...prev, source: '' })); }}
-            >
-              <option value="">{t('selectSource')}</option>
-              <option value="website">{t('website')}</option>
-              <option value="phone">{t('phone')}</option>
-              <option value="walkin">{t('walkin')}</option>
-              <option value="advertisement">{t('advertisement')}</option>
-              <option value="referral">{t('referral')}</option>
-              <option value="inperson">{t('inperson')}</option>
-            </select>
-            <FieldError message={errors.source} />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-required-date">{t('requiredDate')}</Label>
-            <Input
-              id="edit-required-date"
-              type="date"
-              value={requiredDate}
-              onChange={(e) => setRequiredDate(e.target.value)}
-              className="border border-gray-300"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="edit-status">{t('status')} *</Label>
-            <select
-              id="edit-status"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={status}
-              onChange={(e) => { setStatus(e.target.value); setErrors(prev => ({ ...prev, status: '' })); }}
-            >
-              <option value="">{t('selectStatus')}</option>
-              <option value="Pending">{t('pending')}</option>
-              <option value="Confirmed">{t('confirmed')}</option>
-              <option value="In Production">{t('inProduction')}</option>
-              <option value="Ready">{t('ready')}</option>
-              <option value="Dispatched">{t('dispatched')}</option>
-              <option value="Delivered">{t('delivered')}</option>
-              <option value="Bill">{t('bill')}</option>
-              <option value="Cancelled">{t('cancelled')}</option>
-            </select>
-            <FieldError message={errors.status} />
-          </div>
-        </div>
+        </CardContent>
+      </Card>
 
         {/* Add Items Section */}
-        <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg">{t('addItems')}</CardTitle>
+        <Card className="shadow-sm mb-4 overflow-visible">
+          <CardHeader className="py-3 px-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                <Package className="w-4 h-4" /> {t('addItems')}
+              </CardTitle>
+              <Badge variant="outline" className="text-xs text-gray-500">
+                {addedProducts.length} {addedProducts.length === 1 ? 'item' : 'items'} added
+              </Badge>
+            </div>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Multiple Item Entry Rows */}
@@ -2675,70 +2726,25 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className='space-y-2 mt-2'>
-            <Label htmlFor="edit-address">{t('address')}</Label>
-            <Textarea 
-              id="edit-address" 
-              placeholder={t('enterCustomerAddress')} 
-              className="border border-gray-300"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-            />
-          </div>
-          <div className='space-y-2'>
-            <Label htmlFor="edit-notes">{t('notesSpecialRequirements')}</Label>
-            <Textarea 
-              id="edit-notes" 
-              placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')} 
-              className="border border-gray-300"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-          </div>
-        </div>
+      {/* Notes */}
+      <Card className="shadow-sm mb-4">
+        <CardHeader className="py-3 px-4">
+          <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+            <FileText className="w-4 h-4" /> {t('notesSpecialRequirements')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <textarea
+            id="edit-notes"
+            placeholder={t('enterAnyAdditionalNotesOrSpecialRequirements')}
+            className="w-full h-20 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+          />
+        </CardContent>
+      </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('state')}</Label>
-            <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
-              <SelectTrigger className="border border-gray-300">
-                <SelectValue placeholder={t('enterState')} />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                {getAllStates().map(s => (
-                  <SelectItem key={s} value={s}>{s}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {stateValue && gstNumber && <p className="text-xs text-green-600">Auto-filled from GST</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>{t('district')}</Label>
-            {availableDistricts.length > 0 ? (
-              <Select value={districtValue} onValueChange={setDistrictValue}>
-                <SelectTrigger className="border border-gray-300">
-                  <SelectValue placeholder={t('enterDistrict')} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {availableDistricts.map(d => (
-                    <SelectItem key={d} value={d}>{d}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : (
-              <Input 
-                value={districtValue}
-                onChange={(e) => setDistrictValue(e.target.value)}
-                placeholder={t('enterDistrict')}
-                className="border border-gray-300"
-              />
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-3 pt-4">
+      <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="outline" onClick={onClose}>
           {t('cancel')}
         </Button>
