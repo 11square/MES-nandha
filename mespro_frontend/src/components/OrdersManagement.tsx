@@ -42,7 +42,8 @@ import {
   Trash2,
   Building,
   IndianRupee,
-  CheckCircle
+  CheckCircle,
+  Users
 } from 'lucide-react';
 
 const toDateInputValue = (value: any): string => {
@@ -340,6 +341,8 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
     total: orders.length,
     draft: orders.filter(o => o.status === 'Draft').length,
     totalValue: orders.reduce((sum, o) => sum + (parseFloat(o.grand_total) || 0), 0),
+    b2b: orders.filter(o => o.customer_type === 'B2B').length,
+    b2c: orders.filter(o => o.customer_type !== 'B2B').length,
   };
 
   const handleSendToProduction = (order: any) => {
@@ -543,7 +546,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalOrdersCount')}</CardTitle>
@@ -563,6 +566,28 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
           <CardContent>
             <div className="text-2xl font-bold text-amber-700">{stats.draft}</div>
             <p className="text-xs text-amber-600">Saved as draft</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">B2B</CardTitle>
+            <Building className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-700">{stats.b2b}</div>
+            <p className="text-xs text-purple-600">Business orders</p>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-cyan-500/10 backdrop-blur-sm border-cyan-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">B2C</CardTitle>
+            <Users className="h-4 w-4 text-cyan-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-cyan-700">{stats.b2c}</div>
+            <p className="text-xs text-cyan-600">Consumer orders</p>
           </CardContent>
         </Card>
 
