@@ -8,6 +8,8 @@ import { Label } from './ui/label';
 import { Badge } from './ui/badge';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from './ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { useI18n } from '../contexts/I18nContext';
@@ -1241,6 +1243,8 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
   const [stateValue, setStateValue] = useState((leadData as any)?.state || (leadData?.gst_number ? getStateFromGST(leadData.gst_number) : ''));
   const [districtValue, setDistrictValue] = useState((leadData as any)?.district || '');
   const availableDistricts = useMemo(() => getDistrictsForState(stateValue), [stateValue]);
+  const [stateOpen, setStateOpen] = useState(false);
+  const [districtOpen, setDistrictOpen] = useState(false);
 
   const validateGstNumber = (value: string): string => {
     if (!value) return '';
@@ -1701,39 +1705,58 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
             </div>
             <div>
               <Label className="text-xs text-gray-500">{t('state')}</Label>
-              <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
-                <SelectTrigger className="h-8 text-xs border border-gray-300">
-                  <SelectValue placeholder={t('enterState')} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {getAllStates().map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {stateValue || t('enterState')}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchState') || 'Search state...'} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {getAllStates().map(s => (
+                          <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
+                            {s}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
             </div>
             <div>
               <Label className="text-xs text-gray-500">{t('district')}</Label>
-              {availableDistricts.length > 0 ? (
-                <Select value={districtValue} onValueChange={setDistrictValue}>
-                  <SelectTrigger className="h-8 text-xs border border-gray-300">
-                    <SelectValue placeholder={t('enterDistrict')} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {availableDistricts.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  value={districtValue}
-                  onChange={(e) => setDistrictValue(e.target.value)}
-                  placeholder={t('enterDistrict')}
-                  className="h-8 text-sm"
-                />
-              )}
+              <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchDistrict') || 'Search district...'} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {availableDistricts.map(d => (
+                          <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
+                            {d}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             {/* Row 3: Email | GST Number | Address (span 2) */}
@@ -2101,6 +2124,8 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
   const [stateValue, setStateValue] = useState(order.state || (order.gst_number ? getStateFromGST(order.gst_number) : ''));
   const [districtValue, setDistrictValue] = useState(order.district || '');
   const availableDistricts = useMemo(() => getDistrictsForState(stateValue), [stateValue]);
+  const [stateOpen, setStateOpen] = useState(false);
+  const [districtOpen, setDistrictOpen] = useState(false);
 
   const validateGstNumber = (value: string): string => {
     if (!value) return '';
@@ -2465,16 +2490,30 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
             </div>
             <div>
               <Label className="text-xs text-gray-500">{t('state')}</Label>
-              <Select value={stateValue} onValueChange={(val: string) => { setStateValue(val); setDistrictValue(''); }}>
-                <SelectTrigger className="h-8 text-xs border border-gray-300">
-                  <SelectValue placeholder={t('enterState')} />
-                </SelectTrigger>
-                <SelectContent className="max-h-60">
-                  {getAllStates().map(s => (
-                    <SelectItem key={s} value={s}>{s}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={stateOpen} onOpenChange={setStateOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={stateOpen} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {stateValue || t('enterState')}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchState') || 'Search state...'} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No state found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {getAllStates().map(s => (
+                          <CommandItem key={s} value={s} onSelect={() => { setStateValue(s); setDistrictValue(''); setStateOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${stateValue === s ? 'opacity-100' : 'opacity-0'}`} />
+                            {s}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               {stateValue && gstNumber && <p className="text-[10px] text-green-600">Auto-filled from GST</p>}
             </div>
 
@@ -2497,25 +2536,30 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
             </div>
             <div>
               <Label className="text-xs text-gray-500">{t('district')}</Label>
-              {availableDistricts.length > 0 ? (
-                <Select value={districtValue} onValueChange={setDistrictValue}>
-                  <SelectTrigger className="h-8 text-xs border border-gray-300">
-                    <SelectValue placeholder={t('enterDistrict')} />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-60">
-                    {availableDistricts.map(d => (
-                      <SelectItem key={d} value={d}>{d}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  value={districtValue}
-                  onChange={(e) => setDistrictValue(e.target.value)}
-                  placeholder={t('enterDistrict')}
-                  className="h-8 text-sm"
-                />
-              )}
+              <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+                <PopoverTrigger asChild>
+                  <Button type="button" variant="outline" role="combobox" aria-expanded={districtOpen} disabled={!stateValue} className="w-full h-8 justify-between border border-gray-300 font-normal text-xs">
+                    {districtValue || (stateValue ? t('enterDistrict') : t('enterState'))}
+                    <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder={t('searchDistrict') || 'Search district...'} />
+                    <CommandList>
+                      <CommandEmpty>{t('noResultsFound') || 'No district found.'}</CommandEmpty>
+                      <CommandGroup>
+                        {availableDistricts.map(d => (
+                          <CommandItem key={d} value={d} onSelect={() => { setDistrictValue(d); setDistrictOpen(false); }}>
+                            <Check className={`mr-2 h-4 w-4 ${districtValue === d ? 'opacity-100' : 'opacity-0'}`} />
+                            {d}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label className="text-xs text-gray-500">{t('address')}</Label>
