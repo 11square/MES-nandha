@@ -260,6 +260,23 @@ module.exports = {
             payment_status: newStatus,
           }, { transaction: t });
 
+          // Create finance transaction for this payment
+          const methodMap = { 'cash': 'cash', 'upi': 'upi', 'bank transfer': 'bank', 'bank': 'bank', 'cheque': 'cheque', 'credit card': 'card', 'card': 'card', 'online': 'upi' };
+          const paymentMethod = methodMap[(req.body.method || 'cash').toLowerCase()] || 'cash';
+          await Transaction.create({
+            date: req.body.date || new Date().toISOString().split('T')[0],
+            type: 'income',
+            category: 'Sales',
+            description: `Payment received for invoice ${bill.bill_no} - ${bill.client_name}`,
+            amount: parseFloat(req.body.amount),
+            payment_method: paymentMethod,
+            reference: bill.bill_no,
+            client_name: bill.client_name,
+            client_id: bill.client_id,
+            status: 'completed',
+            business_id: req.currentBusiness,
+          }, { transaction: t });
+
           // Update credit outstanding
           const outstanding = await CreditOutstanding.findOne({
             where: applyBusinessScope(req, { bill_id: bill.id }),
