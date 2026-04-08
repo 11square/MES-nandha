@@ -53,21 +53,8 @@ module.exports = {
 
         if (remaining > 0) {
           const paymentMethod = bill.payment_method || 'cash';
-          
-          // Create payment record
-          await Payment.create({
-            bill_id: bill.id,
-            bill_no: bill.bill_no,
-            client_name: bill.client_name,
-            date: new Date().toISOString().split('T')[0],
-            amount: remaining,
-            method: paymentMethod,
-            reference: `Payment for ${bill.bill_no}`,
-            status: 'completed',
-            business_id: req.currentBusiness,
-          }, { transaction: t });
 
-          // Create finance transaction
+          // Create finance transaction only (not a Payment/Receipt)
           await Transaction.create({
             date: new Date().toISOString().split('T')[0],
             type: 'income',
