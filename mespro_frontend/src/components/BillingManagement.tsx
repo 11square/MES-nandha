@@ -2672,21 +2672,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </Card>
       </div>
 
-      {/* Stock Warning */}
-      {stockItems.some(s => s.currentStock < 50) && (
-        <Card className="border-amber-300 bg-amber-50">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Package className="h-5 w-5 text-amber-600" />
-            <div>
-              <p className="font-medium text-amber-800">{t('lowStock')}</p>
-              <p className="text-sm text-amber-600">
-                {t('someItemsAreRunningLow')} {stockItems.filter(s => s.currentStock < 50).map(s => s.name).join(', ')}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full">
         <div className="flex justify-between items-center mb-4">
