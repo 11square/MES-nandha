@@ -69,6 +69,11 @@ module.exports = (sequelize) => {
       defaultValue: 1,
       validate: { min: 1, max: 5 },
     },
+    opening_outstanding: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: false,
+      defaultValue: 0,
+    },
     business_id: {
       type: DataTypes.INTEGER,
       allowNull: true,

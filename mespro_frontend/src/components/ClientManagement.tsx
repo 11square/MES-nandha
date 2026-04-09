@@ -84,7 +84,8 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
     state: '',
     district: '',
     status: 'Active',
-    rating: 1 as 1 | 2 | 3
+    rating: 1 as 1 | 2 | 3,
+    opening_outstanding: '',
   });
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -383,7 +384,8 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
       state: '',
       district: '',
       status: 'Active',
-      rating: 1 as 1 | 2 | 3
+      rating: 1 as 1 | 2 | 3,
+      opening_outstanding: '',
     });
     setGstError('');
   };
@@ -409,6 +411,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
         district: newClientForm.district,
         status: newClientForm.status,
         rating: newClientForm.rating,
+        opening_outstanding: parseFloat(newClientForm.opening_outstanding) || 0,
       });
       toast.success('Client added successfully!');
       refreshClients();
@@ -988,6 +991,19 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
                   </span>
                 </div>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('openingOutstanding') || 'Opening Outstanding'}</Label>
+              <Input
+                type="number"
+                min="0"
+                step="0.01"
+                value={newClientForm.opening_outstanding}
+                onChange={(e) => setNewClientForm({...newClientForm, opening_outstanding: e.target.value})}
+                placeholder="₹0.00"
+                onKeyDown={blockInvalidNumberKeys}
+              />
+              <p className="text-xs text-gray-500">{t('openingOutstandingHint') || 'Outstanding amount before using this software'}</p>
             </div>
           </div>
           <DialogFooter>
