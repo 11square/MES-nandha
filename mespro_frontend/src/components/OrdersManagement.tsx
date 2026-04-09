@@ -299,9 +299,6 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
                          (order.contact || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' || (order.status || '').toLowerCase().replace(/ /g, '-') === filterStatus.toLowerCase();
     
-    if (activeTab === 'all') return matchesSearch && matchesStatus;
-    if (activeTab === 'draft') return matchesSearch && order.status === 'Draft';
-    
     return matchesSearch && matchesStatus;
   });
 
@@ -364,7 +361,6 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
 
   const stats = {
     total: dateFilteredOrders.length,
-    draft: dateFilteredOrders.filter(o => o.status === 'Draft').length,
     totalValue: dateFilteredOrders.reduce((sum, o) => sum + (parseFloat(o.grand_total) || 0), 0),
     b2b: dateFilteredOrders.filter(o => o.customer_type === 'B2B').length,
     b2c: dateFilteredOrders.filter(o => o.customer_type !== 'B2B').length,
@@ -592,7 +588,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalOrdersCount')}</CardTitle>
@@ -601,17 +597,6 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
           <CardContent>
             <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
             <p className="text-xs text-blue-600">{t('allOrders')}</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Draft</CardTitle>
-            <Clock className="h-4 w-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-amber-700">{stats.draft}</div>
-            <p className="text-xs text-amber-600">Saved as draft</p>
           </CardContent>
         </Card>
 
@@ -688,9 +673,6 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
         <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-gray-100 rounded-lg w-fit">
           <TabsTrigger value="all" className="px-4 py-2">
             {t('all')} ({orders.length})
-          </TabsTrigger>
-          <TabsTrigger value="draft" className="px-4 py-2">
-            Draft ({stats.draft})
           </TabsTrigger>
         </TabsList>
         
