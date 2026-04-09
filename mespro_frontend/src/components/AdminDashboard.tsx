@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { useI18n } from '../contexts/I18nContext';
+import { useSharedState } from '../contexts/SharedStateContext';
 import {
   Users,
   ClipboardList,
@@ -63,6 +64,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 
 export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboardProps) {
   const { t } = useI18n();
+  const { currentUser } = useSharedState();
 
   const [summary, setSummary] = useState<any>(null);
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -168,8 +170,54 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
     );
   }
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return { text: 'Good Morning', emoji: '☀️' };
+    if (hour < 17) return { text: 'Good Afternoon', emoji: '🌤️' };
+    return { text: 'Good Evening', emoji: '🌙' };
+  }, []);
+
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
   return (
     <div className="space-y-6">
+      {/* ===== Greeting Banner ===== */}
+      <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">
+              {greeting.emoji} {greeting.text}{currentUser?.name ? `, ${currentUser.name}` : ''}!
+            </h1>
+            <p className="mt-1 text-blue-100 text-sm">{dateStr}</p>
+            {summary && (
+              <div className="mt-3 flex flex-wrap gap-4 text-sm text-blue-100">
+                {(summary.activeOrders ?? 0) > 0 && (
+                  <span className="flex items-center gap-1">
+                    <ClipboardList className="h-4 w-4" /> {summary.activeOrders} active orders
+                  </span>
+                )}
+                {(summary.activeLeads ?? 0) > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Target className="h-4 w-4" /> {summary.activeLeads} leads to follow up
+                  </span>
+                )}
+                {(summary.totalOutstanding ?? 0) > 0 && (
+                  <span className="flex items-center gap-1">
+                    <IndianRupee className="h-4 w-4" /> {formatCurrency(summary.totalOutstanding)} outstanding
+                  </span>
+                )}
+                {(summary.stockAlerts ?? 0) > 0 && (
+                  <span className="flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4" /> {summary.stockAlerts} stock alerts
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* ===== ROW 1: KPI Cards ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {kpiCards.map((kpi, index) => {
