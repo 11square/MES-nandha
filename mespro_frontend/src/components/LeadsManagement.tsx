@@ -143,6 +143,9 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
   const [showCreateLead, setShowCreateLead] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [showLeadDetail, setShowLeadDetail] = useState(false);
@@ -482,7 +485,36 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
     const matchesStatus = filterStatus === 'all' 
       || lead.status.toLowerCase() === filterStatus.toLowerCase()
       || (filterStatus.toLowerCase() === 'converted' && lead.conversion_status === 'Converted');
-    return matchesSearch && matchesStatus;
+    
+    let matchesDate = true;
+    if (dateFilter !== 'all') {
+      const leadDate = new Date(lead.created_at || lead.createdAt || lead.required_date);
+      if (isNaN(leadDate.getTime())) {
+        matchesDate = false;
+      } else {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        if (dateFilter === 'today') {
+          matchesDate = leadDate >= startOfToday;
+        } else if (dateFilter === 'week') {
+          const startOfWeek = new Date(startOfToday);
+          startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+          matchesDate = leadDate >= startOfWeek;
+        } else if (dateFilter === 'month') {
+          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          matchesDate = leadDate >= startOfMonth;
+        } else if (dateFilter === 'custom') {
+          if (customDateFrom) matchesDate = leadDate >= new Date(customDateFrom);
+          if (customDateTo && matchesDate) {
+            const endDate = new Date(customDateTo);
+            endDate.setDate(endDate.getDate() + 1);
+            matchesDate = leadDate < endDate;
+          }
+        }
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const handleApproveLead = (lead: Lead) => {
@@ -568,6 +600,45 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <p className="text-xs text-red-600">{t('rejectedLeads')}</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Date Filter */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Calendar className="h-4 w-4 text-gray-500" />
+        <span className="text-sm font-medium text-gray-600 mr-1">{t('dateFilter') || 'Date'}:</span>
+        {[
+          { key: 'all' as const, label: t('all') || 'All' },
+          { key: 'today' as const, label: t('today') || 'Today' },
+          { key: 'week' as const, label: t('thisWeek') || 'This Week' },
+          { key: 'month' as const, label: t('thisMonth') || 'This Month' },
+          { key: 'custom' as const, label: t('custom') || 'Custom' },
+        ].map(opt => (
+          <Button
+            key={opt.key}
+            variant={dateFilter === opt.key ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setDateFilter(opt.key)}
+          >
+            {opt.label}
+          </Button>
+        ))}
+        {dateFilter === 'custom' && (
+          <div className="flex items-center gap-2 ml-2">
+            <Input
+              type="date"
+              className="w-36 h-8 text-sm"
+              value={customDateFrom}
+              onChange={(e) => setCustomDateFrom(e.target.value)}
+            />
+            <span className="text-gray-400 text-sm">to</span>
+            <Input
+              type="date"
+              className="w-36 h-8 text-sm"
+              value={customDateTo}
+              onChange={(e) => setCustomDateTo(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Search and Filter */}
