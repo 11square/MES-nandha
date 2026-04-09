@@ -478,43 +478,42 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
     return <Clock className="w-4 h-4" />;
   };
 
-  const filteredLeads = leads.filter(lead => {
+  const matchesDateFilter = (lead: any) => {
+    if (dateFilter === 'all') return true;
+    const leadDate = new Date(lead.created_at || lead.createdAt || lead.required_date);
+    if (isNaN(leadDate.getTime())) return false;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dateFilter === 'today') return leadDate >= startOfToday;
+    if (dateFilter === 'week') {
+      const startOfWeek = new Date(startOfToday);
+      startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
+      return leadDate >= startOfWeek;
+    }
+    if (dateFilter === 'month') return leadDate >= new Date(now.getFullYear(), now.getMonth(), 1);
+    if (dateFilter === 'custom') {
+      let ok = true;
+      if (customDateFrom) ok = leadDate >= new Date(customDateFrom);
+      if (customDateTo && ok) {
+        const endDate = new Date(customDateTo);
+        endDate.setDate(endDate.getDate() + 1);
+        ok = leadDate < endDate;
+      }
+      return ok;
+    }
+    return true;
+  };
+
+  const dateFilteredLeads = leads.filter(matchesDateFilter);
+
+  const filteredLeads = dateFilteredLeads.filter(lead => {
     const matchesSearch = lead.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          lead.lead_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          lead.contact.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' 
       || lead.status.toLowerCase() === filterStatus.toLowerCase()
       || (filterStatus.toLowerCase() === 'converted' && lead.conversion_status === 'Converted');
-    
-    let matchesDate = true;
-    if (dateFilter !== 'all') {
-      const leadDate = new Date(lead.created_at || lead.createdAt || lead.required_date);
-      if (isNaN(leadDate.getTime())) {
-        matchesDate = false;
-      } else {
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        if (dateFilter === 'today') {
-          matchesDate = leadDate >= startOfToday;
-        } else if (dateFilter === 'week') {
-          const startOfWeek = new Date(startOfToday);
-          startOfWeek.setDate(startOfToday.getDate() - startOfToday.getDay());
-          matchesDate = leadDate >= startOfWeek;
-        } else if (dateFilter === 'month') {
-          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          matchesDate = leadDate >= startOfMonth;
-        } else if (dateFilter === 'custom') {
-          if (customDateFrom) matchesDate = leadDate >= new Date(customDateFrom);
-          if (customDateTo && matchesDate) {
-            const endDate = new Date(customDateTo);
-            endDate.setDate(endDate.getDate() + 1);
-            matchesDate = leadDate < endDate;
-          }
-        }
-      }
-    }
-    
-    return matchesSearch && matchesStatus && matchesDate;
+    return matchesSearch && matchesStatus;
   });
 
   const handleApproveLead = (lead: Lead) => {
@@ -535,13 +534,44 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
 
   return (
     <div className="space-y-6">
-      {/* Page Heading with Actions */}
+      {/* Page Heading with Date Filter */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{t('leadsTitle')}</h1>
           <p className="text-gray-600 mt-1">{t('trackAndManageSalesLeads')}</p>
         </div>
-        
+        <div className="flex items-center gap-2">
+          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+            <SelectTrigger className="w-44">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+            </SelectContent>
+          </Select>
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <Input
+                type="date"
+                className="w-36 h-9 text-sm"
+                value={customDateFrom}
+                onChange={(e) => setCustomDateFrom(e.target.value)}
+              />
+              <span className="text-gray-400 text-sm">to</span>
+              <Input
+                type="date"
+                className="w-36 h-9 text-sm"
+                value={customDateTo}
+                onChange={(e) => setCustomDateTo(e.target.value)}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -552,7 +582,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-700">{leads.filter(l => l.status === 'New').length}</div>
+            <div className="text-2xl font-bold text-blue-700">{dateFilteredLeads.filter(l => l.status === 'New').length}</div>
             <p className="text-xs text-blue-600">{t('newLeads')}</p>
           </CardContent>
         </Card>
@@ -563,7 +593,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <Phone className="h-4 w-4 text-amber-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-700">{leads.filter(l => l.status === 'Contacted').length}</div>
+            <div className="text-2xl font-bold text-amber-700">{dateFilteredLeads.filter(l => l.status === 'Contacted').length}</div>
             <p className="text-xs text-amber-600">{t('followupPending')}</p>
           </CardContent>
         </Card>
@@ -574,7 +604,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <CheckCircle2 className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-purple-700">{leads.filter(l => l.status === 'Qualified').length}</div>
+            <div className="text-2xl font-bold text-purple-700">{dateFilteredLeads.filter(l => l.status === 'Qualified').length}</div>
             <p className="text-xs text-purple-600">{t('readyToConvert')}</p>
           </CardContent>
         </Card>
@@ -585,7 +615,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-700">{leads.filter(l => l.conversion_status === 'Converted').length}</div>
+            <div className="text-2xl font-bold text-emerald-700">{dateFilteredLeads.filter(l => l.conversion_status === 'Converted').length}</div>
             <p className="text-xs text-emerald-600">{t('convertedToOrders')}</p>
           </CardContent>
         </Card>
@@ -596,49 +626,10 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-700">{leads.filter(l => l.status === 'Rejected').length}</div>
+            <div className="text-2xl font-bold text-red-700">{dateFilteredLeads.filter(l => l.status === 'Rejected').length}</div>
             <p className="text-xs text-red-600">{t('rejectedLeads')}</p>
           </CardContent>
         </Card>
-      </div>
-
-      {/* Date Filter */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Calendar className="h-4 w-4 text-gray-500" />
-        <span className="text-sm font-medium text-gray-600 mr-1">{t('dateFilter') || 'Date'}:</span>
-        {[
-          { key: 'all' as const, label: t('all') || 'All' },
-          { key: 'today' as const, label: t('today') || 'Today' },
-          { key: 'week' as const, label: t('thisWeek') || 'This Week' },
-          { key: 'month' as const, label: t('thisMonth') || 'This Month' },
-          { key: 'custom' as const, label: t('custom') || 'Custom' },
-        ].map(opt => (
-          <Button
-            key={opt.key}
-            variant={dateFilter === opt.key ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setDateFilter(opt.key)}
-          >
-            {opt.label}
-          </Button>
-        ))}
-        {dateFilter === 'custom' && (
-          <div className="flex items-center gap-2 ml-2">
-            <Input
-              type="date"
-              className="w-36 h-8 text-sm"
-              value={customDateFrom}
-              onChange={(e) => setCustomDateFrom(e.target.value)}
-            />
-            <span className="text-gray-400 text-sm">to</span>
-            <Input
-              type="date"
-              className="w-36 h-8 text-sm"
-              value={customDateTo}
-              onChange={(e) => setCustomDateTo(e.target.value)}
-            />
-          </div>
-        )}
       </div>
 
       {/* Search and Filter */}
