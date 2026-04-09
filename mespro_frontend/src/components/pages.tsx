@@ -21,6 +21,7 @@ import StaffManagement from './StaffManagement';
 import UserManagement from './UserManagement';
 import PayrollManagement from './PayrollManagement';
 import ClientManagement from './ClientManagement';
+import ClientDetailPageComponent from './ClientDetailPage';
 import StockManagement from './StockManagement';
 import FinanceManagement from './FinanceManagement';
 import LibraryManagement from './LibraryManagement';
@@ -140,6 +141,10 @@ export function PayrollPage() {
 
 export function ClientsPage() {
   return <ClientManagement />;
+}
+
+export function ClientDetailPageWrapper() {
+  return <ClientDetailPageComponent />;
 }
 
 export function StockPage() {

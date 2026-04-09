@@ -1,5 +1,6 @@
 import { toast } from 'sonner';
 import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -66,9 +67,9 @@ interface Client {
 
 export default function ClientManagement({ language = 'en' }: ClientManagementProps) {
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterCustomerType, setFilterCustomerType] = useState('all');
-  const [selectedClient, setSelectedClient] = useState<string | null>(null);
   const [selectedSalesClient, setSelectedSalesClient] = useState<string>('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -765,7 +766,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
             transition={{ delay: index * 0.03 }}
             whileHover={{ y: -1 }}
             className="bg-white rounded-md border border-slate-200 p-3 shadow-sm hover:shadow transition-all cursor-pointer"
-            onClick={() => setSelectedClient(String(client.id))}
+            onClick={() => navigate(`/clients/${client.id}`)}
           >
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -821,7 +822,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
             </div>
 
             <div className="flex gap-1.5 mt-1.5">
-              <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] px-2" onClick={(e: React.MouseEvent) => { e.stopPropagation(); setSelectedClient(String(client.id)); }}>
+              <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] px-2" onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/clients/${client.id}`); }}>
                 <Eye className="w-3 h-3 mr-1" />
                 {t('view')}
               </Button>
@@ -836,63 +837,6 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
           </motion.div>
         ))}
       </div>
-
-      {/* Client Details with Tabs */}
-      {selectedClient && (() => {
-        const client = clientsData.find(c => String(c.id) === String(selectedClient));
-        if (!client) return null;
-        return (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
-        >
-          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-            <h3 className="text-lg text-slate-900 font-semibold">{t('clientDetails')}: {client.name}</h3>
-            <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>
-              {t('close')}
-            </Button>
-          </div>
-
-          <div className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('contactPerson')}</p>
-                <p className="text-sm text-slate-900 font-medium">{client.contact_person}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('phone')}</p>
-                <p className="text-sm text-slate-900 font-medium">{client.phone}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('email')}</p>
-                <p className="text-sm text-slate-900 font-medium">{client.email}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('address')}</p>
-                <p className="text-sm text-slate-900 font-medium">{client.address}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('totalOrders')}</p>
-                <p className="text-sm text-slate-900 font-bold">{client.total_orders}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('totalValue')}</p>
-                <p className="text-sm text-slate-900 font-bold">{formatCurrency(client.total_value)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('lastOrder')}</p>
-                <p className="text-sm text-slate-900">{client.last_order && !isNaN(new Date(client.last_order).getTime()) ? new Date(client.last_order).toLocaleDateString() : '—'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-600 mb-1">{t('status')}</p>
-                <Badge className="bg-emerald-100 text-emerald-700">{client.status}</Badge>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-        );
-      })()}
 
         </TabsContent>
 
