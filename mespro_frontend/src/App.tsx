@@ -32,6 +32,8 @@ import {
   ClipboardCheck,
   Settings,
   FileText,
+  ChevronDown,
+  UsersRound,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -139,19 +141,38 @@ export default function App() {
   // Derive active view from the current URL path
   const currentPath = location.pathname.replace(/^\//, '').split('/')[0] || 'dashboard';
 
+  // HR group keys
+  const hrKeys = new Set(['staff', 'attendance', 'payroll', 'users']);
+
   // Build navigation items dynamically from the modules API response
   const navigationItems = useMemo(() => {
     if (modules.length === 0) return []; // Still loading
     return modules
-      .filter((m) => moduleIconMap[m.key] && m.url && m.key !== 'products' && m.key !== 'production' && m.key !== 'inventory' && m.key !== 'sales') // Only render known modules with a valid url, exclude products/production/inventory/sales
+      .filter((m) => moduleIconMap[m.key] && m.url && m.key !== 'products' && m.key !== 'production' && m.key !== 'inventory' && m.key !== 'sales' && !hrKeys.has(m.key))
       .map((m) => ({
-        id: m.url.replace(/^\//, ''), // e.g. '/leads' → 'leads', '/purchase-order' → 'purchase-order'
+        id: m.url.replace(/^\//, ''),
         moduleKey: m.key,
         labelKey: moduleLabelKeyMap[m.key] || m.key,
         icon: moduleIconMap[m.key] || LayoutDashboard,
         url: m.url,
       }));
   }, [modules]);
+
+  const hrItems = useMemo(() => {
+    if (modules.length === 0) return [];
+    return modules
+      .filter((m) => hrKeys.has(m.key) && moduleIconMap[m.key] && m.url)
+      .map((m) => ({
+        id: m.url.replace(/^\//, ''),
+        moduleKey: m.key,
+        labelKey: moduleLabelKeyMap[m.key] || m.key,
+        icon: moduleIconMap[m.key] || LayoutDashboard,
+        url: m.url,
+      }));
+  }, [modules]);
+
+  const [hrOpen, setHrOpen] = useState(false);
+  const isHrActive = hrItems.some(item => currentPath === item.id);
 
   // Resolve page title from current path
   // Map URL path segment back to feature_key for title lookup
@@ -245,6 +266,84 @@ export default function App() {
                 </motion.button>
               );
             })}
+
+            {/* HR Group */}
+            {hrItems.length > 0 && (
+              <>
+                <motion.button
+                  onClick={() => setHrOpen(!hrOpen)}
+                  whileHover={{ x: 3 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                    isHrActive && !hrOpen
+                      ? 'bg-gray-500 text-white shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                  title={!sidebarOpen ? 'HR' : ''}
+                >
+                  <UsersRound className={`w-4.5 h-4.5 flex-shrink-0 ${isHrActive && !hrOpen ? 'text-white' : ''}`} />
+                  <AnimatePresence>
+                    {sidebarOpen && (
+                      <motion.span
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -10 }}
+                        className={`text-sm font-medium flex-1 text-left ${isHrActive && !hrOpen ? 'text-white' : ''}`}
+                      >
+                        HR
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                  {sidebarOpen && (
+                    <ChevronDown className={`w-4 h-4 transition-transform ${hrOpen ? 'rotate-180' : ''} ${isHrActive && !hrOpen ? 'text-white' : 'text-gray-400'}`} />
+                  )}
+                </motion.button>
+                <AnimatePresence>
+                  {hrOpen && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      {hrItems.map(item => {
+                        const Icon = item.icon;
+                        const isActive = currentPath === item.id;
+                        return (
+                          <motion.button
+                            key={item.id}
+                            onClick={() => { navigate(item.url); setMobileMenuOpen(false); }}
+                            whileHover={{ x: 3 }}
+                            whileTap={{ scale: 0.98 }}
+                            className={`w-full flex items-center gap-3 ${sidebarOpen ? 'pl-8' : 'pl-3'} pr-3 py-2 rounded-lg transition-all ${
+                              isActive
+                                ? 'bg-gray-500 text-white shadow-sm'
+                                : 'text-gray-600 hover:bg-gray-100'
+                            }`}
+                            title={!sidebarOpen ? t(item.labelKey as keyof typeof translations.en) : ''}
+                          >
+                            <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : ''}`} />
+                            <AnimatePresence>
+                              {sidebarOpen && (
+                                <motion.span
+                                  initial={{ opacity: 0, x: -10 }}
+                                  animate={{ opacity: 1, x: 0 }}
+                                  exit={{ opacity: 0, x: -10 }}
+                                  className={`text-sm font-medium ${isActive ? 'text-white' : ''}`}
+                                >
+                                  {t(item.labelKey as keyof typeof translations.en)}
+                                </motion.span>
+                              )}
+                            </AnimatePresence>
+                          </motion.button>
+                        );
+                      })}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </>
+            )}
           </div>
         </nav>
 
