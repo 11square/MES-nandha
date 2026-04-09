@@ -290,7 +290,7 @@ export default function App() {
                         exit={{ opacity: 0, x: -10 }}
                         className={`text-sm font-medium flex-1 text-left ${isHrActive && !hrOpen ? 'text-white' : ''}`}
                       >
-                        HR <span className={`ml-1 text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${isHrActive && !hrOpen ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'}`}>BETA</span>
+                        HR <span className={`ml-auto text-[9px] tracking-wider px-1.5 py-px rounded border font-medium uppercase ${isHrActive && !hrOpen ? 'border-white/30 text-white/80' : 'border-gray-300 text-gray-400'}`}>Beta</span>
                       </motion.span>
                     )}
                   </AnimatePresence>
