@@ -440,31 +440,6 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Language Toggle */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setLanguage('en')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  language === 'en'
-                    ? 'bg-white text-gray-700 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setLanguage('ta')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  language === 'ta'
-                    ? 'bg-white text-gray-700 shadow-sm'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                தமிழ்
-              </button>
-            </div>
-
-            <div className="h-8 w-px bg-gray-200"></div>
 
             <motion.button 
               whileHover={{ scale: 1.05 }}
