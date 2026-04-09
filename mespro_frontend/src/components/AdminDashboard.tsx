@@ -25,6 +25,12 @@ import {
   CalendarDays,
   Factory,
   CircleDollarSign,
+  Plus,
+  FileText,
+  PackagePlus,
+  Sun,
+  Sunset,
+  Moon,
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 import {
@@ -156,9 +162,9 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
 
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return { text: 'Good Morning', emoji: '☀️' };
-    if (hour < 17) return { text: 'Good Afternoon', emoji: '🌤️' };
-    return { text: 'Good Evening', emoji: '🌙' };
+    if (hour < 12) return { text: 'Good Morning', icon: Sun, bg: 'from-amber-400 to-orange-400' };
+    if (hour < 17) return { text: 'Good Afternoon', icon: Sunset, bg: 'from-orange-400 to-rose-400' };
+    return { text: 'Good Evening', icon: Moon, bg: 'from-indigo-400 to-purple-400' };
   }, []);
 
   const dateStr = useMemo(() => {
@@ -184,37 +190,29 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
   return (
     <div className="space-y-6">
       {/* ===== Greeting Banner ===== */}
-      <div className="rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 p-6 text-white shadow-lg">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">
-              {greeting.emoji} {greeting.text}{currentUser?.name ? `, ${currentUser.name}` : ''}!
-            </h1>
-            <p className="mt-1 text-blue-100 text-sm">{dateStr}</p>
-            {summary && (
-              <div className="mt-3 flex flex-wrap gap-4 text-sm text-blue-100">
-                {(summary.activeOrders ?? 0) > 0 && (
-                  <span className="flex items-center gap-1">
-                    <ClipboardList className="h-4 w-4" /> {summary.activeOrders} active orders
-                  </span>
-                )}
-                {(summary.activeLeads ?? 0) > 0 && (
-                  <span className="flex items-center gap-1">
-                    <Target className="h-4 w-4" /> {summary.activeLeads} leads to follow up
-                  </span>
-                )}
-                {(summary.totalOutstanding ?? 0) > 0 && (
-                  <span className="flex items-center gap-1">
-                    <IndianRupee className="h-4 w-4" /> {formatCurrency(summary.totalOutstanding)} outstanding
-                  </span>
-                )}
-                {(summary.stockAlerts ?? 0) > 0 && (
-                  <span className="flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4" /> {summary.stockAlerts} stock alerts
-                  </span>
-                )}
-              </div>
-            )}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${greeting.bg} text-white shadow-sm`}>
+              <greeting.icon className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold text-slate-800">
+                {greeting.text}{currentUser?.name ? `, ${currentUser.name}` : ''}
+              </h1>
+              <p className="text-sm text-slate-500">{dateStr}</p>
+            </div>
+          </div>
+          <div className="hidden md:flex items-center gap-2">
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onNavigate('orders')}>
+              <Plus className="h-3.5 w-3.5" /> New Order
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onNavigate('billing')}>
+              <FileText className="h-3.5 w-3.5" /> New Invoice
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onNavigate('leads')}>
+              <Target className="h-3.5 w-3.5" /> New Lead
+            </Button>
           </div>
         </div>
       </div>
