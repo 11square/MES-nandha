@@ -355,6 +355,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   };
 
   const [activeTab, setActiveTab] = useState<'gst-bills' | 'non-gst-bills'>('gst-bills');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
   const [showCreateBill, setShowCreateBill] = useState(!!orderForBilling || !!openBillForm);
   const [showViewBill, setShowViewBill] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
@@ -540,11 +543,49 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     }
   }, [clients]);
 
+  // Date filter helper
+  const matchesBillDateFilter = (bill: Bill) => {
+    if (dateFilter === 'all') return true;
+    const d = new Date(bill.date);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dateFilter === 'today') return d >= startOfToday;
+    if (dateFilter === 'week') { const s = new Date(startOfToday); s.setDate(s.getDate() - s.getDay()); return d >= s; }
+    if (dateFilter === 'month') return d >= new Date(now.getFullYear(), now.getMonth(), 1);
+    if (dateFilter === 'custom') {
+      let ok = true;
+      if (customDateFrom) ok = d >= new Date(customDateFrom);
+      if (customDateTo && ok) { const e = new Date(customDateTo); e.setDate(e.getDate() + 1); ok = d < e; }
+      return ok;
+    }
+    return true;
+  };
+
+  const dateFilteredBills = bills.filter(matchesBillDateFilter);
+  const dateFilteredPayments = payments.filter(p => {
+    if (dateFilter === 'all') return true;
+    const d = new Date(p.date);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dateFilter === 'today') return d >= startOfToday;
+    if (dateFilter === 'week') { const s = new Date(startOfToday); s.setDate(s.getDate() - s.getDay()); return d >= s; }
+    if (dateFilter === 'month') return d >= new Date(now.getFullYear(), now.getMonth(), 1);
+    if (dateFilter === 'custom') {
+      let ok = true;
+      if (customDateFrom) ok = d >= new Date(customDateFrom);
+      if (customDateTo && ok) { const e = new Date(customDateTo); e.setDate(e.getDate() + 1); ok = d < e; }
+      return ok;
+    }
+    return true;
+  });
+
   // Calculate statistics
-  const totalBillValue = bills.reduce((sum, bill) => sum + bill.grand_total, 0);
-  const totalReceived = bills.reduce((sum, bill) => sum + bill.paid_amount, 0);
+  const totalBillValue = dateFilteredBills.reduce((sum, bill) => sum + bill.grand_total, 0);
+  const totalReceived = dateFilteredBills.reduce((sum, bill) => sum + bill.paid_amount, 0);
   const totalPending = totalBillValue - totalReceived;
-  const overdueCount = bills.filter(bill => {
+  const overdueCount = dateFilteredBills.filter(bill => {
     const dueDate = new Date(bill.due_date);
     const today = new Date();
     return bill.payment_status !== 'paid' && dueDate < today;
@@ -1649,7 +1690,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     }
   };
 
-  const pendingBills = bills.filter(b => b.payment_status !== 'paid');
+  const pendingBills = dateFilteredBills.filter(b => b.payment_status !== 'paid');
 
   // Handle payment status change from dropdown
   const handlePaymentStatusChange = async (billId: string, newStatus: 'paid' | 'partial' | 'pending' | 'overdue') => {
@@ -2559,6 +2600,28 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <h1 className="text-3xl font-bold">{t('billing')}</h1>
           <p className="text-muted-foreground">{t('createInvoicesAndManagePayments')}</p>
         </div>
+        <div className="flex items-center gap-2">
+          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+            <SelectTrigger className="w-44">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+            </SelectContent>
+          </Select>
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
+              <span className="text-gray-400 text-sm">to</span>
+              <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -2570,7 +2633,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-700">₹{totalBillValue.toLocaleString()}</div>
-            <p className="text-xs text-blue-600">{bills.length} {t('invoices')}</p>
+            <p className="text-xs text-blue-600">{dateFilteredBills.length} {t('invoices')}</p>
           </CardContent>
         </Card>
 
@@ -2581,7 +2644,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-700">₹{totalReceived.toLocaleString()}</div>
-            <p className="text-xs text-emerald-600">{payments.length} {t('payments')}</p>
+            <p className="text-xs text-emerald-600">{dateFilteredPayments.length} {t('payments')}</p>
           </CardContent>
         </Card>
 
@@ -2672,7 +2735,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <option value="b2b">{t('b2b')}</option>
                   <option value="b2c">{t('b2c')}</option>
                 </select>
-                <Button variant="outline" onClick={() => exportBillsCSV(bills.filter(b => (b.bill_no || '').startsWith('INV') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
+                <Button variant="outline" onClick={() => exportBillsCSV(dateFilteredBills.filter(b => (b.bill_no || '').startsWith('INV') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('export')}
                 </Button>
@@ -2694,7 +2757,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bills.filter(bill => 
+                  {dateFilteredBills.filter(bill => 
                     ((bill.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
                     (bill.bill_no || '').startsWith('INV')
@@ -2839,7 +2902,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <option value="b2b">{t('b2b')}</option>
                   <option value="b2c">{t('b2c')}</option>
                 </select>
-                <Button variant="outline" onClick={() => exportBillsCSV(bills.filter(b => (b.bill_no || '').startsWith('QTN') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
+                <Button variant="outline" onClick={() => exportBillsCSV(dateFilteredBills.filter(b => (b.bill_no || '').startsWith('QTN') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('export')}
                 </Button>
@@ -2861,7 +2924,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {bills.filter(bill => 
+                  {dateFilteredBills.filter(bill => 
                     ((bill.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                     (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
                     (bill.bill_no || '').startsWith('QTN')
@@ -2872,7 +2935,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       </TableCell>
                     </TableRow>
                   ) : (
-                    bills.filter(bill => 
+                    dateFilteredBills.filter(bill => 
                       ((bill.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                       (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
                       (bill.bill_no || '').startsWith('QTN')

@@ -97,6 +97,9 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   const [showEditPO, setShowEditPO] = useState(false);
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
 
   // Auto-open Add PO form when coming from Stock Management
@@ -108,11 +111,32 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
     }
   }, [stockItem]);
 
+  // Date filter helper
+  const matchesPODateFilter = (po: PurchaseOrder) => {
+    if (dateFilter === 'all') return true;
+    const d = new Date(po.date);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dateFilter === 'today') return d >= startOfToday;
+    if (dateFilter === 'week') { const s = new Date(startOfToday); s.setDate(s.getDate() - s.getDay()); return d >= s; }
+    if (dateFilter === 'month') return d >= new Date(now.getFullYear(), now.getMonth(), 1);
+    if (dateFilter === 'custom') {
+      let ok = true;
+      if (customDateFrom) ok = d >= new Date(customDateFrom);
+      if (customDateTo && ok) { const e = new Date(customDateTo); e.setDate(e.getDate() + 1); ok = d < e; }
+      return ok;
+    }
+    return true;
+  };
+
+  const dateFilteredPOs = purchaseOrders.filter(matchesPODateFilter);
+
   // Calculate statistics
-  const totalPOValue = purchaseOrders.reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
-  const pendingPOs = purchaseOrders.filter(po => po.status === 'pending' || po.status === 'draft').length;
-  const orderedPOs = purchaseOrders.filter(po => po.status === 'ordered' || po.status === 'approved').length;
-  const receivedPOs = purchaseOrders.filter(po => po.status === 'received').length;
+  const totalPOValue = dateFilteredPOs.reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
+  const pendingPOs = dateFilteredPOs.filter(po => po.status === 'pending' || po.status === 'draft').length;
+  const orderedPOs = dateFilteredPOs.filter(po => po.status === 'ordered' || po.status === 'approved').length;
+  const receivedPOs = dateFilteredPOs.filter(po => po.status === 'received').length;
 
   const handleAddPO = async (newPO: Omit<PurchaseOrder, 'id' | 'total_amount'>) => {
     try {
@@ -260,7 +284,28 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
           <h1 className="text-3xl font-bold">{t('purchaseOrderManagement')}</h1>
           <p className="text-muted-foreground">{t('managePurchaseOrders')}</p>
         </div>
-        
+        <div className="flex items-center gap-2">
+          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+            <SelectTrigger className="w-44">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+            </SelectContent>
+          </Select>
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
+              <span className="text-gray-400 text-sm">to</span>
+              <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Statistics Cards */}
@@ -372,10 +417,10 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
         <TabsContent value="gst" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>{t('invoicePurchaseOrders')} ({purchaseOrders.filter(po => po.is_gst).length})</CardTitle>
+              <CardTitle>{t('invoicePurchaseOrders')} ({dateFilteredPOs.filter(po => po.is_gst).length})</CardTitle>
             </CardHeader>
             <CardContent>
-              {purchaseOrders.filter(po => po.is_gst).length === 0 ? (
+              {dateFilteredPOs.filter(po => po.is_gst).length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   {t('noInvoicePurchaseOrdersYetClickCreatePoToGetStarted')}
                 </div>
@@ -395,7 +440,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchaseOrders.filter(po => po.is_gst).map((po) => (
+                    {dateFilteredPOs.filter(po => po.is_gst).map((po) => (
                       <TableRow key={po.id}>
                         <TableCell className="font-medium">{po.id}</TableCell>
                         <TableCell>{new Date(po.date).toLocaleDateString()}</TableCell>
@@ -449,10 +494,10 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
         <TabsContent value="non-gst" className="space-y-4 mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>{t('quotationBillPurchaseOrders')} ({purchaseOrders.filter(po => !po.is_gst).length})</CardTitle>
+              <CardTitle>{t('quotationBillPurchaseOrders')} ({dateFilteredPOs.filter(po => !po.is_gst).length})</CardTitle>
             </CardHeader>
             <CardContent>
-              {purchaseOrders.filter(po => !po.is_gst).length === 0 ? (
+              {dateFilteredPOs.filter(po => !po.is_gst).length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   {t('noQuotationBillPurchaseOrdersYetClickCreatePoToGetStarted')}
                 </div>
@@ -472,7 +517,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchaseOrders.filter(po => !po.is_gst).map((po) => (
+                    {dateFilteredPOs.filter(po => !po.is_gst).map((po) => (
                       <TableRow key={po.id}>
                         <TableCell className="font-medium">{po.id}</TableCell>
                         <TableCell>{new Date(po.date).toLocaleDateString()}</TableCell>

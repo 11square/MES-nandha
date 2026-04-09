@@ -92,6 +92,9 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
   const [filterCustomerType, setFilterCustomerType] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [showOrderDetail, setShowOrderDetail] = useState(false);
@@ -269,7 +272,27 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
     }
   };
 
-  const filteredOrders = orders.filter(order => {
+  const matchesDateFilter = (item: any) => {
+    if (dateFilter === 'all') return true;
+    const d = new Date(item.converted_date || item.created_at || item.createdAt);
+    if (isNaN(d.getTime())) return false;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (dateFilter === 'today') return d >= startOfToday;
+    if (dateFilter === 'week') { const s = new Date(startOfToday); s.setDate(s.getDate() - s.getDay()); return d >= s; }
+    if (dateFilter === 'month') return d >= new Date(now.getFullYear(), now.getMonth(), 1);
+    if (dateFilter === 'custom') {
+      let ok = true;
+      if (customDateFrom) ok = d >= new Date(customDateFrom);
+      if (customDateTo && ok) { const e = new Date(customDateTo); e.setDate(e.getDate() + 1); ok = d < e; }
+      return ok;
+    }
+    return true;
+  };
+
+  const dateFilteredOrders = orders.filter(matchesDateFilter);
+
+  const filteredOrders = dateFilteredOrders.filter(order => {
     const matchesSearch = (order.customer || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (order.order_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (order.lead_number || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -340,11 +363,11 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
     : [];
 
   const stats = {
-    total: orders.length,
-    draft: orders.filter(o => o.status === 'Draft').length,
-    totalValue: orders.reduce((sum, o) => sum + (parseFloat(o.grand_total) || 0), 0),
-    b2b: orders.filter(o => o.customer_type === 'B2B').length,
-    b2c: orders.filter(o => o.customer_type !== 'B2B').length,
+    total: dateFilteredOrders.length,
+    draft: dateFilteredOrders.filter(o => o.status === 'Draft').length,
+    totalValue: dateFilteredOrders.reduce((sum, o) => sum + (parseFloat(o.grand_total) || 0), 0),
+    b2b: dateFilteredOrders.filter(o => o.customer_type === 'B2B').length,
+    b2c: dateFilteredOrders.filter(o => o.customer_type !== 'B2B').length,
   };
 
   const handleSendToProduction = (order: any) => {
@@ -544,7 +567,28 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
             {t('manageConvertedLeadsAsOrders')}
           </p>
         </div>
-        
+        <div className="flex items-center gap-2">
+          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+            <SelectTrigger className="w-44">
+              <Calendar className="w-4 h-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+            </SelectContent>
+          </Select>
+          {dateFilter === 'custom' && (
+            <div className="flex items-center gap-2">
+              <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
+              <span className="text-gray-400 text-sm">to</span>
+              <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Stats Cards */}
