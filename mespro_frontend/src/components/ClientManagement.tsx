@@ -356,6 +356,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
           district: editingClient.district || '',
           status: editingClient.status,
           rating: editingClient.rating,
+          opening_outstanding: parseFloat(editingClient.opening_outstanding) || 0,
         });
         toast.success('Client updated successfully!');
         refreshClients();
@@ -1148,6 +1149,18 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
                     {editingClient.rating} {t('stars')}
                   </span>
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Opening Outstanding</Label>
+                <Input
+                  type="number"
+                  value={editingClient.opening_outstanding || ''}
+                  onChange={(e) => setEditingClient({...editingClient, opening_outstanding: e.target.value})}
+                  onKeyDown={blockInvalidNumberKeys}
+                  placeholder="₹0.00"
+                  className="border border-gray-300"
+                />
+                <p className="text-xs text-slate-500">Outstanding amount before using this software</p>
               </div>
             </div>
           )}
