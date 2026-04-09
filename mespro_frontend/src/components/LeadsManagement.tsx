@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
+import { saveDraft, loadDraft, clearDraft } from '../lib/draftStorage';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -262,13 +262,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   };
 
   useEffect(() => {
-    const hasPending = consumePendingDraft('/leads');
     refreshLeads();
-    if (hasPending) {
-      const t1 = setTimeout(() => refreshLeads(), 800);
-      const t2 = setTimeout(() => refreshLeads(), 2000);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
   }, []);
 
   // Fetch stock items to merge with products (products table may be empty)
@@ -1338,6 +1332,29 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
   const [contactValue, setContactValue] = useState('');
   const [emailValue, setEmailValue] = useState('');
 
+  // Restore draft from localStorage on mount
+  useEffect(() => {
+    const draft = loadDraft('leads');
+    if (draft) {
+      if (draft.mobileValue) setMobileValue(draft.mobileValue);
+      if (draft.customerValue) setCustomerValue(draft.customerValue);
+      if (draft.contactValue) setContactValue(draft.contactValue);
+      if (draft.emailValue) setEmailValue(draft.emailValue);
+      if (draft.countryCode) setCountryCode(draft.countryCode);
+      if (draft.gstNumber) setGstNumber(draft.gstNumber);
+      if (draft.stateValue) setStateValue(draft.stateValue);
+      if (draft.districtValue) setDistrictValue(draft.districtValue);
+      if (draft.addedProducts?.length) setAddedProducts(draft.addedProducts);
+      toast.info('Draft restored');
+    }
+  }, []);
+
+  // Auto-save draft to localStorage on form changes
+  useEffect(() => {
+    if (!mobileValue && !customerValue && !addedProducts.length) { clearDraft('leads'); return; }
+    saveDraft('leads', { mobileValue, customerValue, contactValue, emailValue, countryCode, gstNumber, stateValue, districtValue, addedProducts });
+  }, [mobileValue, customerValue, contactValue, emailValue, countryCode, gstNumber, stateValue, districtValue, addedProducts]);
+
   // Client mobile dropdown
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [mobileSearchQuery, setMobileSearchQuery] = useState('');
@@ -1609,6 +1626,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
       const leadKey = getLeadCacheKey(created) || getLeadCacheKey(payload);
       if (leadKey) saveLeadProductsToCache(leadKey, serializedProducts);
       formSubmittedRef.current = true;
+      clearDraft('leads');
       toast.success(isDraft ? 'Lead saved as draft!' : 'Lead created successfully!');
       onSuccess?.();
       onClose();
@@ -1619,44 +1637,6 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
 
   const formRef = useRef<HTMLFormElement>(null);
   const formSubmittedRef = useRef(false);
-  const draftPayloadRef = useRef<any>(null);
-
-  // Sync draft payload ref on every render (synchronous — never stale on unmount)
-  const serializedProductsForDraft = addedProducts.map(p => ({
-    product: p.product,
-    category: p.category,
-    subcategory: p.subcategory,
-    size: p.subcategory || '',
-    quantity: p.quantity,
-    unit_price: Number(allProducts.find(ap => String(ap.id) === String(p.product))?.selling_price) || Number(allProducts.find(ap => String(ap.id) === String(p.product))?.unit_price) || 0,
-  }));
-  draftPayloadRef.current = customerValue ? {
-    customer: customerValue,
-    contact: contactValue,
-    mobile: mobileValue ? `${countryCode} ${mobileValue}` : '',
-    email: emailValue,
-    source: '',
-    category: '',
-    product: '',
-    size: '',
-    quantity: addedProducts.reduce((sum, p) => sum + p.quantity, 0),
-    status: 'Draft',
-    gst_number: gstNumber,
-    state: stateValue,
-    district: districtValue,
-    notes: '',
-    description: '',
-    products: serializedProductsForDraft,
-  } : null;
-
-  // Auto-save as draft on unmount (navigation away)
-  useEffect(() => {
-    return () => {
-      if (!formSubmittedRef.current && draftPayloadRef.current) {
-        beaconPost('/leads', draftPayloadRef.current);
-      }
-    };
-  }, []);
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
@@ -2121,7 +2101,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
+        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; clearDraft('leads'); onClose(); }}>
           {t('cancel')}
         </Button>
         <Button type="button" variant="outline" size="sm" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>

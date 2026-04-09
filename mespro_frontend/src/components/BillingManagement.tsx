@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import React, { useState, useEffect, useRef } from 'react';
-import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
+import { saveDraft, loadDraft, clearDraft } from '../lib/draftStorage';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { getCustomerType } from '../lib/utils';
 import { ConfirmDialog } from './ui/confirm-dialog';
@@ -241,13 +241,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   const [filterCustomerType, setFilterCustomerType] = useState('all');
 
   useEffect(() => {
-    const hasPending = consumePendingDraft('/billing');
     refreshBills();
-    if (hasPending) {
-      const t1 = setTimeout(() => refreshBills(), 800);
-      const t2 = setTimeout(() => refreshBills(), 2000);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
   }, [filterCustomerType]);
 
   const refreshBills = () => {
@@ -940,73 +934,27 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   const billFormRef = useRef<HTMLFormElement>(null);
   const billSubmittedRef = useRef(false);
-  const billDraftPayloadRef = useRef<any>(null);
 
-  // Reset submitted ref when form opens (so auto-save works for each new form session)
+  // Reset submitted ref when form opens & restore draft
   useEffect(() => {
-    if (showCreateBill) {
+    if (showCreateBill && !editingBill && !orderForBilling) {
       billSubmittedRef.current = false;
+      const draft = loadDraft('billing');
+      if (draft) {
+        if (draft.billForm) setBillForm(prev => ({ ...prev, ...draft.billForm }));
+        if (draft.addons?.length) setAddons(draft.addons);
+        if (draft.clientSearchQuery) setClientSearchQuery(draft.clientSearchQuery);
+        toast.info('Draft restored');
+      }
     }
   }, [showCreateBill]);
 
-  // Sync bill draft payload ref on every render (synchronous — never stale on unmount)
-  if (showCreateBill && !editingBill) {
-    const client = getSelectedClient();
-    const clientValue = client ? client.name : (clientSearchQuery.trim() || '');
-    if (clientValue) {
-      const totals = calculateBillTotals();
-      billDraftPayloadRef.current = {
-        bill_no: billForm.bill_number || undefined,
-        date: billForm.date,
-        order_id: orderBillData ? parseOrderIdForApi(orderBillData.orderId) : null,
-        client_id: client && client.id !== 'CUSTOM' ? client.id : null,
-        client_name: clientValue,
-        client_address: client?.address || '',
-        client_gst: billForm.gst_number || client?.gstNo || '',
-        items: billForm.items,
-        subtotal: Math.round(totals.subtotal),
-        total_discount: Math.round(totals.totalDiscount),
-        total_tax: Math.round(totals.totalTax),
-        grand_total: Math.round(totals.grandTotal),
-        status: 'draft',
-        payment_status: 'pending',
-        payment_type: billForm.payment_type,
-        payment_method: billForm.payment_method,
-        paid_amount: 0,
-        due_date: billForm.due_date,
-        notes: billForm.notes,
-        created_by: billForm.created_by,
-        gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
-        place_of_supply: billForm.place_of_supply,
-        terms_conditions: billForm.terms_conditions,
-        state: billForm.place_of_supply,
-      };
-    } else {
-      billDraftPayloadRef.current = null;
-    }
-  } else {
-    billDraftPayloadRef.current = null;
-  }
-
-  // Save current form data as draft via beacon (fire-and-forget)
-  const saveBillDraftBeacon = () => {
-    if (!billSubmittedRef.current && billDraftPayloadRef.current) {
-      beaconPost('/billing', billDraftPayloadRef.current);
-      billSubmittedRef.current = true; // Prevent double-save
-      toast.info('Form auto-saved as draft');
-      return true;
-    }
-    return false;
-  };
-
-  // Auto-save bill as draft on unmount (navigation away)
+  // Auto-save draft to localStorage on form changes
   useEffect(() => {
-    return () => {
-      if (!billSubmittedRef.current && billDraftPayloadRef.current) {
-        beaconPost('/billing', billDraftPayloadRef.current);
-      }
-    };
-  }, []);
+    if (!showCreateBill || editingBill) return;
+    if (!clientSearchQuery && !billForm.items.length) { clearDraft('billing'); return; }
+    saveDraft('billing', { billForm, addons, clientSearchQuery });
+  }, [showCreateBill, billForm, addons, clientSearchQuery]);
 
   const performBillCreate = async (isDraft: boolean) => {
     const client = getSelectedClient();
@@ -1095,6 +1043,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
+      clearDraft('billing');
       setActiveTab((billForm.bill_number || '').startsWith('QTN') ? 'non-gst-bills' : 'gst-bills');
       refreshBills();
       resetBillForm();
@@ -1872,7 +1821,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
             variant="outline" 
             size="sm"
             onClick={() => {
-              if (!editingBill) { saveBillDraftBeacon(); } else { billSubmittedRef.current = true; }
+              if (!editingBill) { clearDraft('billing'); } else { billSubmittedRef.current = true; }
               setShowCreateBill(false);
               setEditingBill(null);
               resetBillForm();

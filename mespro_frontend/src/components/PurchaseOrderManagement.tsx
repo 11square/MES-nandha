@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
-import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
+import { saveDraft, loadDraft, clearDraft } from '../lib/draftStorage';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -84,13 +84,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   }, []);
 
   useEffect(() => {
-    const hasPending = consumePendingDraft('/purchase-orders');
     refreshPOs();
-    if (hasPending) {
-      const t1 = setTimeout(() => refreshPOs(), 800);
-      const t2 = setTimeout(() => refreshPOs(), 2000);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
   }, [refreshPOs]);
 
   const [showAddPO, setShowAddPO] = useState(false);
@@ -749,6 +743,26 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
   const [addedItems, setAddedItems] = useState<POItem[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
+  // Restore draft from localStorage on mount (skip if pre-filling from stock)
+  useEffect(() => {
+    if (stockItem) return;
+    const draft = loadDraft('po');
+    if (draft) {
+      if (draft.formData) setFormData(prev => ({ ...prev, ...draft.formData }));
+      if (draft.gstNumber) setGstNumber(draft.gstNumber);
+      if (draft.selectedVendorId) setSelectedVendorId(draft.selectedVendorId);
+      if (draft.vendorSearchQuery) setVendorSearchQuery(draft.vendorSearchQuery);
+      if (draft.addedItems?.length) setAddedItems(draft.addedItems);
+      toast.info('Draft restored');
+    }
+  }, []);
+
+  // Auto-save draft to localStorage on form changes
+  useEffect(() => {
+    if (!formData.vendor_name && !addedItems.length) { clearDraft('po'); return; }
+    saveDraft('po', { formData, gstNumber, selectedVendorId, vendorSearchQuery, addedItems });
+  }, [formData, gstNumber, selectedVendorId, vendorSearchQuery, addedItems]);
+
   const getSubcategoriesByCategory = (categoryId: string) => {
     const category = productCategories.find(c => c.id === categoryId);
     return category ? category.subcategories : [];
@@ -963,45 +977,10 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       is_gst: !!gstNumber,
     });
     formSubmittedRef.current = true;
+    clearDraft('po');
   };
 
   const formSubmittedRef = useRef(false);
-  const draftPayloadRef = useRef<any>(null);
-
-  // Sync draft payload ref on every render (synchronous — never stale on unmount)
-  if (selectedVendorId) {
-    const totalAmount = getTotalAmount();
-    const totalQty = addedItems.reduce((sum, item) => sum + item.quantity, 0);
-    draftPayloadRef.current = {
-      ...formData,
-      status: 'draft',
-      items: addedItems.map((item, index) => ({
-        id: index + 1,
-        name: item.productName,
-        quantity: item.quantity,
-        unit: item.subcategory || 'pcs',
-        rate: item.unitPrice,
-        amount: item.total,
-      })),
-      quantity: totalQty,
-      unit_price: totalQty > 0 ? Math.round(totalAmount / totalQty) : 0,
-      total_amount: totalAmount,
-      created_by: selectedStaffMember?.name || formData.created_by,
-      vendor_gst: gstNumber || '',
-      is_gst: !!gstNumber,
-    };
-  } else {
-    draftPayloadRef.current = null;
-  }
-
-  // Auto-save as draft on unmount (navigation away)
-  useEffect(() => {
-    return () => {
-      if (!formSubmittedRef.current && draftPayloadRef.current) {
-        beaconPost('/purchase-orders', draftPayloadRef.current);
-      }
-    };
-  }, []);
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
@@ -1418,7 +1397,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
+        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; clearDraft('po'); onClose(); }}>
           {t('cancel')}
         </Button>
         <Button type="button" variant="outline" size="sm" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>

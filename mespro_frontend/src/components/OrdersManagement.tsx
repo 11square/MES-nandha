@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { beaconPost, consumePendingDraft } from '../lib/beaconPost';
+import { saveDraft, loadDraft, clearDraft } from '../lib/draftStorage';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -114,13 +114,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   };
 
   useEffect(() => {
-    const hasPending = consumePendingDraft('/orders');
     refreshOrders();
-    if (hasPending) {
-      const t1 = setTimeout(() => refreshOrders(), 800);
-      const t2 = setTimeout(() => refreshOrders(), 2000);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
   }, [filterCustomerType]);
 
   // Auto-open order form when a lead is converted
@@ -1303,6 +1297,30 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
   const [contactValue, setContactValue] = useState(leadData?.contact || '');
   const [emailValue, setEmailValue] = useState(leadData?.email || '');
 
+  // Restore draft from localStorage on mount (skip if pre-filling from lead)
+  useEffect(() => {
+    if (leadData) return;
+    const draft = loadDraft('orders');
+    if (draft) {
+      if (draft.mobileValue) setMobileValue(draft.mobileValue);
+      if (draft.customerValue) setCustomerValue(draft.customerValue);
+      if (draft.contactValue) setContactValue(draft.contactValue);
+      if (draft.emailValue) setEmailValue(draft.emailValue);
+      if (draft.gstNumber) setGstNumber(draft.gstNumber);
+      if (draft.stateValue) setStateValue(draft.stateValue);
+      if (draft.districtValue) setDistrictValue(draft.districtValue);
+      if (draft.requiredDate) setRequiredDate(draft.requiredDate);
+      if (draft.addedProducts?.length) setAddedProducts(draft.addedProducts);
+      toast.info('Draft restored');
+    }
+  }, []);
+
+  // Auto-save draft to localStorage on form changes
+  useEffect(() => {
+    if (!mobileValue && !customerValue && !addedProducts.length) { clearDraft('orders'); return; }
+    saveDraft('orders', { mobileValue, customerValue, contactValue, emailValue, gstNumber, stateValue, districtValue, requiredDate, addedProducts });
+  }, [mobileValue, customerValue, contactValue, emailValue, gstNumber, stateValue, districtValue, requiredDate, addedProducts]);
+
   // Client mobile dropdown
   const [clientsList, setClientsList] = useState<any[]>([]);
   const [showMobileDropdown, setShowMobileDropdown] = useState(false);
@@ -1532,6 +1550,7 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
     try {
       await ordersService.createOrder(payload);
       formSubmittedRef.current = true;
+      clearDraft('orders');
       toast.success(isDraft ? 'Order saved as draft!' : 'Order created successfully!');
 
       // Auto-create client from order data
@@ -1577,51 +1596,6 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
 
   const formRef = useRef<HTMLFormElement>(null);
   const formSubmittedRef = useRef(false);
-  const draftPayloadRef = useRef<any>(null);
-
-  // Sync draft payload ref on every render (synchronous — never stale on unmount)
-  {
-    const subtotal = addedProducts.reduce((sum, p) => sum + (getProductRate(p) * p.quantity), 0);
-    const gstAmount = Math.round(subtotal * 0.18);
-    const grandTotal = subtotal + gstAmount;
-    const totalQty = addedProducts.reduce((sum, p) => sum + p.quantity, 0);
-    draftPayloadRef.current = customerValue ? {
-      customer: customerValue,
-      contact: contactValue,
-      mobile: mobileValue,
-      email: emailValue,
-      source: '',
-      gst_number: gstNumber,
-      status: 'Draft',
-      state: stateValue,
-      district: districtValue,
-      address: '',
-      notes: '',
-      required_date: requiredDate || null,
-      category: '',
-      product: '',
-      size: '',
-      quantity: totalQty,
-      unit_price: addedProducts.length > 0 ? getProductRate(addedProducts[0]) : 0,
-      total_amount: subtotal,
-      gst_amount: gstAmount,
-      grand_total: grandTotal,
-      tax_rate: 18,
-      products: addedProducts.map(p => {
-        const rate = getProductRate(p);
-        return { product: p.product, category: p.category, subcategory: p.subcategory, size: p.subcategory, quantity: p.quantity, rate, amount: rate * p.quantity };
-      }),
-    } : null;
-  }
-
-  // Auto-save as draft on unmount (navigation away)
-  useEffect(() => {
-    return () => {
-      if (!formSubmittedRef.current && draftPayloadRef.current) {
-        beaconPost('/orders', draftPayloadRef.current);
-      }
-    };
-  }, []);
 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
@@ -2088,7 +2062,7 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; onClose(); }}>
+        <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; clearDraft('orders'); onClose(); }}>
           {t('cancel')}
         </Button>
         <Button type="button" variant="outline" size="sm" className="border-gray-400 text-gray-700 hover:bg-gray-50" onClick={() => { savingAsDraftRef.current = true; formRef.current?.requestSubmit(); }}>
