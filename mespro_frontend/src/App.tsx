@@ -148,7 +148,7 @@ export default function App() {
   const navigationItems = useMemo(() => {
     if (modules.length === 0) return []; // Still loading
     return modules
-      .filter((m) => moduleIconMap[m.key] && m.url && m.key !== 'products' && m.key !== 'production' && m.key !== 'inventory' && m.key !== 'sales' && !hrKeys.has(m.key))
+      .filter((m) => moduleIconMap[m.key] && m.url && m.key !== 'products' && m.key !== 'production' && m.key !== 'inventory' && m.key !== 'sales' && m.key !== 'settings' && !hrKeys.has(m.key))
       .map((m) => ({
         id: m.url.replace(/^\//, ''),
         moduleKey: m.key,
