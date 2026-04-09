@@ -25,10 +25,18 @@ import {
   CalendarDays,
   Factory,
   CircleDollarSign,
-  Plus,
-  FileText,
-  PackagePlus,
   Sun,
+  CloudSun,
+  Cloud,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  CloudDrizzle,
+  CloudFog,
+  Thermometer,
+  MapPin,
+  Droplets,
+  Wind,
   Sunset,
   Moon,
 } from 'lucide-react';
@@ -50,6 +58,31 @@ function formatCurrency(val: number): string {
   if (val >= 100000) return '\u20B9' + (val / 100000).toFixed(1) + 'L';
   if (val >= 1000) return '\u20B9' + (val / 1000).toFixed(1) + 'K';
   return '\u20B9' + val.toFixed(0);
+}
+
+function getWeatherDescription(code: number): string {
+  if (code === 0) return 'Clear sky';
+  if (code <= 3) return 'Partly cloudy';
+  if (code <= 49) return 'Foggy';
+  if (code <= 59) return 'Drizzle';
+  if (code <= 69) return 'Rain';
+  if (code <= 79) return 'Snow';
+  if (code <= 82) return 'Rain showers';
+  if (code <= 86) return 'Snow showers';
+  if (code <= 99) return 'Thunderstorm';
+  return 'Cloudy';
+}
+
+function WeatherIcon({ code, className }: { code: number; className?: string }) {
+  if (code === 0) return <Sun className={className} />;
+  if (code <= 3) return <CloudSun className={className} />;
+  if (code <= 49) return <CloudFog className={className} />;
+  if (code <= 59) return <CloudDrizzle className={className} />;
+  if (code <= 69) return <CloudRain className={className} />;
+  if (code <= 79) return <CloudSnow className={className} />;
+  if (code <= 86) return <CloudSnow className={className} />;
+  if (code <= 99) return <CloudLightning className={className} />;
+  return <Cloud className={className} />;
 }
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -84,6 +117,40 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
   const [attendanceData, setAttendanceData] = useState<any>(null);
   const [productionStatus, setProductionStatus] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weather, setWeather] = useState<{ temp: number; description: string; code: number; humidity: number; wind: number; city: string } | null>(null);
+
+  useEffect(() => {
+    // Fetch weather using Open-Meteo (free, no API key)
+    navigator.geolocation?.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const res = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m`
+          );
+          const data = await res.json();
+          const c = data.current;
+          // Reverse geocode for city name
+          let city = '';
+          try {
+            const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=10`);
+            const geoData = await geo.json();
+            city = geoData.address?.city || geoData.address?.town || geoData.address?.district || geoData.address?.state || '';
+          } catch {}
+          setWeather({
+            temp: Math.round(c.temperature_2m),
+            description: getWeatherDescription(c.weather_code),
+            code: c.weather_code,
+            humidity: c.relative_humidity_2m,
+            wind: Math.round(c.wind_speed_10m),
+            city,
+          });
+        } catch {}
+      },
+      () => {},
+      { timeout: 5000 }
+    );
+  }, []);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -203,17 +270,25 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
               <p className="text-sm text-slate-500">{dateStr}</p>
             </div>
           </div>
-          <div className="hidden md:flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onNavigate('orders')}>
-              <Plus className="h-3.5 w-3.5" /> New Order
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onNavigate('billing')}>
-              <FileText className="h-3.5 w-3.5" /> New Invoice
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => onNavigate('leads')}>
-              <Target className="h-3.5 w-3.5" /> New Lead
-            </Button>
-          </div>
+          {weather && (
+            <div className="hidden md:flex items-center gap-3 text-right">
+              <div className="flex items-center gap-2">
+                <WeatherIcon code={weather.code} className="h-8 w-8 text-slate-600" />
+                <div>
+                  <p className="text-xl font-semibold text-slate-800">{weather.temp}°C</p>
+                  <p className="text-xs text-slate-500">{weather.description}</p>
+                </div>
+              </div>
+              <div className="h-10 w-px bg-slate-200" />
+              <div className="text-xs text-slate-500 space-y-0.5">
+                {weather.city && (
+                  <p className="flex items-center gap-1 justify-end"><MapPin className="h-3 w-3" />{weather.city}</p>
+                )}
+                <p className="flex items-center gap-1 justify-end"><Droplets className="h-3 w-3" />{weather.humidity}%</p>
+                <p className="flex items-center gap-1 justify-end"><Wind className="h-3 w-3" />{weather.wind} km/h</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
