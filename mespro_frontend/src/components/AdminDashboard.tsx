@@ -154,6 +154,17 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
     return { total, present, pct };
   }, [attendanceData]);
 
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return { text: 'Good Morning', emoji: '☀️' };
+    if (hour < 17) return { text: 'Good Afternoon', emoji: '🌤️' };
+    return { text: 'Good Evening', emoji: '🌙' };
+  }, []);
+
+  const dateStr = useMemo(() => {
+    return new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  }, []);
+
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -169,16 +180,6 @@ export default function AdminDashboard({ onNavigate, onViewOrder }: AdminDashboa
       </div>
     );
   }
-
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return { text: 'Good Morning', emoji: '☀️' };
-    if (hour < 17) return { text: 'Good Afternoon', emoji: '🌤️' };
-    return { text: 'Good Evening', emoji: '🌙' };
-  }, []);
-
-  const today = new Date();
-  const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   return (
     <div className="space-y-6">
