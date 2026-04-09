@@ -39,8 +39,17 @@ class ClientsService {
     return apiService.get<any[]>(`/clients/outstandings${suffix}`);
   }
 
-  async getClientFollowups(): Promise<any[]> {
-    return apiService.get<any[]>('/clients/followups');
+  async getClientFollowups(clientId?: string): Promise<any[]> {
+    const endpoint = clientId ? `/clients/${clientId}/followups` : '/clients/followups';
+    return apiService.get<any[]>(endpoint);
+  }
+
+  async createClientFollowup(clientId: string, data: any): Promise<any> {
+    return apiService.post<any>(`/clients/${clientId}/followups`, data);
+  }
+
+  async getClientOutstandings(clientId: string): Promise<any[]> {
+    return apiService.get<any[]>(`/clients/${clientId}/outstandings`);
   }
 
   async getSalesHistory(): Promise<any[]> {

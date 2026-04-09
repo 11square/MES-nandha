@@ -1,4 +1,4 @@
-const { Client, ClientFollowup, CreditOutstanding, Order, Bill, Payment } = require('../models');
+const { Client, ClientFollowup, CreditOutstanding, Order, Bill, BillItem, Payment } = require('../models');
 const createCrudController = require('./base.controller');
 const ApiResponse = require('../utils/ApiResponse');
 const { applyBusinessScope } = require('../middleware/businessScope');
@@ -56,12 +56,14 @@ module.exports = {
     }
   },
 
-  // GET /clients/outstandings
+  // GET /clients/outstandings or /clients/:id/outstandings
   getOutstandings: async (req, res, next) => {
     try {
       const { page, limit, offset } = getPagination(req.query);
+      const where = applyBusinessScope(req);
+      if (req.params.id) where.client_id = req.params.id;
       const data = await CreditOutstanding.findAndCountAll({
-        where: applyBusinessScope(req),
+        where,
         include: [{ model: Client, as: 'client', attributes: ['id', 'name'] }],
         order: [['days_overdue', 'DESC']],
         limit,
@@ -75,12 +77,14 @@ module.exports = {
     }
   },
 
-  // GET /clients/followups
+  // GET /clients/followups or /clients/:id/followups
   getFollowups: async (req, res, next) => {
     try {
       const { page, limit, offset } = getPagination(req.query);
+      const where = applyBusinessScope(req);
+      if (req.params.id) where.client_id = req.params.id;
       const data = await ClientFollowup.findAndCountAll({
-        where: applyBusinessScope(req),
+        where,
         include: [{ model: Client, as: 'client', attributes: ['id', 'name'] }],
         order: [['date', 'DESC']],
         limit,
@@ -100,6 +104,7 @@ module.exports = {
       const { page, limit, offset } = getPagination(req.query);
       const data = await Bill.findAndCountAll({
         where: applyBusinessScope(req, { client_id: req.params.id }),
+        include: [{ model: BillItem, as: 'items' }],
         order: [['date', 'DESC']],
         limit,
         offset,
