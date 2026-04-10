@@ -41,8 +41,8 @@ module.exports = {
         );
       }
 
-      // Add items to stock inventory if requested
-      if (add_to_stock && items && items.length > 0) {
+      // Always add/update items in stock inventory
+      if (items && items.length > 0) {
         for (const item of items) {
           const itemName = (item.name || '').trim();
           if (!itemName) continue;
@@ -69,7 +69,7 @@ module.exports = {
             const sku = `PO-${po.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
             await StockItem.create({
               name: itemName,
-              category: item.category || 'General',
+              category: item.category || 'Uncategorised',
               subcategory: item.subcategory || 'General',
               sku,
               current_stock: Number(item.quantity || 0),

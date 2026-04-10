@@ -817,12 +817,18 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
   const addAllItems = () => {
     const rowErrors: Record<number, { itemId?: string; quantity?: string }> = {};
     itemEntryRows.forEach((row) => {
-      if (!row.itemId) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), itemId: 'Select an item' };
+      if (!row.itemId && !row.itemName.trim()) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), itemId: 'Enter item name' };
       if (!row.quantity || row.quantity < 1) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), quantity: 'Enter quantity' };
     });
     if (Object.keys(rowErrors).length) { setItemRowErrors(rowErrors); return; }
 
-    const validRows = itemEntryRows.filter(row => row.itemId);
+    // Auto-assign itemId for freetext rows that have a name but no selection
+    const validRows = itemEntryRows.filter(row => row.itemId || row.itemName.trim()).map(row => {
+      if (!row.itemId && row.itemName.trim()) {
+        return { ...row, itemId: `new-${Date.now()}-${row.id}`, category: 'uncategorised', subcategory: 'General' };
+      }
+      return row;
+    });
     if (validRows.length === 0) return;
 
     const newPOItems = validRows.map((row) => ({
@@ -965,6 +971,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       unit: item.unit || 'pcs',
       rate: item.unitPrice,
       amount: item.total,
+      category: item.category || 'Uncategorised',
     }));
     onSubmit({
       ...formData,
@@ -1188,27 +1195,43 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                         />
                         {activeRowDropdown === row.id && (
                           <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-auto">
-                            {allItems
-                              .filter((p: any) => (p.name || '').toLowerCase().includes((row.itemName || '').toLowerCase()))
-                              .length > 0 ? (
-                              allItems
-                                .filter((p: any) => (p.name || '').toLowerCase().includes((row.itemName || '').toLowerCase()))
-                                .map((item: any) => (
-                                  <div
-                                    key={item.id}
-                                    className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      selectItemForRow(row.id, item);
-                                    }}
-                                  >
-                                    <div className="font-medium text-xs">{item.name}</div>
-                                    <div className="text-[10px] text-gray-500">{item.category}{item.subcategory ? ` > ${item.subcategory}` : ''} • ₹{Number(item.base_price || item.selling_price || item.unit_price || 0).toLocaleString()}</div>
-                                  </div>
-                                ))
-                            ) : (
-                              <div className="px-2 py-1 text-center text-gray-500 text-xs">No items found</div>
-                            )}
+                            {(() => {
+                              const filtered = allItems.filter((p: any) => (p.name || '').toLowerCase().includes((row.itemName || '').toLowerCase()));
+                              const exactMatch = allItems.some((p: any) => (p.name || '').toLowerCase() === (row.itemName || '').toLowerCase());
+                              return (
+                                <>
+                                  {filtered.map((item: any) => (
+                                    <div
+                                      key={item.id}
+                                      className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        selectItemForRow(row.id, item);
+                                      }}
+                                    >
+                                      <div className="font-medium text-xs">{item.name}</div>
+                                      <div className="text-[10px] text-gray-500">{item.category}{item.subcategory ? ` > ${item.subcategory}` : ''} • ₹{Number(item.base_price || item.selling_price || item.unit_price || 0).toLocaleString()}</div>
+                                    </div>
+                                  ))}
+                                  {row.itemName.trim() && !exactMatch && (
+                                    <div
+                                      className="px-3 py-2 hover:bg-green-50 cursor-pointer border-t border-gray-200 bg-green-50/50"
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setItemEntryRows(rows => rows.map(r =>
+                                          r.id === row.id ? { ...r, itemId: `new-${Date.now()}`, category: 'uncategorised', subcategory: 'General' } : r
+                                        ));
+                                        setItemRowErrors(prev => ({ ...prev, [row.id]: { ...prev[row.id], itemId: '' } }));
+                                        setActiveRowDropdown(null);
+                                      }}
+                                    >
+                                      <div className="font-medium text-xs text-green-700">+ Add "{row.itemName.trim()}" as new item</div>
+                                      <div className="text-[10px] text-green-600">Will be added to stock as Uncategorised</div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
                       </div>
@@ -1254,7 +1277,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                       />
                     </td>
                     <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
-                      {row.itemId && row.quantity > 0 ? `₹${(row.unitPrice * row.quantity).toLocaleString()}` : '-'}
+                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${(row.unitPrice * row.quantity).toLocaleString()}` : '-'}
                     </td>
                     <td className="py-1 flex gap-0.5 justify-center">
                       <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeItemRow(row.id)} title="Remove row">
@@ -1277,7 +1300,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
             <Button
               type="button"
               onClick={addAllItems}
-              disabled={!itemEntryRows.some(row => row.itemId)}
+              disabled={!itemEntryRows.some(row => row.itemId || row.itemName.trim())}
               size="sm"
               className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
             >
@@ -1384,18 +1407,13 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
         </CardContent>
       </Card>
 
-      {/* Add to Stock Option */}
-      <div className="flex items-center justify-between px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+      {/* Add to Stock Info */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
         <div>
           <Label className="text-xs font-semibold text-green-800">{t('addToStock')}</Label>
-          <p className="text-[10px] text-green-600 mt-0.5">{t('addToStockDescription')}</p>
+          <p className="text-[10px] text-green-600 mt-0.5">All PO items are automatically added to stock inventory when the purchase order is created.</p>
         </div>
-        <input
-          type="checkbox"
-          checked={formData.add_to_stock}
-          onChange={(e) => setFormData({ ...formData, add_to_stock: e.target.checked })}
-          className="w-4 h-4 accent-green-600 cursor-pointer"
-        />
       </div>
 
       {/* Action Buttons */}
