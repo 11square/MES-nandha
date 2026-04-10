@@ -112,7 +112,10 @@ module.exports = {
         return ApiResponse.notFound(res, 'Purchase Order not found');
       }
 
-      const { items, add_to_stock, addedItems, ...poData } = req.body;
+      const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
+
+      // Sanitize date fields
+      if (!poData.expected_delivery) poData.expected_delivery = null;
 
       // Update the parent purchase order fields
       await record.update(poData, { transaction: t });
@@ -124,7 +127,7 @@ module.exports = {
           transaction: t,
         });
         await PurchaseOrderItem.bulkCreate(
-          items.map((item) => ({
+          items.map(({ id, ...item }) => ({
             name: item.name,
             quantity: item.quantity,
             unit: item.unit || 'pcs',
@@ -135,6 +138,42 @@ module.exports = {
           })),
           { transaction: t }
         );
+
+        // Always add/update items in stock inventory
+        for (const item of items) {
+          const itemName = (item.name || '').trim();
+          if (!itemName) continue;
+
+          const existing = await StockItem.findOne({
+            where: { name: itemName, business_id: req.currentBusiness },
+            transaction: t,
+          });
+
+          if (existing) {
+            const updateData = { last_restocked: new Date() };
+            if (item.rate) updateData.buying_price = item.rate;
+            if (poData.vendor_name) updateData.supplier = poData.vendor_name;
+            await existing.update(updateData, { transaction: t });
+          } else {
+            const sku = `PO-${record.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+            await StockItem.create({
+              name: itemName,
+              category: item.category || 'Uncategorised',
+              subcategory: item.subcategory || 'General',
+              sku,
+              current_stock: Number(item.quantity || 0),
+              reorder_level: 10,
+              unit: item.unit || 'pcs',
+              unit_price: Number(item.rate || 0),
+              buying_price: Number(item.rate || 0),
+              selling_price: Number(item.rate || 0),
+              supplier: poData.vendor_name || '',
+              last_restocked: new Date(),
+              status: Number(item.quantity || 0) > 0 ? 'In Stock' : 'Out of Stock',
+              business_id: req.currentBusiness,
+            }, { transaction: t });
+          }
+        }
       }
 
       await t.commit();

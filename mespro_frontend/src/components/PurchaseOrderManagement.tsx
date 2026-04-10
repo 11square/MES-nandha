@@ -151,7 +151,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 
   const handleUpdatePO = async (updatedPO: PurchaseOrder) => {
     try {
-      const { id, quantity, unit_price, gstNumber, ...rest } = updatedPO as any;
+      const { id, quantity, unit_price, gstNumber, addedItems, ...rest } = updatedPO as any;
       const payload = {
         ...rest,
         vendor_gst: rest.vendor_gst || gstNumber || '',
@@ -1436,48 +1436,22 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
 // Edit PO Form Component - Full page like Edit Order
 function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOrder; language?: string; onClose: () => void; onSubmit: (po: PurchaseOrder) => void }) {
   const t = (key: keyof typeof translations.en) => translations[language]?.[key] || translations.en[key];
-  // Vendors and staff data fetched from API
-  const [vendors, setVendors] = useState<any[]>([]);
-  const [staffMembers, setStaffMembers] = useState<any[]>([]);
-  useEffect(() => {
-    vendorsService.getVendors().then(data => {
-      const items = Array.isArray(data) ? data : (data as any)?.items || [];
-      setVendors(items);
-    }).catch(() => {});
-    staffService.getStaff().then(data => {
-      const items = Array.isArray(data) ? data : (data as any)?.items || [];
-      setStaffMembers(items);
-    }).catch(() => {});
-  }, []);
-
-  // Preserve original items array for submission
-  const [originalItems] = useState(() => Array.isArray(po.items) ? po.items : []);
-
-  // Derive quantity, unit_price, and total_amount from items array when top-level values are missing
-  const itemsArray = Array.isArray(po.items) ? po.items : [];
-  const derivedQuantity = po.quantity || itemsArray.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
-  const derivedTotalAmount = po.total_amount || itemsArray.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-  const derivedUnitPrice = po.unit_price || (derivedQuantity > 0 ? Math.round(derivedTotalAmount / derivedQuantity) : 0);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const [formData, setFormData] = useState({
     id: po.id,
-    date: po.date,
-    vendor_name: po.vendor_name,
-    vendor_contact: po.vendor_contact,
+    date: po.date || new Date().toISOString().split('T')[0],
+    vendor_name: po.vendor_name || '',
+    vendor_contact: po.vendor_contact || '',
     vendor_email: po.vendor_email || '',
     vendor_address: po.vendor_address || '',
-    items: Array.isArray(po.items) ? po.items.map((item: any) => item.name).join(', ') : po.items,
-    quantity: derivedQuantity,
-    unit_price: derivedUnitPrice,
-    total_amount: derivedTotalAmount,
-    status: po.status,
-    expected_delivery: po.expected_delivery,
-    created_by: po.created_by,
+    status: po.status || 'draft',
+    expected_delivery: po.expected_delivery || '',
+    created_by: po.created_by || '',
     notes: po.notes || '',
-    gstNumber: (po as any).gstNumber || '',
   });
 
-  const [gstNumber, setGstNumber] = useState((po as any).gst_number || '');
+  const [gstNumber, setGstNumber] = useState((po as any).vendor_gst || (po as any).gst_number || '');
   const [gstError, setGstError] = useState('');
 
   const validateGstNumber = (value: string): string => {
@@ -1491,11 +1465,101 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
   // Vendor search state
   const [selectedVendorId, setSelectedVendorId] = useState('');
   const [vendorSearchQuery, setVendorSearchQuery] = useState('');
-  const [staffSearchQuery, setStaffSearchQuery] = useState('');
   const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+
+  // Use shared state for categories and products
+  const { productCategories: sharedCategories, products: sharedProducts } = useSharedState();
+
+  // Fetch stock items
+  const [stockItems, setStockItems] = useState<any[]>([]);
+  useEffect(() => {
+    stockService.getStockItems().then(data => {
+      const items = Array.isArray(data) ? data : (data as any)?.items || [];
+      setStockItems(items);
+    }).catch(() => {});
+  }, []);
+
+  // Merge shared products + stock items into allItems (same logic as AddPOForm)
+  const allItems = useMemo(() => {
+    const stockMap = new Map<string, any>();
+    stockItems.forEach((s: any) => { stockMap.set((s.name || '').toLowerCase(), s); });
+    const merged: any[] = sharedProducts.map((p: any) => {
+      const stockMatch = stockMap.get((p.name || '').toLowerCase());
+      if (stockMatch) {
+        return {
+          ...p,
+          base_price: (Number(p.base_price) || 0) > 0 ? Number(p.base_price) : (Number(stockMatch.buying_price) || Number(stockMatch.unit_price) || 0),
+          selling_price: (Number(p.selling_price) || 0) > 0 ? Number(p.selling_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
+          unit_price: (Number(p.unit_price) || 0) > 0 ? Number(p.unit_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
+          unit: p.unit || stockMatch.unit || 'pcs',
+        };
+      }
+      return p;
+    });
+    const existingNames = new Set(merged.map((p: any) => (p.name || '').toLowerCase()));
+    stockItems.forEach((s: any) => {
+      if (!existingNames.has((s.name || '').toLowerCase())) {
+        merged.push({
+          id: `STOCK-${s.id}`, name: s.name, category: s.category, subcategory: s.subcategory || 'General',
+          base_price: Number(s.buying_price) || Number(s.unit_price) || 0,
+          selling_price: Number(s.selling_price) || Number(s.unit_price) || 0,
+          unit_price: Number(s.selling_price) || Number(s.unit_price) || 0,
+        });
+        existingNames.add((s.name || '').toLowerCase());
+      }
+    });
+    return merged;
+  }, [sharedProducts, stockItems]);
+
+  // Multi-row item entry
+  const [itemEntryRows, setItemEntryRows] = useState<Array<{ id: number; itemId: string; itemName: string; category: string; subcategory: string; quantity: number; unitPrice: number; unit: string }>>([
+    { id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }
+  ]);
+  const [activeRowDropdown, setActiveRowDropdown] = useState<number | null>(null);
+  const [itemRowErrors, setItemRowErrors] = useState<Record<number, { itemId?: string; quantity?: string }>>({});
+
+  // Added items list
+  interface POItem {
+    id: string;
+    category: string;
+    subcategory: string;
+    product: string;
+    productName: string;
+    quantity: number;
+    unitPrice: number;
+    total: number;
+    unit: string;
+  }
+  const [addedItems, setAddedItems] = useState<POItem[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
-  // Set initial vendor when vendors load from API
+  // Initialize addedItems from existing PO items
+  useEffect(() => {
+    if (Array.isArray(po.items) && po.items.length > 0) {
+      const existingItems: POItem[] = po.items.map((item: any, idx: number) => ({
+        id: `existing-${idx}`,
+        category: item.category || 'Uncategorised',
+        subcategory: item.subcategory || 'General',
+        product: item.name,
+        productName: item.name,
+        quantity: Number(item.quantity) || 1,
+        unitPrice: Number(item.rate) || 0,
+        total: (Number(item.quantity) || 1) * (Number(item.rate) || 0),
+        unit: item.unit || 'pcs',
+      }));
+      setAddedItems(existingItems);
+    }
+  }, [po.items]);
+
+  // Vendors and staff data
+  const [vendors, setVendors] = useState<any[]>([]);
+  const [staffMembers, setStaffMembers] = useState<any[]>([]);
+  useEffect(() => {
+    vendorsService.getVendors().then(data => { setVendors(Array.isArray(data) ? data : (data as any)?.items || []); }).catch(() => {});
+    staffService.getStaff().then(data => { setStaffMembers(Array.isArray(data) ? data : (data as any)?.items || []); }).catch(() => {});
+  }, []);
+
+  // Set initial vendor
   useEffect(() => {
     if (vendors.length && po.vendor_name) {
       const match = vendors.find(v => v.name === po.vendor_name);
@@ -1511,28 +1575,84 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
 
   const selectedVendor = vendors.find(v => v.id === selectedVendorId) || (formData.vendor_name ? { name: formData.vendor_name } : null);
 
-  const filteredStaff = staffMembers.filter(staff =>
-    (staff.name || '').toLowerCase().includes(staffSearchQuery.toLowerCase()) ||
-    (staff.role || '').toLowerCase().includes(staffSearchQuery.toLowerCase())
-  );
-
   const selectedStaffMember = staffMembers.find(s => s.id === formData.created_by || s.name === formData.created_by);
 
   const handleVendorSelect = (vendor: typeof vendors[0]) => {
     setSelectedVendorId(vendor.id);
-    setFormData({
-      ...formData,
-      vendor_name: vendor.name,
-      vendor_contact: vendor.phone,
-      vendor_email: vendor.email,
-      vendor_address: vendor.address,
-    });
+    setFormData({ ...formData, vendor_name: vendor.name, vendor_contact: vendor.phone, vendor_email: vendor.email, vendor_address: vendor.address });
     setGstNumber(vendor.gst_number || '');
     setGstError('');
     setShowVendorDropdown(false);
     setVendorSearchQuery('');
     setErrors(prev => { const {vendor: _, ...rest} = prev; return rest; });
   };
+
+  // Item entry functions
+  const addNewItemRow = () => {
+    const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
+    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+  };
+
+  const updateItemRow = (rowId: number, field: string, value: string | number) => {
+    setItemEntryRows(rows => rows.map(row => row.id === rowId ? { ...row, [field]: value } : row));
+    if (field === 'itemName' || field === 'itemId') setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
+    if (field === 'quantity') setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], quantity: '' } }));
+  };
+
+  const selectItemForRow = (rowId: number, item: any) => {
+    const catId = (item.category || 'other').toLowerCase().replace(/\s+/g, '-');
+    const unitPrice = Number(item.base_price || item.selling_price || item.unit_price || item.unitPrice) || 0;
+    setItemEntryRows(rows => rows.map(row =>
+      row.id === rowId ? { ...row, itemId: String(item.id), itemName: item.name, category: catId, subcategory: item.subcategory || 'General', unitPrice, unit: item.unit || 'Pcs' } : row
+    ));
+    setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
+    setActiveRowDropdown(null);
+  };
+
+  const removeItemRow = (rowId: number) => {
+    if (itemEntryRows.length > 1) {
+      setItemEntryRows(rows => rows.filter(row => row.id !== rowId));
+    } else {
+      setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    }
+  };
+
+  const addAllItems = () => {
+    const rowErrors: Record<number, { itemId?: string; quantity?: string }> = {};
+    itemEntryRows.forEach((row) => {
+      if (!row.itemId && !row.itemName.trim()) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), itemId: 'Enter item name' };
+      if (!row.quantity || row.quantity < 1) rowErrors[row.id] = { ...(rowErrors[row.id] || {}), quantity: 'Enter quantity' };
+    });
+    if (Object.keys(rowErrors).length) { setItemRowErrors(rowErrors); return; }
+
+    const validRows = itemEntryRows.filter(row => row.itemId || row.itemName.trim()).map(row => {
+      if (!row.itemId && row.itemName.trim()) {
+        return { ...row, itemId: `new-${Date.now()}-${row.id}`, category: 'uncategorised', subcategory: 'General' };
+      }
+      return row;
+    });
+    if (validRows.length === 0) return;
+
+    const newPOItems = validRows.map((row) => ({
+      id: `item-${Date.now()}-${row.id}`,
+      category: row.category,
+      subcategory: row.subcategory,
+      product: row.itemId,
+      productName: row.itemName,
+      quantity: row.quantity,
+      unitPrice: row.unitPrice,
+      total: row.quantity * row.unitPrice,
+      unit: row.unit || 'Pcs',
+    }));
+    setAddedItems([...addedItems, ...newPOItems]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setItemRowErrors({});
+    setErrors(prev => { const {items: _, ...rest} = prev; return rest; });
+  };
+
+  const removeItem = (id: string) => { setAddedItems(addedItems.filter(item => item.id !== id)); };
+
+  const getTotalAmount = () => addedItems.reduce((sum, item) => sum + item.total, 0);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -1541,295 +1661,330 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     if (!formData.date) validationErrors.date = 'Date is required';
     if (!formData.expected_delivery) validationErrors.expected_delivery = 'Expected Delivery is required';
     if (!formData.status) validationErrors.status = 'Status is required';
-    if (!formData.items || !formData.items.trim()) validationErrors.items = 'Item description is required';
-    if (!formData.quantity || formData.quantity <= 0) validationErrors.quantity = 'Quantity must be greater than 0';
-    if (!formData.unit_price || formData.unit_price <= 0) validationErrors.unit_price = 'Unit Price must be greater than 0';
+    if (addedItems.length === 0) validationErrors.items = 'At least one item is required';
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
     setErrors({});
-
-    // Rebuild items array with correct backend field names (name, quantity, unit, rate, amount)
-    let updatedItems: any[];
-    if (originalItems.length > 0) {
-      if (originalItems.length === 1) {
-        // Single item: update its quantity, rate and amount directly
-        updatedItems = [{
-          name: originalItems[0].name,
-          quantity: formData.quantity,
-          unit: originalItems[0].unit || 'pcs',
-          rate: formData.unit_price,
-          amount: formData.quantity * formData.unit_price,
-        }];
-      } else {
-        // Multiple items: keep each item's name but update rate; distribute total quantity
-        const totalOrigQty = originalItems.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0);
-        updatedItems = originalItems.map((item: any) => {
-          const proportion = totalOrigQty > 0 ? (Number(item.quantity) || 0) / totalOrigQty : 1 / originalItems.length;
-          const newQty = Math.max(1, Math.round(formData.quantity * proportion));
-          return {
-            name: item.name,
-            quantity: newQty,
-            unit: item.unit || 'pcs',
-            rate: formData.unit_price,
-            amount: newQty * formData.unit_price,
-          };
-        });
-      }
-    } else {
-      // No original items array — create from text input
-      const itemNames = typeof formData.items === 'string'
-        ? formData.items.split(',').map((s: string) => s.trim()).filter(Boolean)
-        : [String(formData.items)];
-      updatedItems = itemNames.map((name: string) => ({
-        name,
-        quantity: formData.quantity,
-        unit: 'pcs',
-        rate: formData.unit_price,
-        amount: formData.quantity * formData.unit_price,
-      }));
-    }
-
-    const newTotal = updatedItems.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-
+    const totalAmount = getTotalAmount();
+    const itemsArray = addedItems.map((item, index) => ({
+      id: index + 1,
+      name: item.productName,
+      quantity: item.quantity,
+      unit: item.unit || 'pcs',
+      rate: item.unitPrice,
+      amount: item.total,
+      category: item.category || 'Uncategorised',
+    }));
     onSubmit({
       ...formData,
-      items: updatedItems,
-      quantity: formData.quantity,
-      unit_price: formData.unit_price,
-      total_amount: newTotal,
+      expected_delivery: formData.expected_delivery || null,
+      items: itemsArray,
+      quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
+      unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,
+      total_amount: totalAmount,
+      created_by: selectedStaffMember?.name || formData.created_by,
+      addedItems: addedItems,
       vendor_gst: gstNumber || '',
       is_gst: !!gstNumber,
-      created_by: selectedStaffMember?.name || formData.created_by,
     });
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
-      <div className="grid gap-4 py-2">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendor')} *</Label>
-            <div className="relative">
-              <div
-                tabIndex={0}
-                role="combobox"
-                aria-expanded={showVendorDropdown}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md cursor-pointer flex items-center justify-between bg-white"
-                onClick={() => setShowVendorDropdown(!showVendorDropdown)}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVendorDropdown(!showVendorDropdown); } }}
-              >
-                <span className={selectedVendor ? 'text-gray-900' : 'text-gray-500'}>
-                  {selectedVendor ? selectedVendor.name : (t('selectVendor'))}
-                </span>
-                <ChevronsUpDown className="w-4 h-4 text-gray-400" />
+    <form ref={formRef} onSubmit={handleSubmit} noValidate>
+      {/* PO Details + Vendor Info - Compact Two-Column Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        {/* Left: PO Details */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <FileText className="w-4 h-4" /> PO Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('date')} *</Label>
+                <Input type="date" value={formData.date} onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
+                {errors.date && <FieldError message={errors.date} />}
               </div>
-              {showVendorDropdown && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-72 overflow-hidden">
-                  <div className="p-2 border-b">
-                    <div className="relative">
-                      <Search className="w-4 h-4 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                      <Input
-                        placeholder={t('searchVendor')}
-                        value={vendorSearchQuery}
-                        onChange={(e) => setVendorSearchQuery(e.target.value)}
-                        className="pl-8 h-8 text-sm"
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('expectedDelivery')} *</Label>
+                <Input type="date" value={formData.expected_delivery} onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
+                {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('status')} *</Label>
+                <select
+                  className="w-full h-8 px-2 text-sm border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.status}
+                  onChange={(e) => { setFormData({ ...formData, status: e.target.value as any }); setErrors(prev => { const {status: _, ...rest} = prev; return rest; }); }}
+                >
+                  <option value="draft">{t('draft')}</option>
+                  <option value="pending">{t('pendingApproval')}</option>
+                  <option value="approved">{t('approved')}</option>
+                  <option value="ordered">{t('ordered')}</option>
+                  <option value="received">{t('received')}</option>
+                  <option value="cancelled">{t('cancelled')}</option>
+                </select>
+                {errors.status && <FieldError message={errors.status} />}
+              </div>
+              <div>
+                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
+                <Input
+                  value={gstNumber}
+                  onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
+                  placeholder="e.g. 33AUJPM8458P1ZR"
+                  maxLength={15}
+                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
+                />
+                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Right: Vendor Info */}
+        <Card className="shadow-sm">
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Building className="w-4 h-4" /> Vendor Info
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="space-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">{t('vendor')} *</Label>
+                <div className="relative">
+                  <div
+                    tabIndex={0} role="combobox" aria-expanded={showVendorDropdown}
+                    className="w-full h-8 px-2 border border-gray-300 rounded-md cursor-pointer flex items-center justify-between bg-white text-xs"
+                    onClick={() => setShowVendorDropdown(!showVendorDropdown)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVendorDropdown(!showVendorDropdown); } }}
+                  >
+                    <span className={selectedVendor ? 'text-gray-900' : 'text-gray-500'}>{selectedVendor ? selectedVendor.name : (t('selectVendor'))}</span>
+                    <ChevronsUpDown className="w-3 h-3 text-gray-400" />
                   </div>
-                  <div className="max-h-56 overflow-y-auto">
-                    {filteredVendors.length === 0 ? (
-                      <div className="p-3 text-sm text-gray-500 text-center">
-                        {t('noVendorFound')}
-                      </div>
-                    ) : (
-                      filteredVendors.map(vendor => (
-                        <div
-                          key={vendor.id}
-                          className={`px-3 py-2 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`}
-                          onClick={() => handleVendorSelect(vendor)}
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{vendor.name}</p>
-                            <p className="text-xs text-gray-500">{vendor.contactPerson} • {vendor.category}</p>
-                          </div>
-                          {selectedVendorId === vendor.id && (
-                            <Check className="w-4 h-4 text-blue-600" />
-                          )}
+                  {showVendorDropdown && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-hidden">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="w-3 h-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                          <Input placeholder={t('searchVendor')} value={vendorSearchQuery} onChange={(e) => setVendorSearchQuery(e.target.value)} className="pl-7 h-7 text-xs" onClick={(e) => e.stopPropagation()} />
                         </div>
-                      ))
-                    )}
-                  </div>
+                      </div>
+                      <div className="max-h-56 overflow-y-auto">
+                        {filteredVendors.length === 0 ? (
+                          <div className="p-2 text-xs text-gray-500 text-center">{t('noVendorFound')}</div>
+                        ) : (
+                          filteredVendors.map(vendor => (
+                            <div key={vendor.id} className={`px-3 py-1.5 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`} onClick={() => handleVendorSelect(vendor)}>
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">{vendor.name}</div>
+                                <div className="text-[10px] text-gray-500">{vendor.contactPerson} • {vendor.category}</div>
+                              </div>
+                              {selectedVendorId === vendor.id && <Check className="w-3 h-3 text-blue-600" />}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {errors.vendor && <FieldError message={errors.vendor} />}
+              </div>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">{t('vendorContact')}</Label>
+                  <Input value={formData.vendor_contact} onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })} placeholder="+91 XXXXX XXXXX" className="h-8 text-sm bg-gray-50" readOnly />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">{t('vendorEmail')}</Label>
+                  <Input type="email" value={formData.vendor_email} onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })} placeholder="vendor@example.com" className="h-8 text-sm bg-gray-50" readOnly />
+                </div>
+              </div>
+              {selectedVendor && (
+                <div className="bg-gray-50 rounded-md p-2 text-xs text-gray-600 border">
+                  <p className="font-semibold text-gray-800">{selectedVendor.name}</p>
+                  {formData.vendor_contact && <p className="mt-0.5">{formData.vendor_contact}</p>}
+                  {formData.vendor_email && <p className="mt-0.5">{formData.vendor_email}</p>}
+                  {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
                 </div>
               )}
             </div>
-            {errors.vendor && <FieldError message={errors.vendor} />}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Items Section */}
+      <Card className={`shadow-sm mb-4 overflow-visible ${errors.items ? 'border-red-400' : ''}`}>
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+              <Package className="w-4 h-4" /> {t('items')} *
+            </CardTitle>
+            <Badge variant="outline" className="text-xs text-gray-500">{addedItems.length} {addedItems.length === 1 ? 'item' : 'items'} added</Badge>
+          </div>
+          {errors.items && <p className="text-sm text-red-500 mt-1">{errors.items}</p>}
+        </CardHeader>
+        <CardContent className="px-4 pb-4 pt-0">
+          <div className="overflow-visible">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[30%]">{t('item')} *</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">{t('quantity')} *</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">UNIT</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">PRICE/UNIT</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">AMOUNT</th>
+                  <th className="w-[60px]"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {itemEntryRows.map((row, idx) => (
+                  <tr key={row.id} className="border-b border-gray-100">
+                    <td className="py-1 pr-2">
+                      <div className="relative">
+                        <Input
+                          data-row-search={row.id}
+                          type="text" placeholder="Search item..."
+                          value={row.itemName}
+                          onChange={(e) => { updateItemRow(row.id, 'itemName', e.target.value); updateItemRow(row.id, 'itemId', ''); updateItemRow(row.id, 'category', ''); updateItemRow(row.id, 'subcategory', ''); updateItemRow(row.id, 'unitPrice', 0); setActiveRowDropdown(row.id); }}
+                          onFocus={() => setActiveRowDropdown(row.id)}
+                          onBlur={() => setTimeout(() => setActiveRowDropdown(null), 300)}
+                          className={`h-7 text-xs ${itemRowErrors[row.id]?.itemId ? 'border-red-400' : ''}`}
+                        />
+                        {activeRowDropdown === row.id && (
+                          <div className="absolute z-[9999] w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-auto">
+                            {(() => {
+                              const filtered = allItems.filter((p: any) => (p.name || '').toLowerCase().includes((row.itemName || '').toLowerCase()));
+                              const exactMatch = allItems.some((p: any) => (p.name || '').toLowerCase() === (row.itemName || '').toLowerCase());
+                              return (
+                                <>
+                                  {filtered.map((item: any) => (
+                                    <div key={item.id} className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0" onMouseDown={(e) => { e.preventDefault(); selectItemForRow(row.id, item); }}>
+                                      <div className="font-medium text-xs">{item.name}</div>
+                                      <div className="text-[10px] text-gray-500">{item.category}{item.subcategory ? ` > ${item.subcategory}` : ''} • ₹{Number(item.base_price || item.selling_price || item.unit_price || 0).toLocaleString()}</div>
+                                    </div>
+                                  ))}
+                                  {row.itemName.trim() && !exactMatch && (
+                                    <div className="px-3 py-2 hover:bg-green-50 cursor-pointer border-t border-gray-200 bg-green-50/50" onMouseDown={(e) => { e.preventDefault(); setItemEntryRows(rows => rows.map(r => r.id === row.id ? { ...r, itemId: `new-${Date.now()}`, category: 'uncategorised', subcategory: 'General' } : r)); setItemRowErrors(prev => ({ ...prev, [row.id]: { ...prev[row.id], itemId: '' } })); setActiveRowDropdown(null); }}>
+                                      <div className="font-medium text-xs text-green-700">+ Add "{row.itemName.trim()}" as new item</div>
+                                      <div className="text-[10px] text-green-600">Will be added to stock as Uncategorised</div>
+                                    </div>
+                                  )}
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-1 pr-2">
+                      <Input type="number" min="1" value={row.quantity} onChange={(e) => updateItemRow(row.id, 'quantity', parseInt(e.target.value) || 0)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Enter') { e.preventDefault(); addAllItems(); } }} className={`h-7 text-xs text-center ${itemRowErrors[row.id]?.quantity ? 'border-red-400' : ''}`} />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <select value={row.unit} onChange={(e) => updateItemRow(row.id, 'unit', e.target.value)} className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white">
+                        {['Pcs', 'Kg', 'Ltr', 'Mtr', 'Box', 'Bag', 'Set', 'Nos', 'Pair', 'Roll', 'Pack', 'Dozen', 'Ton', 'Sq.ft', 'Sq.mtr'].map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </td>
+                    <td className="py-1 pr-2">
+                      <Input type="number" min="0" step="0.01" placeholder="Auto" value={row.unitPrice || ''} onChange={(e) => updateItemRow(row.id, 'unitPrice', parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); addNewItemRow(); } if (e.key === 'Enter') { e.preventDefault(); addNewItemRow(); } }} className="h-7 text-xs text-right" />
+                    </td>
+                    <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
+                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${(row.unitPrice * row.quantity).toLocaleString()}` : '-'}
+                    </td>
+                    <td className="py-1 flex gap-0.5 justify-center">
+                      <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeItemRow(row.id)} title="Remove row"><Minus className="h-3 w-3 text-red-500" /></Button>
+                      {idx === itemEntryRows.length - 1 && (
+                        <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={addNewItemRow} title="Add row"><Plus className="h-3 w-3 text-green-600" /></Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t('gstNumber')}</Label>
-            <Input
-              value={gstNumber}
-              onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
-              placeholder={t('enterGstNumber')}
-              maxLength={15}
-              className={`border border-gray-300${gstError ? ' border-red-500' : ''}`}
-            />
-            {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendorContact')}</Label>
-            <Input 
-              value={formData.vendor_contact}
-              onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })}
-              placeholder="+91 XXXXX XXXXX" 
-              className="border border-gray-300 bg-gray-50" 
-              readOnly
-            />
+          <div className="flex justify-end pt-2">
+            <Button type="button" onClick={addAllItems} disabled={!itemEntryRows.some(row => row.itemId || row.itemName.trim())} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8">
+              <Plus className="w-3 h-3 mr-1" /> + {t('addItem')}
+            </Button>
           </div>
 
-          <div className="space-y-2">
-            <Label>{t('vendorEmail')}</Label>
-            <Input 
-              type="email"
-              value={formData.vendor_email}
-              onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })}
-              placeholder="vendor@example.com" 
-              className="border border-gray-300 bg-gray-50" 
-              readOnly
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('date')} *</Label>
-            <Input 
-              type="date"
-              value={formData.date}
-              onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }}
-              className="border border-gray-300" 
-            />
-            {errors.date && <FieldError message={errors.date} />}
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t('expectedDelivery')} *</Label>
-            <Input 
-              type="date"
-              value={formData.expected_delivery}
-              onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }}
-              className="border border-gray-300" 
-            />
-            {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('status')} *</Label>
-            <select
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={formData.status}
-              onChange={(e) => { setFormData({ ...formData, status: e.target.value as any }); setErrors(prev => { const {status: _, ...rest} = prev; return rest; }); }}
-            >
-              <option value="draft">{t('draft')}</option>
-              <option value="pending">{t('pendingApproval')}</option>
-              <option value="approved">{t('approved')}</option>
-              <option value="ordered">{t('ordered')}</option>
-              <option value="received">{t('received')}</option>
-              <option value="cancelled">{t('cancelled')}</option>
-            </select>
-            {errors.status && <FieldError message={errors.status} />}
-          </div>
-        </div>
-
-        {/* Items Section */}
-        <div className="space-y-3">
-          <Label className="text-base font-semibold">{t('items')} *</Label>
-          <Card className="p-4">
-            <div className="grid gap-3">
-              <div className="space-y-2">
-                <Label>{t('itemDescription')} *</Label>
-                <Input 
-                  value={formData.items}
-                  onChange={(e) => { setFormData({ ...formData, items: e.target.value }); setErrors(prev => { const {items: _, ...rest} = prev; return rest; }); }}
-                  placeholder={t('eg95mmMdfSheet')} 
-                  className="border border-gray-300" 
-                />
-                {errors.items && <FieldError message={errors.items} />}
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-2">
-                  <Label>{t('quantity')} *</Label>
-                  <Input 
-                    type="number"
-                    min="1"
-                    value={formData.quantity}
-                    onChange={(e) => { setFormData({ ...formData, quantity: Number(e.target.value) }); setErrors(prev => { const {quantity: _, ...rest} = prev; return rest; }); }}
-                    onKeyDown={blockInvalidNumberKeys}
-                    className="border border-gray-300" 
-                  />
-                  {errors.quantity && <FieldError message={errors.quantity} />}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('unitPrice')} *</Label>
-                  <Input 
-                    type="number"
-                    min="0"
-                    value={formData.unit_price}
-                    onChange={(e) => { setFormData({ ...formData, unit_price: Number(e.target.value) }); setErrors(prev => { const {unit_price: _, ...rest} = prev; return rest; }); }}
-                    onKeyDown={blockInvalidNumberKeys}
-                    className="border border-gray-300" 
-                  />
-                  {errors.unit_price && <FieldError message={errors.unit_price} />}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>{t('totalAmount')}</Label>
-                  <Input 
-                    value={`₹${(formData.quantity * formData.unit_price).toLocaleString()}`}
-                    disabled
-                    className="border border-gray-300 bg-gray-50" 
-                  />
-                </div>
-              </div>
+          {/* Added Items Table */}
+          {addedItems.length > 0 && (
+            <div className="mt-4 border rounded-lg overflow-hidden">
+              <table className="w-full text-xs">
+                <thead className="bg-gray-50">
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Unit</th>
+                    <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
+                    <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {addedItems.map((item, index) => (
+                    <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
+                      <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
+                      <td className="py-1.5 px-2 font-medium">{item.productName}</td>
+                      <td className="py-1.5 px-2 text-center">{item.quantity}</td>
+                      <td className="py-1.5 px-2 text-center">{item.unit}</td>
+                      <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-1.5 px-2 text-center">
+                        <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
+                          <XCircle className="h-3.5 w-3.5 text-red-400 hover:text-red-600" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-blue-50">
+                  <tr>
+                    <td colSpan={5} className="py-2 px-2 text-right text-xs font-bold text-blue-900">{t('total')}:</td>
+                    <td className="py-2 px-2 text-right text-sm font-bold text-blue-900">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td></td>
+                  </tr>
+                </tfoot>
+              </table>
             </div>
-          </Card>
-        </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>{t('vendorAddress')}</Label>
-            <Textarea 
-              value={formData.vendor_address}
-              onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
-              placeholder={t('enterVendorAddress')} 
-              className="border border-gray-300" 
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('notes')}</Label>
-            <Textarea 
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              placeholder={t('additionalNotesOrComments')} 
-              className="border border-gray-300" 
-            />
-          </div>
+      {/* Vendor Address + Notes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
+            <Textarea value={formData.vendor_address} onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })} placeholder={t('enterVendorAddress')} className="mt-1 h-20 text-sm" />
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <Label className="text-xs text-gray-500">{t('notes')}</Label>
+            <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder={t('additionalNotesOrComments')} className="mt-1 h-20 text-sm" />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Auto-add to stock info */}
+      <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
+        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+        <div>
+          <Label className="text-xs font-semibold text-green-800">{t('addToStock')}</Label>
+          <p className="text-[10px] text-green-600 mt-0.5">All PO items are automatically added to stock inventory when the purchase order is updated.</p>
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
-          {t('cancel')}
-        </Button>
-        <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-          {t('updatePo')}
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>{t('cancel')}</Button>
+        <Button type="submit" size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
+          <CheckCircle className="w-3 h-3 mr-1" /> {t('updatePo')}
         </Button>
       </div>
     </form>
