@@ -18,7 +18,10 @@ module.exports = {
   create: async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
-      const { items, add_to_stock, addedItems, ...poData } = req.body;
+      const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
+
+      // Sanitize date fields — empty strings become null
+      if (!poData.expected_delivery) poData.expected_delivery = null;
 
       // Auto-generate PO number
       const lastPO = await PurchaseOrder.findOne({

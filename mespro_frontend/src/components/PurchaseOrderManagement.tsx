@@ -739,6 +739,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     quantity: number;
     unitPrice: number;
     total: number;
+    unit: string;
   }
   const [addedItems, setAddedItems] = useState<POItem[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
@@ -833,6 +834,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       quantity: row.quantity,
       unitPrice: row.unitPrice,
       total: row.quantity * row.unitPrice,
+      unit: row.unit || 'Pcs',
     }));
     setAddedItems([...addedItems, ...newPOItems]);
     setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
@@ -960,12 +962,13 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       id: index + 1,
       name: item.productName,
       quantity: item.quantity,
-      unit: item.subcategory || 'pcs',
+      unit: item.unit || 'pcs',
       rate: item.unitPrice,
       amount: item.total,
     }));
     onSubmit({
       ...formData,
+      expected_delivery: formData.expected_delivery || null,
       status: isDraft ? 'draft' : (formData.status || 'pending'),
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
