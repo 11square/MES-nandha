@@ -33,7 +33,7 @@ module.exports = {
 
       if (items && items.length > 0) {
         await PurchaseOrderItem.bulkCreate(
-          items.map((item) => ({ ...item, purchase_order_id: po.id, business_id: req.currentBusiness })),
+          items.map(({ id, ...item }) => ({ ...item, purchase_order_id: po.id, business_id: req.currentBusiness })),
           { transaction: t }
         );
       }
