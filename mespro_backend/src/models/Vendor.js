@@ -50,6 +50,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 0,
     },
+    opening_balance: {
+      type: DataTypes.DECIMAL(15, 2),
+      allowNull: true,
+      defaultValue: 0,
+    },
     last_purchase_date: {
       type: DataTypes.DATEONLY,
       allowNull: true,

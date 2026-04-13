@@ -64,7 +64,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
   // GST validation: 2 digits + 5 uppercase + 4 digits + 1 uppercase + 1 alphanumeric + Z + 1 alphanumeric
   const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[A-Z0-9]{1}Z[A-Z0-9]{1}$/;
   const validateGst = (value: string) => {
-    if (!value) return language === 'en' ? 'GST Number is required' : 'GST எண் தேவை';
+    if (!value) return '';
     if (value.length !== 15) return language === 'en' ? 'GST Number must be 15 characters' : 'GST எண் 15 எழுத்துகள் இருக்க வேண்டும்';
     if (!GST_REGEX.test(value)) return language === 'en' ? 'Invalid GST format (e.g. 07AABCU9603R1Z5)' : 'தவறான GST வடிவம் (எ.கா. 07AABCU9603R1Z5)';
     return '';
@@ -79,6 +79,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
     address: '',
     category: '',
     gst_number: '',
+    opening_balance: '',
     status: 'Active' as 'Active' | 'Inactive',
   });
 
@@ -88,20 +89,20 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
     const errors = validateFields(vendorForm, {
       name: { required: true, min: 2, max: 100, label: 'Vendor Name' },
       contact_person: { required: true, min: 2, label: 'Contact Person' },
-      email: { required: true, email: true },
+      email: { email: true },
       phone: { required: true, phone: true },
       category: { required: true, label: 'Category' },
-      gst_number: { required: true, label: 'GST Number' },
+      gst_number: { label: 'GST Number' },
       address: { required: true, label: 'Address' },
     });
-    // Additional GST format check
-    const gstErr = validateGst(vendorForm.gst_number);
+    // Additional GST format check (only if value provided)
+    const gstErr = vendorForm.gst_number ? validateGst(vendorForm.gst_number) : '';
     if (gstErr) errors.gst_number = gstErr;
     setGstError(gstErr);
     setFormErrors(errors);
     if (Object.keys(errors).length) return;
     try {
-      const payload = { ...vendorForm };
+      const payload = { ...vendorForm, opening_balance: parseFloat(vendorForm.opening_balance) || 0 };
       if (editingVendor) {
         await vendorsService.updateVendor(editingVendor.id, payload);
         toast.success('Vendor updated successfully');
@@ -127,6 +128,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
       address: vendor.address,
       category: vendor.category,
       gst_number: vendor.gst_number || '',
+      opening_balance: vendor.opening_balance || '',
       status: vendor.status,
     });
     setIsVendorDialogOpen(true);
@@ -160,6 +162,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
       address: '',
       category: '',
       gst_number: '',
+      opening_balance: '',
       status: 'Active',
     });
     setEditingVendor(null);
@@ -277,7 +280,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="vendor-email">{t('email')} *</Label>
+                            <Label htmlFor="vendor-email">{t('email')}</Label>
                             <Input
                               id="vendor-email"
                               type="email"
@@ -310,7 +313,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                             <FieldError message={formErrors.category} />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="vendor-gst">{t('gstNumber')} *</Label>
+                            <Label htmlFor="vendor-gst">{t('gstNumber')}</Label>
                             <Input
                               id="vendor-gst"
                               value={vendorForm.gst_number}
@@ -341,6 +344,20 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                             onChange={(e) => { setVendorForm({ ...vendorForm, address: e.target.value }); setFormErrors(prev => ({ ...prev, address: '' })); }}
                           />
                           <FieldError message={formErrors.address} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="vendor-opening-balance">{t('openingBalance') || 'Opening Balance'}</Label>
+                          <Input
+                            id="vendor-opening-balance"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={vendorForm.opening_balance}
+                            onChange={(e) => setVendorForm({ ...vendorForm, opening_balance: e.target.value })}
+                            onKeyDown={blockInvalidNumberKeys}
+                            placeholder="₹0.00"
+                          />
+                          <p className="text-xs text-gray-500">{language === 'en' ? 'Pending balance before using this software' : 'இந்த மென்பொருளைப் பயன்படுத்துவதற்கு முன் நிலுவைத் தொகை'}</p>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="vendor-status">{t('status')}</Label>
