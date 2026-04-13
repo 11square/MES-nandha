@@ -1144,6 +1144,32 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
         </Card>
       </div>
 
+      {/* Address & Notes */}
+      <Card className="shadow-sm mb-4">
+        <CardContent className="px-4 py-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
+              <textarea
+                value={formData.vendor_address}
+                onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
+                placeholder={t('enterVendorAddress')}
+                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-gray-500">{t('notes')}</Label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder={t('additionalNotesOrComments')}
+                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Items Section */}
       <Card className={`shadow-sm mb-4 overflow-visible ${errors.items ? 'border-red-400' : ''}`}>
         <CardHeader className="py-3 px-4">
@@ -1380,32 +1406,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
           </CardContent>
         </Card>
       )}
-
-      {/* Address, Notes & Stock Option */}
-      <Card className="shadow-sm mb-4">
-        <CardContent className="px-4 py-3">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
-              <textarea
-                value={formData.vendor_address}
-                onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
-                placeholder={t('enterVendorAddress')}
-                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-            <div>
-              <Label className="text-xs text-gray-500">{t('notes')}</Label>
-              <textarea
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder={t('additionalNotesOrComments')}
-                className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Add to Stock Info */}
       <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
@@ -1814,6 +1814,22 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
         </Card>
       </div>
 
+      {/* Vendor Address + Notes */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
+            <Textarea value={formData.vendor_address} onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })} placeholder={t('enterVendorAddress')} className="mt-1 h-20 text-sm" />
+          </CardContent>
+        </Card>
+        <Card className="shadow-sm">
+          <CardContent className="p-4">
+            <Label className="text-xs text-gray-500">{t('notes')}</Label>
+            <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder={t('additionalNotesOrComments')} className="mt-1 h-20 text-sm" />
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Items Section */}
       <Card className={`shadow-sm mb-4 overflow-visible ${errors.items ? 'border-red-400' : ''}`}>
         <CardHeader className="py-3 px-4">
@@ -1954,22 +1970,6 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
           )}
         </CardContent>
       </Card>
-
-      {/* Vendor Address + Notes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
-            <Textarea value={formData.vendor_address} onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })} placeholder={t('enterVendorAddress')} className="mt-1 h-20 text-sm" />
-          </CardContent>
-        </Card>
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <Label className="text-xs text-gray-500">{t('notes')}</Label>
-            <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder={t('additionalNotesOrComments')} className="mt-1 h-20 text-sm" />
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Auto-add to stock info */}
       <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
