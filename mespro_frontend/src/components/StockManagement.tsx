@@ -137,7 +137,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       current_stock: { required: true, numeric: true, min: 0 },
       reorder_level: { required: true, numeric: true, min: 0 },
       unit: { required: true },
-      buying_price: { required: true, numeric: true, min: 0 },
+      buying_price: { numeric: true, min: 0 },
       selling_price: { required: true, numeric: true, min: 0 },
     });
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
@@ -200,7 +200,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       current_stock: { required: true, numeric: true, min: 0 },
       reorder_level: { required: true, numeric: true, min: 0 },
       unit: { required: true },
-      buying_price: { required: true, numeric: true, min: 0 },
+      buying_price: { numeric: true, min: 0 },
       selling_price: { required: true, numeric: true, min: 0 },
     });
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
@@ -663,7 +663,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
 
                   {/* Buying Price */}
                   <div>
-                    <Label className="text-xs text-gray-500">{t('buyingPrice')} *</Label>
+                    <Label className="text-xs text-gray-500">{t('buyingPrice')}</Label>
                     <Input type="number" value={stockForm.buying_price} onChange={(e) => { setStockForm({...stockForm, buying_price: e.target.value}); setErrors(prev => ({...prev, buying_price: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0.00" className="h-8 text-sm" />
                     <FieldError message={errors.buying_price} />
                   </div>
@@ -1037,7 +1037,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                     <FieldError message={errors.unit} />
                   </div>
                   <div>
-                    <Label className="text-xs text-gray-500">{t('buyingPrice')} *</Label>
+                    <Label className="text-xs text-gray-500">{t('buyingPrice')}</Label>
                     <Input type="number" value={stockForm.buying_price} onChange={(e) => { setStockForm({...stockForm, buying_price: e.target.value}); setErrors(prev => ({...prev, buying_price: ''})); }} onKeyDown={blockInvalidNumberKeys} placeholder="0.00" className="h-8 text-sm" />
                     <FieldError message={errors.buying_price} />
                   </div>
