@@ -36,7 +36,14 @@ module.exports = {
 
       if (items && items.length > 0) {
         await PurchaseOrderItem.bulkCreate(
-          items.map(({ id, ...item }) => ({ ...item, purchase_order_id: po.id, business_id: req.currentBusiness })),
+          items.map((item) => ({
+            purchase_order_id: po.id,
+            name: item.name,
+            quantity: item.quantity,
+            unit: (item.unit || 'pcs').substring(0, 20),
+            rate: item.rate,
+            amount: item.amount,
+          })),
           { transaction: t }
         );
       }
@@ -127,14 +134,13 @@ module.exports = {
           transaction: t,
         });
         await PurchaseOrderItem.bulkCreate(
-          items.map(({ id, ...item }) => ({
+          items.map((item) => ({
+            purchase_order_id: record.id,
             name: item.name,
             quantity: item.quantity,
-            unit: item.unit || 'pcs',
+            unit: (item.unit || 'pcs').substring(0, 20),
             rate: item.rate,
             amount: item.amount,
-            purchase_order_id: record.id,
-            business_id: req.currentBusiness,
           })),
           { transaction: t }
         );

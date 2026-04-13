@@ -22,7 +22,7 @@ module.exports = (sequelize) => {
       defaultValue: 1,
     },
     unit: {
-      type: DataTypes.STRING(20),
+      type: DataTypes.STRING(50),
       allowNull: true,
     },
     rate: {
