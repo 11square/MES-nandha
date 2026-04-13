@@ -41,8 +41,8 @@ module.exports = {
         );
       }
 
-      // Always add/update items in stock inventory
-      if (items && items.length > 0) {
+      // Add/update items in stock inventory only if user opted in
+      if (add_to_stock && items && items.length > 0) {
         for (const item of items) {
           const itemName = (item.name || '').trim();
           if (!itemName) continue;
@@ -139,39 +139,41 @@ module.exports = {
           { transaction: t }
         );
 
-        // Always add/update items in stock inventory
-        for (const item of items) {
-          const itemName = (item.name || '').trim();
-          if (!itemName) continue;
+        // Add/update items in stock inventory only if user opted in
+        if (add_to_stock) {
+          for (const item of items) {
+            const itemName = (item.name || '').trim();
+            if (!itemName) continue;
 
-          const existing = await StockItem.findOne({
-            where: { name: itemName, business_id: req.currentBusiness },
-            transaction: t,
-          });
+            const existing = await StockItem.findOne({
+              where: { name: itemName, business_id: req.currentBusiness },
+              transaction: t,
+            });
 
-          if (existing) {
-            const updateData = { last_restocked: new Date() };
-            if (item.rate) updateData.buying_price = item.rate;
-            if (poData.vendor_name) updateData.supplier = poData.vendor_name;
-            await existing.update(updateData, { transaction: t });
-          } else {
-            const sku = `PO-${record.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
-            await StockItem.create({
-              name: itemName,
-              category: item.category || 'Uncategorised',
-              subcategory: item.subcategory || 'General',
-              sku,
-              current_stock: Number(item.quantity || 0),
-              reorder_level: 10,
-              unit: item.unit || 'pcs',
-              unit_price: Number(item.rate || 0),
-              buying_price: Number(item.rate || 0),
-              selling_price: Number(item.rate || 0),
-              supplier: poData.vendor_name || '',
-              last_restocked: new Date(),
-              status: Number(item.quantity || 0) > 0 ? 'In Stock' : 'Out of Stock',
-              business_id: req.currentBusiness,
-            }, { transaction: t });
+            if (existing) {
+              const updateData = { last_restocked: new Date() };
+              if (item.rate) updateData.buying_price = item.rate;
+              if (poData.vendor_name) updateData.supplier = poData.vendor_name;
+              await existing.update(updateData, { transaction: t });
+            } else {
+              const sku = `PO-${record.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+              await StockItem.create({
+                name: itemName,
+                category: item.category || 'Uncategorised',
+                subcategory: item.subcategory || 'General',
+                sku,
+                current_stock: Number(item.quantity || 0),
+                reorder_level: 10,
+                unit: item.unit || 'pcs',
+                unit_price: Number(item.rate || 0),
+                buying_price: Number(item.rate || 0),
+                selling_price: Number(item.rate || 0),
+                supplier: poData.vendor_name || '',
+                last_restocked: new Date(),
+                status: Number(item.quantity || 0) > 0 ? 'In Stock' : 'Out of Stock',
+                business_id: req.currentBusiness,
+              }, { transaction: t });
+            }
           }
         }
       }

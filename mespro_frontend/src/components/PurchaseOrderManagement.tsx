@@ -1407,14 +1407,19 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
         </Card>
       )}
 
-      {/* Add to Stock Info */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
-        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+      {/* Add to Stock Checkbox */}
+      <label className="flex items-center gap-3 px-4 py-3 border rounded-lg mb-4 cursor-pointer select-none hover:bg-gray-50 transition-colors" style={{ borderColor: formData.add_to_stock ? '#16a34a' : '#d1d5db', backgroundColor: formData.add_to_stock ? '#f0fdf4' : 'transparent' }}>
+        <input
+          type="checkbox"
+          checked={formData.add_to_stock}
+          onChange={(e) => setFormData({ ...formData, add_to_stock: e.target.checked })}
+          className="w-4 h-4 accent-green-600 rounded"
+        />
         <div>
-          <Label className="text-xs font-semibold text-green-800">{t('addToStock')}</Label>
-          <p className="text-[10px] text-green-600 mt-0.5">All PO items are automatically added to stock inventory when the purchase order is created.</p>
+          <span className="text-xs font-semibold" style={{ color: formData.add_to_stock ? '#166534' : '#374151' }}>{t('addToStock')}</span>
+          <p className="text-[10px] mt-0.5" style={{ color: formData.add_to_stock ? '#16a34a' : '#6b7280' }}>Check this to add PO items to stock inventory when the purchase order is created.</p>
         </div>
-      </div>
+      </label>
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
@@ -1449,6 +1454,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     expected_delivery: po.expected_delivery || '',
     created_by: po.created_by || '',
     notes: po.notes || '',
+    add_to_stock: false,
   });
 
   const [gstNumber, setGstNumber] = useState((po as any).vendor_gst || (po as any).gst_number || '');
@@ -1971,14 +1977,19 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
         </CardContent>
       </Card>
 
-      {/* Auto-add to stock info */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-lg mb-4">
-        <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+      {/* Add to Stock Checkbox */}
+      <label className="flex items-center gap-3 px-4 py-3 border rounded-lg mb-4 cursor-pointer select-none hover:bg-gray-50 transition-colors" style={{ borderColor: formData.add_to_stock ? '#16a34a' : '#d1d5db', backgroundColor: formData.add_to_stock ? '#f0fdf4' : 'transparent' }}>
+        <input
+          type="checkbox"
+          checked={formData.add_to_stock}
+          onChange={(e) => setFormData({ ...formData, add_to_stock: e.target.checked })}
+          className="w-4 h-4 accent-green-600 rounded"
+        />
         <div>
-          <Label className="text-xs font-semibold text-green-800">{t('addToStock')}</Label>
-          <p className="text-[10px] text-green-600 mt-0.5">All PO items are automatically added to stock inventory when the purchase order is updated.</p>
+          <span className="text-xs font-semibold" style={{ color: formData.add_to_stock ? '#166534' : '#374151' }}>{t('addToStock')}</span>
+          <p className="text-[10px] mt-0.5" style={{ color: formData.add_to_stock ? '#16a34a' : '#6b7280' }}>Check this to add PO items to stock inventory when the purchase order is updated.</p>
         </div>
-      </div>
+      </label>
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
