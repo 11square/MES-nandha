@@ -76,6 +76,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
     contact_person: '',
     email: '',
     phone: '',
+    phone_2: '',
     address: '',
     category: '',
     gst_number: '',
@@ -125,6 +126,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
       contact_person: vendor.contact_person,
       email: vendor.email,
       phone: vendor.phone,
+      phone_2: vendor.phone_2 || '',
       address: vendor.address,
       category: vendor.category,
       gst_number: vendor.gst_number || '',
@@ -159,6 +161,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
       contact_person: '',
       email: '',
       phone: '',
+      phone_2: '',
       address: '',
       category: '',
       gst_number: '',
@@ -302,6 +305,15 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="vendor-phone2">{t('phone')} 2</Label>
+                            <Input
+                              id="vendor-phone2"
+                              value={vendorForm.phone_2}
+                              onChange={(e) => setVendorForm({ ...vendorForm, phone_2: e.target.value })}
+                              placeholder="Additional phone number"
+                            />
+                          </div>
                           <div className="space-y-2">
                             <Label htmlFor="vendor-category">{t('category')} *</Label>
                             <Input

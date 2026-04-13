@@ -78,6 +78,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
     name: '',
     contact_person: '',
     phone: '',
+    phone_2: '',
     email: '',
     address: '',
     gst_number: '',
@@ -379,6 +380,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
       name: '',
       contact_person: '',
       phone: '',
+      phone_2: '',
       email: '',
       address: '',
       gst_number: '',
@@ -885,6 +887,16 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
                 <FieldError message={errors.phone} />
               </div>
               <div className="space-y-2">
+                <Label>{t('phone')} 2</Label>
+                <Input 
+                  value={newClientForm.phone_2}
+                  onChange={(e) => setNewClientForm({...newClientForm, phone_2: e.target.value})}
+                  placeholder="Additional phone number"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label>{t('email')} *</Label>
                 <Input 
                   type="email"
@@ -1058,6 +1070,16 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
                   />
                   <FieldError message={errors.phone} />
                 </div>
+                <div className="space-y-2">
+                  <Label>{t('phone')} 2</Label>
+                  <Input 
+                    value={editingClient.phone_2 || ''}
+                    onChange={(e) => setEditingClient({...editingClient, phone_2: e.target.value})}
+                    placeholder="Additional phone number"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>{t('email')} *</Label>
                   <Input 
