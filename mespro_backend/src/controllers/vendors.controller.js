@@ -3,6 +3,7 @@ const createCrudController = require('./base.controller');
 const ApiResponse = require('../utils/ApiResponse');
 const { applyBusinessScope } = require('../middleware/businessScope');
 const { getPagination, getPagingData } = require('../utils/pagination');
+const { sequelize } = require('../models');
 
 const baseController = createCrudController(Vendor, {
   resourceName: 'Vendor',
@@ -12,6 +13,114 @@ const baseController = createCrudController(Vendor, {
 
 module.exports = {
   ...baseController,
+
+  // Override getAll to compute total_purchases and total_amount from POs
+  getAll: async (req, res, next) => {
+    try {
+      const { Op } = require('sequelize');
+      const { page, limit, offset } = getPagination(req.query);
+      const { search, status } = req.query;
+      const where = applyBusinessScope(req, {});
+
+      if (search) {
+        where[Op.or] = ['name', 'contact_person', 'email', 'phone', 'category'].map(f => ({
+          [f]: { [Op.like]: `%${search}%` },
+        }));
+      }
+      if (status) where.status = status;
+
+      const data = await Vendor.findAndCountAll({
+        where,
+        order: [['created_at', 'DESC']],
+        limit,
+        offset,
+        distinct: true,
+      });
+      const { items, pagination } = getPagingData(data, page, limit);
+
+      // Compute PO aggregates for each vendor (match by vendor_id OR vendor_name)
+      const vendorIds = items.map(v => v.id);
+      const vendorNames = items.map(v => v.name).filter(Boolean);
+      if (vendorIds.length > 0) {
+        const poWhere = applyBusinessScope(req, {});
+        const orConds = [];
+        if (vendorIds.length > 0) orConds.push({ vendor_id: { [Op.in]: vendorIds } });
+        if (vendorNames.length > 0) orConds.push({ vendor_name: { [Op.in]: vendorNames } });
+        poWhere[Op.or] = orConds;
+
+        // Get per-vendor_name aggregates (since vendor_id is often null)
+        const poByName = await PurchaseOrder.findAll({
+          attributes: [
+            'vendor_name',
+            'vendor_id',
+            [sequelize.fn('COUNT', sequelize.col('id')), 'po_count'],
+            [sequelize.fn('SUM', sequelize.col('total_amount')), 'po_total'],
+          ],
+          where: poWhere,
+          group: ['vendor_name', 'vendor_id'],
+          raw: true,
+        });
+
+        // Build lookup by vendor name and vendor_id
+        const nameMap = {};
+        const idMap = {};
+        poByName.forEach(r => {
+          const count = Number(r.po_count) || 0;
+          const total = Number(r.po_total) || 0;
+          if (r.vendor_name) {
+            if (!nameMap[r.vendor_name]) nameMap[r.vendor_name] = { count: 0, total: 0 };
+            nameMap[r.vendor_name].count += count;
+            nameMap[r.vendor_name].total += total;
+          }
+          if (r.vendor_id) {
+            if (!idMap[r.vendor_id]) idMap[r.vendor_id] = { count: 0, total: 0 };
+            idMap[r.vendor_id].count += count;
+            idMap[r.vendor_id].total += total;
+          }
+        });
+
+        items.forEach(v => {
+          // Prefer name match (covers POs with null vendor_id), fall back to id match
+          const agg = nameMap[v.name] || idMap[v.id] || { count: 0, total: 0 };
+          v.dataValues.total_purchases = agg.count;
+          v.dataValues.total_amount = agg.total;
+        });
+      }
+
+      return ApiResponse.paginated(res, items, pagination);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // Override getById to compute total_purchases and total_amount from POs
+  getById: async (req, res, next) => {
+    try {
+      const { Op } = require('sequelize');
+      const where = { id: req.params.id, ...applyBusinessScope(req, {}) };
+      const vendor = await Vendor.findOne({ where });
+      if (!vendor) return ApiResponse.notFound(res, 'Vendor not found');
+
+      const vendorName = vendor.name || '';
+      const orConditions = [{ vendor_id: vendor.id }];
+      if (vendorName) orConditions.push({ vendor_name: vendorName });
+
+      const poAgg = await PurchaseOrder.findOne({
+        attributes: [
+          [sequelize.fn('COUNT', sequelize.col('id')), 'po_count'],
+          [sequelize.fn('SUM', sequelize.col('total_amount')), 'po_total'],
+        ],
+        where: { [Op.or]: orConditions, ...applyBusinessScope(req, {}) },
+        raw: true,
+      });
+      vendor.dataValues.total_purchases = Number(poAgg?.po_count) || 0;
+      vendor.dataValues.total_amount = Number(poAgg?.po_total) || 0;
+
+      return ApiResponse.success(res, vendor);
+    } catch (error) {
+      next(error);
+    }
+  },
 
   // GET /vendors/:id/purchases
   getVendorPurchases: async (req, res, next) => {

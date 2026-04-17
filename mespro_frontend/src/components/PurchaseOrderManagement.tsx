@@ -973,7 +973,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     }));
     onSubmit({
       ...formData,
-      expected_delivery: formData.expected_delivery || null,
+      expected_delivery: formData.expected_delivery || formData.date || null,
       status: isDraft ? 'draft' : 'approved',
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -1669,7 +1669,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     }));
     onSubmit({
       ...formData,
-      expected_delivery: formData.expected_delivery || null,
+      expected_delivery: formData.expected_delivery || formData.date || null,
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
       unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,

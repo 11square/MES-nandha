@@ -20,8 +20,8 @@ module.exports = {
     try {
       const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
 
-      // Sanitize date fields — empty strings become null
-      if (!poData.expected_delivery) poData.expected_delivery = null;
+      // Sanitize date fields — empty strings default to PO date
+      if (!poData.expected_delivery) poData.expected_delivery = poData.date || null;
 
       // Auto-generate PO number
       const lastPO = await PurchaseOrder.findOne({
@@ -121,8 +121,8 @@ module.exports = {
 
       const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
 
-      // Sanitize date fields
-      if (!poData.expected_delivery) poData.expected_delivery = null;
+      // Sanitize date fields — empty strings default to PO date
+      if (!poData.expected_delivery) poData.expected_delivery = poData.date || record.date || null;
 
       // Update the parent purchase order fields
       await record.update(poData, { transaction: t });
