@@ -102,19 +102,24 @@ module.exports = {
         }
       }
 
-      // Update credit outstanding if exists
-      if (billData.payment_type === 'credit') {
+      // Update credit outstanding if exists (check bill's own payment_type, not just billData)
+      const effectivePaymentType = billData.payment_type || bill.payment_type;
+      if (effectivePaymentType === 'credit') {
         const outstanding = await CreditOutstanding.findOne({
           where: applyBusinessScope(req, { bill_id: bill.id }),
           transaction: t,
         });
         if (outstanding) {
+          const grandTotal = parseFloat(billData.grand_total || bill.grand_total || 0);
+          const paidAmount = parseFloat(bill.paid_amount || 0);
           await outstanding.update({
-            client_id: billData.client_id,
-            client_name: billData.client_name,
-            date: billData.date,
-            grand_total: billData.grand_total || 0,
-            balance: (billData.grand_total || 0) - parseFloat(outstanding.paid_amount || 0),
+            client_id: billData.client_id || bill.client_id,
+            client_name: billData.client_name || bill.client_name,
+            date: billData.date || bill.date,
+            grand_total: grandTotal,
+            paid_amount: paidAmount,
+            balance: grandTotal - paidAmount,
+            status: billData.payment_status === 'paid' ? 'paid' : outstanding.status,
           }, { transaction: t });
         }
       }

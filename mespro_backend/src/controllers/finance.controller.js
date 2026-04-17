@@ -105,7 +105,7 @@ module.exports = {
             id: `ord-${d.id}`,
             _source: 'order',
             _sourceId: d.id,
-            date: d.required_date || d.created_at,
+            date: d.created_at || d.required_date || d.converted_date || new Date().toISOString(),
             type: 'income',
             category: 'Order',
             description: `${d.order_number} — ${d.product || 'Order'}`,
@@ -123,32 +123,34 @@ module.exports = {
           };
         });
 
-      // 3. Bills / Invoices → income entries
+      // 3. Bills / Invoices → income entries (exclude drafts)
       const billRows = await Bill.findAll({ where, order: [['date', 'DESC']] });
-      const bills = billRows.map(b => {
-        const d = b.toJSON();
-        const statusMap = { 'paid': 'completed', 'partial': 'pending', 'pending': 'pending', 'overdue': 'pending' };
-        return {
-          id: `bill-${d.id}`,
-          _source: 'bill',
-          _sourceId: d.id,
-          date: d.date,
-          type: 'income',
-          category: 'Invoice',
-          description: `${d.bill_no} — ${d.client_name}`,
-          amount: parseFloat(d.grand_total) || 0,
-          payment_method: d.payment_method || '',
-          payment_type: d.payment_type || '',
-          client_name: d.client_name || '',
-          vendor_name: '',
-          party_type: 'client',
-          status: statusMap[d.payment_status] || 'pending',
-          reference: d.bill_no,
-          address: d.client_address || '',
-          mobile_number: '',
-          gst_number: d.client_gst || '',
-        };
-      });
+      const bills = billRows
+        .filter(b => b.status !== 'draft')
+        .map(b => {
+          const d = b.toJSON();
+          const statusMap = { 'paid': 'completed', 'partial': 'partial', 'pending': 'pending', 'overdue': 'pending' };
+          return {
+            id: `bill-${d.id}`,
+            _source: 'bill',
+            _sourceId: d.id,
+            date: d.date,
+            type: 'income',
+            category: 'Invoice',
+            description: `${d.bill_no} — ${d.client_name}`,
+            amount: parseFloat(d.grand_total) || 0,
+            payment_method: d.payment_method || '',
+            payment_type: d.payment_type || '',
+            client_name: d.client_name || '',
+            vendor_name: '',
+            party_type: 'client',
+            status: statusMap[d.payment_status] || 'pending',
+            reference: d.bill_no,
+            address: d.client_address || '',
+            mobile_number: '',
+            gst_number: d.client_gst || '',
+          };
+        });
 
       // 4. Purchase Orders → expense entries
       const poRows = await PurchaseOrder.findAll({ where, order: [['date', 'DESC']] });
@@ -179,10 +181,22 @@ module.exports = {
           };
         });
 
-      // Merge, exclude pending transactions, and sort by date descending
-      const combined = [...transactions, ...orders, ...bills, ...pos]
-        .filter(t => t.status !== 'pending')
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      // Collect bill references to deduplicate — exclude transaction records
+      // that were auto-created for bills (to avoid double-counting)
+      const billRefs = new Set(bills.map(b => b.reference).filter(Boolean));
+      const dedupedTx = transactions.filter(tx => !tx.reference || !billRefs.has(tx.reference));
+
+      // Merge and sort by date descending, then by sourceId descending — only show completed (paid) entries
+      const combined = [...dedupedTx, ...orders, ...bills, ...pos]
+        .filter(t => t.status === 'completed')
+        .sort((a, b) => {
+          const aTime = new Date(a.date).getTime() || 0;
+          const bTime = new Date(b.date).getTime() || 0;
+          const dateDiff = bTime - aTime;
+          if (dateDiff !== 0) return dateDiff;
+          // Same date: sort by source record id descending (newest first)
+          return (b._sourceId || 0) - (a._sourceId || 0);
+        });
 
       return ApiResponse.success(res, {
         items: combined,
@@ -396,7 +410,7 @@ module.exports = {
       const data = await Payment.findAndCountAll({
         where: applyBusinessScope(req),
         include: [{ model: Bill, as: 'bill', attributes: ['id', 'bill_no', 'grand_total'] }],
-        order: [['date', 'DESC']],
+        order: [['date', 'DESC'], ['id', 'DESC']],
         limit,
         offset,
         distinct: true,

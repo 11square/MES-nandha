@@ -85,7 +85,7 @@ module.exports = {
         include: [
           { model: OrderProduct, as: 'products' },
         ],
-        order: [['created_at', 'DESC']],
+        order: [['created_at', 'DESC'], ['id', 'DESC']],
         limit,
         offset,
         distinct: true,

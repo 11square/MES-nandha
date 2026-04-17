@@ -109,7 +109,12 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   const refreshOrders = () => {
     ordersService.getOrders({ customerType: filterCustomerType }).then(data => {
       const items = Array.isArray(data) ? data : (data as any)?.items || [];
-      items.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      items.sort((a: any, b: any) => {
+        const dateA = new Date(a.createdAt || a.created_at || 0).getTime();
+        const dateB = new Date(b.createdAt || b.created_at || 0).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        return (b.id || 0) - (a.id || 0);
+      });
       setOrders(items);
     }).catch(() => {});
   };

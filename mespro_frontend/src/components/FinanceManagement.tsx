@@ -62,7 +62,7 @@ interface Transaction {
   address?: string;
   bill_id?: number;
   payment_type?: string;
-  status: 'completed' | 'pending' | 'cancelled';
+  status: 'completed' | 'pending' | 'partial' | 'cancelled';
   reference?: string;
 }
 
@@ -221,8 +221,20 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         billingService.getAllBills(),
       ]);
       const txItems = Array.isArray(txData) ? txData : (txData as any)?.items || [];
+      txItems.sort((a: any, b: any) => {
+        const dateA = new Date(a.date || 0).getTime();
+        const dateB = new Date(b.date || 0).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        return (b._sourceId || 0) - (a._sourceId || 0);
+      });
       setTransactionsData(txItems);
       const rcItems = Array.isArray(rcData) ? rcData : (rcData as any)?.items || [];
+      rcItems.sort((a: any, b: any) => {
+        const dateA = new Date(a.date || 0).getTime();
+        const dateB = new Date(b.date || 0).getTime();
+        if (dateB !== dateA) return dateB - dateA;
+        return (b.id || 0) - (a.id || 0);
+      });
       setReceipts(rcItems);
       const outItems = Array.isArray(outData) ? outData : (outData as any)?.items || [];
       setOutstandings(outItems);
@@ -1264,6 +1276,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                         <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border ${getStatusColor(transaction.status)}`}>
                           {transaction.status === 'completed' && <CheckCircle className="w-3 h-3" />}
                           {transaction.status === 'pending' && <Clock className="w-3 h-3" />}
+                          {transaction.status === 'partial' && <Clock className="w-3 h-3" />}
                           {transaction.status === 'cancelled' && <AlertCircle className="w-3 h-3" />}
                           {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
                         </span>
