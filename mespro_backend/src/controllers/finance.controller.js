@@ -8,7 +8,7 @@ const { sequelize } = require('../models');
 const baseController = createCrudController(Transaction, {
   resourceName: 'Transaction',
   searchFields: ['category', 'description', 'reference'],
-  defaultOrder: [['date', 'DESC']],
+  defaultOrder: [['created_at', 'DESC']],
 });
 
 module.exports = {
@@ -45,7 +45,7 @@ module.exports = {
 
       const data = await Transaction.findAndCountAll({
         where,
-        order: [['date', 'DESC']],
+        order: [['created_at', 'DESC']],
         limit,
         offset,
         distinct: true,
@@ -66,7 +66,7 @@ module.exports = {
       applyBusinessScope(req, where);
 
       // 1. Manual transactions
-      const txRows = await Transaction.findAll({ where, order: [['date', 'DESC']] });
+      const txRows = await Transaction.findAll({ where, order: [['created_at', 'DESC']] });
       const transactions = txRows.map(tx => {
         const d = tx.toJSON();
         return {
@@ -74,6 +74,7 @@ module.exports = {
           _source: 'transaction',
           _sourceId: d.id,
           date: d.date,
+          created_at: d.created_at,
           type: d.type,
           category: d.category || '',
           description: d.description || '',
@@ -106,6 +107,7 @@ module.exports = {
             _source: 'order',
             _sourceId: d.id,
             date: d.created_at || d.required_date || d.converted_date || new Date().toISOString(),
+            created_at: d.created_at || d.required_date || d.converted_date || new Date().toISOString(),
             type: 'income',
             category: 'Order',
             description: `${d.order_number} — ${d.product || 'Order'}`,
@@ -124,7 +126,7 @@ module.exports = {
         });
 
       // 3. Bills / Invoices → income entries (exclude drafts)
-      const billRows = await Bill.findAll({ where, order: [['date', 'DESC']] });
+      const billRows = await Bill.findAll({ where, order: [['created_at', 'DESC']] });
       const bills = billRows
         .filter(b => b.status !== 'draft')
         .map(b => {
@@ -135,6 +137,7 @@ module.exports = {
             _source: 'bill',
             _sourceId: d.id,
             date: d.date,
+            created_at: d.created_at,
             type: 'income',
             category: 'Invoice',
             description: `${d.bill_no} — ${d.client_name}`,
@@ -153,7 +156,7 @@ module.exports = {
         });
 
       // 4. Purchase Orders → expense entries
-      const poRows = await PurchaseOrder.findAll({ where, order: [['date', 'DESC']] });
+      const poRows = await PurchaseOrder.findAll({ where, order: [['created_at', 'DESC']] });
       const pos = poRows
         .filter(p => parseFloat(p.total_amount) > 0)
         .map(p => {
@@ -164,6 +167,7 @@ module.exports = {
             _source: 'purchase_order',
             _sourceId: d.id,
             date: d.date,
+            created_at: d.created_at,
             type: 'expense',
             category: 'Purchase Order',
             description: `${d.po_number} — ${d.vendor_name || 'Vendor'}`,
@@ -190,11 +194,11 @@ module.exports = {
       const combined = [...dedupedTx, ...orders, ...bills, ...pos]
         .filter(t => t.status === 'completed')
         .sort((a, b) => {
-          const aTime = new Date(a.date).getTime() || 0;
-          const bTime = new Date(b.date).getTime() || 0;
+          const aTime = new Date(a.created_at || a.date).getTime() || 0;
+          const bTime = new Date(b.created_at || b.date).getTime() || 0;
           const dateDiff = bTime - aTime;
           if (dateDiff !== 0) return dateDiff;
-          // Same date: sort by source record id descending (newest first)
+          // Same created_at: sort by source record id descending (newest first)
           return (b._sourceId || 0) - (a._sourceId || 0);
         });
 

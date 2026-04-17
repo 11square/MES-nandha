@@ -17,10 +17,10 @@ test.describe('Finance — Descending Order', () => {
     expect(items.length).toBeGreaterThan(0);
     console.log(`  Total finance items: ${items.length}`);
 
-    // Verify API data is in descending date order
+    // Verify API data is in descending created_at order
     for (let i = 1; i < items.length; i++) {
-      const prevDate = new Date(items[i - 1].date || 0).getTime();
-      const currDate = new Date(items[i].date || 0).getTime();
+      const prevDate = new Date(items[i - 1].created_at || items[i - 1].date || 0).getTime();
+      const currDate = new Date(items[i].created_at || items[i].date || 0).getTime();
       expect(prevDate).toBeGreaterThanOrEqual(currDate);
       if (prevDate === currDate && items[i - 1]._source === items[i]._source) {
         expect(items[i - 1]._sourceId).toBeGreaterThanOrEqual(items[i]._sourceId);

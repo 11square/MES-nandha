@@ -222,8 +222,8 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       ]);
       const txItems = Array.isArray(txData) ? txData : (txData as any)?.items || [];
       txItems.sort((a: any, b: any) => {
-        const dateA = new Date(a.date || 0).getTime();
-        const dateB = new Date(b.date || 0).getTime();
+        const dateA = new Date(a.created_at || a.date || 0).getTime();
+        const dateB = new Date(b.created_at || b.date || 0).getTime();
         if (dateB !== dateA) return dateB - dateA;
         return (b._sourceId || 0) - (a._sourceId || 0);
       });
