@@ -18,6 +18,8 @@ router.get('/:id/bills', clientsController.getClientBills);
 router.get('/:id/sales', clientsController.getClientSales);
 router.get('/:id/outstandings', clientsController.getOutstandings);
 router.get('/:id/followups', clientsController.getFollowups);
+router.get('/:id/dispatches', clientsController.getClientDispatches);
+router.get('/:id/transactions', clientsController.getClientTransactions);
 router.post('/:id/followups', clientsController.createFollowup);
 
 module.exports = router;

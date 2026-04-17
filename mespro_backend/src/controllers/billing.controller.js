@@ -170,9 +170,8 @@ module.exports = {
         );
       }
 
-      // Stock deduction: auto for invoices, optional for quotations
-      const isInvoice = (billData.bill_no || '').startsWith('INV');
-      const shouldDeductStock = isInvoice || billData.deduct_stock === true;
+      // Stock deduction: only when explicitly opted via deduct_stock checkbox
+      const shouldDeductStock = billData.deduct_stock === true;
       if (shouldDeductStock && billData.status !== 'draft' && items && items.length > 0) {
         const stockItems = await StockItem.findAll({
           where: applyBusinessScope(req),

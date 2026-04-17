@@ -6,6 +6,7 @@ const { setCurrentBusiness } = require('../middleware/businessScope');
 
 router.use(setCurrentBusiness);
 
+router.get('/transactions/all', financeController.getAllCombined);
 router.get('/transactions', financeController.getAll);
 router.get('/transactions/:id', financeController.getById);
 router.post('/transactions', financeController.create);

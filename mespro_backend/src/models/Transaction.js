@@ -45,6 +45,19 @@ module.exports = (sequelize) => {
       allowNull: true,
       references: { model: 'clients', key: 'id' },
     },
+    vendor_name: {
+      type: DataTypes.STRING(150),
+      allowNull: true,
+    },
+    vendor_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: { model: 'vendors', key: 'id' },
+    },
+    party_type: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
     gst_number: {
       type: DataTypes.STRING(20),
       allowNull: true,

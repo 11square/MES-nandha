@@ -42,7 +42,7 @@ class InventoryService {
 
   // Transactions
   async getTransactions(): Promise<any[]> {
-    return apiService.get<any[]>('/inventory/transactions');
+    return apiService.get<any[]>('/inventory/transactions?limit=10000');
   }
 
   async createTransaction(transaction: any): Promise<any> {

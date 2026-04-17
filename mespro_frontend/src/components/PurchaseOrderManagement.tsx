@@ -127,7 +127,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   const dateFilteredPOs = purchaseOrders.filter(matchesPODateFilter);
 
   // Calculate statistics
-  const totalPOValue = dateFilteredPOs.reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
+  const totalPOValue = dateFilteredPOs.filter(po => po.status !== 'draft').reduce((sum, po) => sum + (Number(po.total_amount) || 0), 0);
   const pendingPOs = dateFilteredPOs.filter(po => po.status === 'pending' || po.status === 'draft').length;
   const orderedPOs = dateFilteredPOs.filter(po => po.status === 'ordered' || po.status === 'approved').length;
   const receivedPOs = dateFilteredPOs.filter(po => po.status === 'received').length;
@@ -957,8 +957,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     if (!selectedVendorId) validationErrors.vendor = 'Vendor is required';
     if (!isDraft) {
       if (!formData.date) validationErrors.date = 'Date is required';
-      if (!formData.expected_delivery) validationErrors.expected_delivery = 'Expected Delivery is required';
-      if (!formData.status) validationErrors.status = 'Status is required';
       if (addedItems.length === 0) validationErrors.items = 'At least one item with product and quantity is required';
     }
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
@@ -976,7 +974,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
     onSubmit({
       ...formData,
       expected_delivery: formData.expected_delivery || null,
-      status: isDraft ? 'draft' : (formData.status || 'pending'),
+      status: isDraft ? 'draft' : 'approved',
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
       unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,
@@ -1016,7 +1014,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                 {errors.date && <FieldError message={errors.date} />}
               </div>
               <div>
-                <Label className="text-xs text-gray-500">{t('expectedDelivery')} *</Label>
+                <Label className="text-xs text-gray-500">{t('expectedDelivery')}</Label>
                 <Input
                   type="date"
                   value={formData.expected_delivery}
@@ -1024,17 +1022,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                   className="h-8 text-sm"
                 />
                 {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
-                <Input
-                  value={gstNumber}
-                  onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
-                  placeholder="e.g. 33AUJPM8458P1ZR"
-                  maxLength={15}
-                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
-                />
-                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
               </div>
             </div>
           </CardContent>

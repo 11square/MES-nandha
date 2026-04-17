@@ -109,6 +109,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   const refreshOrders = () => {
     ordersService.getOrders({ customerType: filterCustomerType }).then(data => {
       const items = Array.isArray(data) ? data : (data as any)?.items || [];
+      items.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setOrders(items);
     }).catch(() => {});
   };

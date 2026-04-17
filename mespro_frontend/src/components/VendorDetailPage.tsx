@@ -12,33 +12,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { useI18n } from '../contexts/I18nContext';
-import { clientsService } from '../services/clients.service';
-import { getCustomerType } from '../lib/utils';
-import { getAllStates, getDistrictsForState } from '../lib/gstUtils';
+import { vendorsService } from '../services/vendors.service';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2,
-  ShoppingCart, TrendingUp, IndianRupee, AlertCircle,
-  Calendar, FileText, ChevronDown, ChevronRight,
-  Edit, Star, Save, X, Plus,
-  CreditCard, Clock, MessageSquare, Package,
-  Truck, ArrowDownRight, ArrowUpRight,
+  ShoppingCart, IndianRupee, Calendar, FileText,
+  Edit, Save, X, Package, Clock, CreditCard,
+  ChevronDown, ChevronRight, Plus, MessageSquare,
+  Truck, ArrowDownRight, ArrowUpRight, TrendingUp,
 } from 'lucide-react';
 
 const fmt = (val: number) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
 
-export default function ClientDetailPage() {
-  const { clientId } = useParams<{ clientId: string }>();
+export default function VendorDetailPage() {
+  const { vendorId } = useParams<{ vendorId: string }>();
   const navigate = useNavigate();
   const { t } = useI18n();
 
-  const [client, setClient] = useState<any>(null);
-  const [bills, setBills] = useState<any[]>([]);
-  const [payments, setPayments] = useState<any[]>([]);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [outstandings, setOutstandings] = useState<any[]>([]);
-  const [followups, setFollowups] = useState<any[]>([]);
-  const [dispatches, setDispatches] = useState<any[]>([]);
+  const [vendor, setVendor] = useState<any>(null);
+  const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [dispatches, setDispatches] = useState<any[]>([]);
+  const [followups, setFollowups] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
 
@@ -52,42 +46,36 @@ export default function ClientDetailPage() {
   const [newFollowup, setNewFollowup] = useState({ type: 'Call', subject: '', notes: '', priority: 'Medium', status: 'Pending' });
 
   const fetchData = () => {
-    if (!clientId) return;
+    if (!vendorId) return;
     setLoading(true);
     Promise.all([
-      clientsService.getClientById(clientId).catch(() => null),
-      clientsService.getClientBills(clientId).catch(() => []),
-      clientsService.getClientPayments(clientId).catch(() => []),
-      clientsService.getClientSales(clientId).catch(() => []),
-      clientsService.getClientOutstandings(clientId).catch(() => []),
-      clientsService.getClientFollowups(clientId).catch(() => []),
-      clientsService.getClientDispatches(clientId).catch(() => []),
-      clientsService.getClientTransactions(clientId).catch(() => []),
-    ]).then(([cd, bd, pd, sd, od, fd, dd, td]) => {
-      setClient(cd);
-      if (cd) setEditForm({ ...cd });
-      setBills(Array.isArray(bd) ? bd : (bd as any)?.items || []);
-      setPayments(Array.isArray(pd) ? pd : (pd as any)?.items || []);
-      setOrders(Array.isArray(sd) ? sd : (sd as any)?.items || []);
-      setOutstandings(Array.isArray(od) ? od : (od as any)?.items || []);
-      setFollowups(Array.isArray(fd) ? fd : (fd as any)?.items || []);
-      setDispatches(Array.isArray(dd) ? dd : (dd as any)?.items || []);
-      setTransactions(Array.isArray(td) ? td : (td as any)?.items || []);
+      vendorsService.getVendorById(vendorId).catch(() => null),
+      vendorsService.getVendorPurchases(vendorId).catch(() => []),
+      vendorsService.getVendorTransactions(vendorId).catch(() => []),
+      vendorsService.getVendorDispatches(vendorId).catch(() => []),
+      vendorsService.getVendorFollowups(vendorId).catch(() => []),
+    ]).then(([vd, poData, txData, ddData, fdData]) => {
+      setVendor(vd);
+      if (vd) setEditForm({ ...vd });
+      setPurchaseOrders(Array.isArray(poData) ? poData : (poData as any)?.items || []);
+      setTransactions(Array.isArray(txData) ? txData : (txData as any)?.items || []);
+      setDispatches(Array.isArray(ddData) ? ddData : (ddData as any)?.items || []);
+      setFollowups(Array.isArray(fdData) ? fdData : (fdData as any)?.items || []);
     }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchData(); }, [clientId]);
+  useEffect(() => { fetchData(); }, [vendorId]);
 
   const toggleRow = (key: string) => {
     setExpandedRows(prev => { const n = new Set(prev); n.has(key) ? n.delete(key) : n.add(key); return n; });
   };
 
   const handleSave = async () => {
-    if (!clientId) return;
+    if (!vendorId) return;
     setSaving(true);
     try {
-      await clientsService.updateClient(clientId, editForm);
-      toast.success('Client details updated');
+      await vendorsService.updateVendor(vendorId, editForm);
+      toast.success('Vendor details updated');
       setEditing(false);
       fetchData();
     } catch (err: any) {
@@ -96,9 +84,9 @@ export default function ClientDetailPage() {
   };
 
   const handleAddFollowup = async () => {
-    if (!clientId || !newFollowup.subject) return;
+    if (!vendorId || !newFollowup.subject) return;
     try {
-      await clientsService.createClientFollowup(clientId, { ...newFollowup, date: new Date().toISOString().split('T')[0] });
+      await vendorsService.createVendorFollowup(vendorId, { ...newFollowup, date: new Date().toISOString().split('T')[0] });
       toast.success('Follow-up added');
       setFollowupOpen(false);
       setNewFollowup({ type: 'Call', subject: '', notes: '', priority: 'Medium', status: 'Pending' });
@@ -108,8 +96,6 @@ export default function ClientDetailPage() {
     }
   };
 
-  const districts = editForm.state ? getDistrictsForState(editForm.state) : [];
-
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -118,33 +104,36 @@ export default function ClientDetailPage() {
     );
   }
 
-  if (!client) {
+  if (!vendor) {
     return (
       <div className="p-6 text-center">
         <Building2 className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-slate-700 mb-2">Client not found</h3>
-        <Button variant="outline" onClick={() => navigate('/clients')}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Clients
+        <h3 className="text-lg font-semibold text-slate-700 mb-2">Vendor not found</h3>
+        <Button variant="outline" onClick={() => navigate('/vendors')}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Vendors
         </Button>
       </div>
     );
   }
 
   // Stats
-  const totalBilled = bills.reduce((s, b) => s + (Number(b.grand_total) || 0), 0);
-  const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || Number(p.paid_amount) || 0), 0);
-  const totalOutstanding = outstandings.reduce((s, o) => s + (Number(o.balance) || 0), 0);
-  const overdueCount = outstandings.filter(o => (o.days_overdue || 0) > 0).length;
+  const totalPurchaseAmount = purchaseOrders.reduce((s, po) => s + (Number(po.total_amount) || 0), 0);
+  const outstandingPOs = purchaseOrders.filter((po: any) => {
+    const status = String(po?.status || '').toLowerCase();
+    return status !== 'received' && status !== 'cancelled';
+  });
+  const outstandingAmount = outstandingPOs.reduce((s, po) => s + (Number(po.total_amount) || 0), 0);
+  const totalPaid = transactions.reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
 
   return (
     <div className="p-6 space-y-6">
       {/* Back + Actions */}
       <div className="flex items-center justify-between">
-        <Button variant="ghost" className="text-slate-600 hover:text-slate-900 -ml-2" onClick={() => navigate('/clients')}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Clients
+        <Button variant="ghost" className="text-slate-600 hover:text-slate-900 -ml-2" onClick={() => navigate('/vendors')}>
+          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Vendors
         </Button>
         {!editing ? (
-          <Button variant="outline" onClick={() => { setEditForm({ ...client }); setEditing(true); }}>
+          <Button variant="outline" onClick={() => { setEditForm({ ...vendor }); setEditing(true); }}>
             <Edit className="w-4 h-4 mr-2" /> Edit Details
           </Button>
         ) : (
@@ -157,33 +146,26 @@ export default function ClientDetailPage() {
         )}
       </div>
 
-      {/* Client Header */}
+      {/* Vendor Header */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 shadow-lg">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center text-2xl font-bold text-white">
-              {(client.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
+              {(vendor.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-              <p className="text-blue-100">#{client.id} • {client.contact_person}</p>
+              <h1 className="text-2xl font-bold text-white">{vendor.name}</h1>
+              <p className="text-blue-100">#{vendor.id} • {vendor.contact_person}</p>
               <div className="flex items-center gap-4 mt-2 text-sm text-blue-100 flex-wrap">
-                {client.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {client.phone}</span>}
-                {client.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {client.email}</span>}
-                {client.address && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {client.address}</span>}
+                {vendor.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {vendor.phone}</span>}
+                {vendor.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {vendor.email}</span>}
+                {vendor.address && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {vendor.address}</span>}
               </div>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge className="bg-white/20 text-white border-0">{client.status || 'Active'}</Badge>
-            <Badge className={`border-0 ${client.gst_number ? 'bg-blue-400/30 text-white' : 'bg-orange-400/30 text-white'}`}>
-              {getCustomerType(client.gst_number)}
-            </Badge>
-            <div className="flex ml-2">
-              {[1, 2, 3].map(s => (
-                <Star key={s} className={`w-4 h-4 ${s <= (client.rating || 0) ? 'text-yellow-300 fill-yellow-300' : 'text-white/30'}`} />
-              ))}
-            </div>
+            <Badge className="bg-white/20 text-white border-0">{vendor.status || 'Active'}</Badge>
+            {vendor.category && <Badge className="bg-blue-400/30 text-white border-0">{vendor.category}</Badge>}
           </div>
         </div>
       </div>
@@ -193,48 +175,50 @@ export default function ClientDetailPage() {
         <Card className="bg-blue-500/10 border-blue-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-blue-600">Total Orders</span>
+              <span className="text-xs font-medium text-blue-600">Total Purchases</span>
               <ShoppingCart className="h-4 w-4 text-blue-600" />
             </div>
-            <p className="text-2xl font-bold text-blue-700">{client.total_orders || orders.length}</p>
+            <p className="text-2xl font-bold text-blue-700">{vendor.total_purchases || purchaseOrders.length}</p>
           </CardContent>
         </Card>
         <Card className="bg-emerald-500/10 border-emerald-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-emerald-600">Total Billed</span>
+              <span className="text-xs font-medium text-emerald-600">Total Amount</span>
               <TrendingUp className="h-4 w-4 text-emerald-600" />
             </div>
-            <p className="text-2xl font-bold text-emerald-700">{fmt(totalBilled)}</p>
+            <p className="text-2xl font-bold text-emerald-700">{fmt(Number(vendor.total_amount) || totalPurchaseAmount)}</p>
           </CardContent>
         </Card>
         <Card className="bg-green-500/10 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-green-600">Received</span>
+              <span className="text-xs font-medium text-green-600">Total Paid</span>
               <IndianRupee className="h-4 w-4 text-green-600" />
             </div>
             <p className="text-2xl font-bold text-green-700">{fmt(totalPaid)}</p>
           </CardContent>
         </Card>
-        <Card className={`${totalOutstanding > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
+        <Card className={`${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-xs font-medium ${totalOutstanding > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
-              <CreditCard className={`h-4 w-4 ${totalOutstanding > 0 ? 'text-red-600' : 'text-slate-600'}`} />
+              <span className={`text-xs font-medium ${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
+              <CreditCard className={`h-4 w-4 ${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'text-red-600' : 'text-slate-600'}`} />
             </div>
-            <p className={`text-2xl font-bold ${totalOutstanding > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(totalOutstanding)}</p>
-            {overdueCount > 0 && <p className="text-xs text-red-500 mt-1">{overdueCount} overdue</p>}
+            <p className={`text-2xl font-bold ${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(Number(vendor.outstanding_amount) || outstandingAmount)}</p>
+            {outstandingPOs.length > 0 && <p className="text-xs text-red-500 mt-1">{outstandingPOs.length} pending POs</p>}
           </CardContent>
         </Card>
-        <Card className="bg-amber-500/10 border-amber-200">
+        <Card className="bg-purple-500/10 border-purple-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-amber-600">Balance</span>
-              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <span className="text-xs font-medium text-purple-600">Last Purchase</span>
+              <Calendar className="h-4 w-4 text-purple-600" />
             </div>
-            <p className={`text-2xl font-bold ${(totalBilled - totalPaid) > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-              {fmt(totalBilled - totalPaid)}
+            <p className="text-xl font-bold text-purple-700">
+              {vendor.last_purchase_date && !isNaN(new Date(vendor.last_purchase_date).getTime())
+                ? new Date(vendor.last_purchase_date).toLocaleDateString('en-IN')
+                : '—'}
             </p>
           </CardContent>
         </Card>
@@ -244,9 +228,8 @@ export default function ClientDetailPage() {
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1 w-full justify-start bg-slate-100 p-1 rounded-lg">
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
-          <TabsTrigger value="bills" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Bills ({bills.length})</TabsTrigger>
-          <TabsTrigger value="orders" className="text-xs px-3 py-1.5"><Package className="w-3.5 h-3.5 mr-1" /> Orders ({orders.length})</TabsTrigger>
-          <TabsTrigger value="outstandings" className="text-xs px-3 py-1.5"><CreditCard className="w-3.5 h-3.5 mr-1" /> Outstanding ({outstandings.length})</TabsTrigger>
+          <TabsTrigger value="purchases" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Purchase Orders ({purchaseOrders.length})</TabsTrigger>
+          <TabsTrigger value="outstanding" className="text-xs px-3 py-1.5"><CreditCard className="w-3.5 h-3.5 mr-1" /> Outstanding ({outstandingPOs.length})</TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Finance ({transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
         </TabsList>
@@ -254,42 +237,46 @@ export default function ClientDetailPage() {
         {/* ===== DETAILS TAB ===== */}
         <TabsContent value="details" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Basic Info */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Business Information</CardTitle>
+                <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Vendor Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Business Name</Label>
+                    <Label className="text-xs text-slate-500">Vendor Name</Label>
                     {editing ? <Input value={editForm.name || ''} onChange={e => setEditForm({ ...editForm, name: e.target.value })} /> :
-                      <p className="text-sm font-medium text-slate-900">{client.name}</p>}
+                      <p className="text-sm font-medium text-slate-900">{vendor.name}</p>}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-500">Contact Person</Label>
                     {editing ? <Input value={editForm.contact_person || ''} onChange={e => setEditForm({ ...editForm, contact_person: e.target.value })} /> :
-                      <p className="text-sm font-medium text-slate-900">{client.contact_person || '-'}</p>}
+                      <p className="text-sm font-medium text-slate-900">{vendor.contact_person || '-'}</p>}
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-500">Phone</Label>
                     {editing ? <Input value={editForm.phone || ''} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} /> :
-                      <p className="text-sm font-medium text-slate-900">{client.phone || '-'}</p>}
+                      <p className="text-sm font-medium text-slate-900">{vendor.phone || '-'}</p>}
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-500">Email</Label>
                     {editing ? <Input value={editForm.email || ''} onChange={e => setEditForm({ ...editForm, email: e.target.value })} /> :
-                      <p className="text-sm font-medium text-slate-900">{client.email || '-'}</p>}
+                      <p className="text-sm font-medium text-slate-900">{vendor.email || '-'}</p>}
                   </div>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-500">Address</Label>
                   {editing ? <Textarea value={editForm.address || ''} onChange={e => setEditForm({ ...editForm, address: e.target.value })} rows={2} /> :
-                    <p className="text-sm font-medium text-slate-900">{client.address || '-'}</p>}
+                    <p className="text-sm font-medium text-slate-900">{vendor.address || '-'}</p>}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-xs text-slate-500">Category</Label>
+                    {editing ? <Input value={editForm.category || ''} onChange={e => setEditForm({ ...editForm, category: e.target.value })} /> :
+                      <p className="text-sm font-medium text-slate-900">{vendor.category || '-'}</p>}
+                  </div>
                   <div className="space-y-1">
                     <Label className="text-xs text-slate-500">Status</Label>
                     {editing ? (
@@ -300,84 +287,40 @@ export default function ClientDetailPage() {
                           <SelectItem value="Inactive">Inactive</SelectItem>
                         </SelectContent>
                       </Select>
-                    ) : <Badge className={client.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>{client.status}</Badge>}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Rating</Label>
-                    {editing ? (
-                      <div className="flex items-center gap-1 pt-1">
-                        {[1, 2, 3].map(s => (
-                          <button key={s} onClick={() => setEditForm({ ...editForm, rating: s })} className="focus:outline-none">
-                            <Star className={`w-5 h-5 cursor-pointer ${s <= (editForm.rating || 0) ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}`} />
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-0.5">
-                        {[1, 2, 3].map(s => <Star key={s} className={`w-4 h-4 ${s <= (client.rating || 0) ? 'text-yellow-500 fill-yellow-500' : 'text-slate-300'}`} />)}
-                      </div>
-                    )}
+                    ) : <Badge className={vendor.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>{vendor.status}</Badge>}
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Tax & Location */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Tax & Location</CardTitle>
+                <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Tax & Activity</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-1">
                   <Label className="text-xs text-slate-500">GST Number</Label>
                   {editing ? <Input value={editForm.gst_number || ''} onChange={e => setEditForm({ ...editForm, gst_number: e.target.value })} placeholder="Enter GST Number" maxLength={15} /> :
-                    <p className="text-sm font-medium text-slate-900 font-mono">{client.gst_number || '-'}</p>}
+                    <p className="text-sm font-medium text-slate-900 font-mono">{vendor.gst_number || '-'}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">State</Label>
-                    {editing ? (
-                      <Select value={editForm.state || ''} onValueChange={v => setEditForm({ ...editForm, state: v, district: '' })}>
-                        <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
-                        <SelectContent className="max-h-60">
-                          {getAllStates().map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    ) : <p className="text-sm font-medium text-slate-900">{client.state || '-'}</p>}
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">District</Label>
-                    {editing ? (
-                      districts.length > 0 ? (
-                        <Select value={editForm.district || ''} onValueChange={v => setEditForm({ ...editForm, district: v })}>
-                          <SelectTrigger><SelectValue placeholder="Select District" /></SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {districts.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      ) : <Input value={editForm.district || ''} onChange={e => setEditForm({ ...editForm, district: e.target.value })} placeholder="Enter District" />
-                    ) : <p className="text-sm font-medium text-slate-900">{client.district || '-'}</p>}
-                  </div>
-                </div>
-
                 <hr className="my-2" />
                 <CardTitle className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Activity Summary</CardTitle>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Member Since</Label>
-                    <p className="text-sm font-medium text-slate-900">{client.join_date ? new Date(client.join_date).toLocaleDateString() : client.created_at ? new Date(client.created_at).toLocaleDateString() : '-'}</p>
+                    <Label className="text-xs text-slate-500">Added On</Label>
+                    <p className="text-sm font-medium text-slate-900">{vendor.created_at ? new Date(vendor.created_at).toLocaleDateString() : '-'}</p>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Last Order</Label>
-                    <p className="text-sm font-medium text-slate-900">{client.last_order && !isNaN(new Date(client.last_order).getTime()) ? new Date(client.last_order).toLocaleDateString() : '-'}</p>
+                    <Label className="text-xs text-slate-500">Last Purchase</Label>
+                    <p className="text-sm font-medium text-slate-900">{vendor.last_purchase_date && !isNaN(new Date(vendor.last_purchase_date).getTime()) ? new Date(vendor.last_purchase_date).toLocaleDateString() : '-'}</p>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Total Orders</Label>
-                    <p className="text-sm font-bold text-slate-900">{client.total_orders || 0}</p>
+                    <Label className="text-xs text-slate-500">Total Purchases</Label>
+                    <p className="text-sm font-bold text-slate-900">{vendor.total_purchases || 0}</p>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs text-slate-500">Total Value</Label>
-                    <p className="text-sm font-bold text-blue-700">{fmt(client.total_value)}</p>
+                    <Label className="text-xs text-slate-500">Total Amount</Label>
+                    <p className="text-sm font-bold text-blue-700">{fmt(Number(vendor.total_amount) || 0)}</p>
                   </div>
                 </div>
               </CardContent>
@@ -385,55 +328,47 @@ export default function ClientDetailPage() {
           </div>
         </TabsContent>
 
-        {/* ===== BILLS TAB ===== */}
-        <TabsContent value="bills" className="mt-4">
+        {/* ===== PURCHASE ORDERS TAB ===== */}
+        <TabsContent value="purchases" className="mt-4">
           <Card>
             <CardContent className="p-0">
-              {bills.length === 0 ? (
+              {purchaseOrders.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No bills found for this client</p>
+                  <p>No purchase orders found for this vendor</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Bill No</TableHead>
+                      <TableHead>PO Number</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Items</TableHead>
-                      <TableHead className="text-right">Subtotal</TableHead>
-                      <TableHead className="text-right">GST</TableHead>
-                      <TableHead className="text-right">Grand Total</TableHead>
-                      <TableHead>Type</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Expected Delivery</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Details</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bills.map((bill, idx) => {
-                      const rk = `bill-${bill.id || idx}`;
+                    {purchaseOrders.map((po: any, idx: number) => {
+                      const rk = `po-${po.id || idx}`;
                       const exp = expandedRows.has(rk);
-                      const items = Array.isArray(bill.items) ? bill.items : [];
+                      const items = Array.isArray(po.items) ? po.items : [];
                       return [
                         <TableRow key={`${rk}-m`}>
-                          <TableCell className="font-mono font-medium text-blue-600">{bill.bill_no}</TableCell>
-                          <TableCell>{bill.date ? new Date(bill.date).toLocaleDateString() : '-'}</TableCell>
-                          <TableCell className="max-w-[150px] truncate">{items.length > 0 ? items.map((i: any) => i.name).join(', ') : '-'}</TableCell>
-                          <TableCell className="text-right">{fmt(bill.subtotal)}</TableCell>
-                          <TableCell className="text-right">{fmt(bill.total_tax)}</TableCell>
-                          <TableCell className="text-right font-semibold">{fmt(bill.grand_total)}</TableCell>
-                          <TableCell>
-                            <Badge className={bill.payment_type === 'credit' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'}>
-                              {bill.payment_type === 'credit' ? 'Credit' : 'Cash'}
-                            </Badge>
-                          </TableCell>
+                          <TableCell className="font-mono font-medium text-blue-600">{po.po_number || `PO-${po.id}`}</TableCell>
+                          <TableCell>{po.date ? new Date(po.date).toLocaleDateString('en-IN') : '-'}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{items.length > 0 ? items.map((i: any) => i.name || i.item_name).join(', ') : (po.notes || '-')}</TableCell>
+                          <TableCell className="text-right font-semibold">{fmt(Number(po.total_amount) || 0)}</TableCell>
+                          <TableCell>{po.expected_delivery ? new Date(po.expected_delivery).toLocaleDateString('en-IN') : '-'}</TableCell>
                           <TableCell>
                             <Badge className={
-                              bill.payment_status === 'paid' ? 'bg-emerald-100 text-emerald-700' :
-                              bill.payment_status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                              bill.payment_status === 'overdue' ? 'bg-red-100 text-red-700' :
+                              po.status === 'received' ? 'bg-emerald-100 text-emerald-700' :
+                              po.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                              po.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
                               'bg-slate-100 text-slate-700'
-                            }>{bill.payment_status}</Badge>
+                            }>{po.status}</Badge>
                           </TableCell>
                           <TableCell className="text-right">
                             {items.length > 0 && (
@@ -445,7 +380,7 @@ export default function ClientDetailPage() {
                         </TableRow>,
                         ...(exp && items.length > 0 ? [
                           <TableRow key={`${rk}-d`} className="bg-slate-50/80">
-                            <TableCell colSpan={9}>
+                            <TableCell colSpan={7}>
                               <div className="rounded-md border bg-white overflow-hidden">
                                 <table className="w-full text-sm">
                                   <thead className="bg-slate-50">
@@ -453,18 +388,16 @@ export default function ClientDetailPage() {
                                       <th className="text-left px-3 py-2 font-medium text-slate-700">Item</th>
                                       <th className="text-right px-3 py-2 font-medium text-slate-700">Qty</th>
                                       <th className="text-right px-3 py-2 font-medium text-slate-700">Unit Price</th>
-                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Disc %</th>
                                       <th className="text-right px-3 py-2 font-medium text-slate-700">Total</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {items.map((it: any, i: number) => (
                                       <tr key={i} className="border-b last:border-b-0">
-                                        <td className="px-3 py-2">{it.name || '-'}</td>
+                                        <td className="px-3 py-2">{it.name || it.item_name || '-'}</td>
                                         <td className="px-3 py-2 text-right">{it.quantity || 0}</td>
-                                        <td className="px-3 py-2 text-right">{fmt(it.unit_price)}</td>
-                                        <td className="px-3 py-2 text-right">{it.discount || 0}%</td>
-                                        <td className="px-3 py-2 text-right font-medium">{fmt(it.total)}</td>
+                                        <td className="px-3 py-2 text-right">{fmt(it.unit_price || it.price)}</td>
+                                        <td className="px-3 py-2 text-right font-medium">{fmt(it.total || it.total_price)}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -482,105 +415,6 @@ export default function ClientDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* ===== ORDERS TAB ===== */}
-        <TabsContent value="orders" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {orders.length === 0 ? (
-                <div className="p-12 text-center text-slate-400">
-                  <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No orders found for this client</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Order No</TableHead>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Payment</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {orders.map((o: any) => (
-                      <TableRow key={o.id}>
-                        <TableCell className="font-mono font-medium text-blue-600">{o.order_number}</TableCell>
-                        <TableCell>{o.product || '-'}</TableCell>
-                        <TableCell className="text-right">{o.quantity || 0}</TableCell>
-                        <TableCell className="text-right font-semibold">{fmt(o.total_amount)}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            o.status === 'Delivered' || o.status === 'Bill' ? 'bg-emerald-100 text-emerald-700' :
-                            o.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
-                            o.status === 'In Production' ? 'bg-blue-100 text-blue-700' :
-                            'bg-slate-100 text-slate-700'
-                          }>{o.status}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            o.payment_status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
-                            o.payment_status === 'Partial' ? 'bg-amber-100 text-amber-700' :
-                            'bg-red-100 text-red-700'
-                          }>{o.payment_status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-sm text-slate-500">{o.created_at ? new Date(o.created_at).toLocaleDateString() : '-'}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ===== PAYMENTS TAB ===== */}
-        <TabsContent value="payments" className="mt-4">
-          <Card>
-            <CardContent className="p-0">
-              {payments.length === 0 ? (
-                <div className="p-12 text-center text-slate-400">
-                  <IndianRupee className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No payments found for this client</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Bill No</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead>Received By</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {payments.map((p: any) => (
-                      <TableRow key={p.id}>
-                        <TableCell className="font-mono font-medium text-blue-600">{p.bill_no || p.bill?.bill_no || '-'}</TableCell>
-                        <TableCell>{p.date ? new Date(p.date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell className="text-right font-semibold text-emerald-600">{fmt(p.amount || p.paid_amount)}</TableCell>
-                        <TableCell><Badge variant="outline">{p.method || p.payment_method || '-'}</Badge></TableCell>
-                        <TableCell className="text-sm text-slate-500 max-w-[200px] truncate">{p.reference || '-'}</TableCell>
-                        <TableCell className="text-sm">{p.received_by || '-'}</TableCell>
-                        <TableCell>
-                          <Badge className={p.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
-                            {p.status || 'pending'}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* ===== DISPATCHES TAB ===== */}
         <TabsContent value="dispatches" className="mt-4">
           <Card>
@@ -588,7 +422,7 @@ export default function ClientDetailPage() {
               {dispatches.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <Truck className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No dispatches found for this client</p>
+                  <p>No dispatches found for this vendor</p>
                 </div>
               ) : (
                 <Table>
@@ -610,7 +444,7 @@ export default function ClientDetailPage() {
                         <TableCell>{d.dispatch_date || d.date ? new Date(d.dispatch_date || d.date).toLocaleDateString() : '-'}</TableCell>
                         <TableCell>{d.product || d.items || '-'}</TableCell>
                         <TableCell className="text-right">{d.quantity || 0}</TableCell>
-                        <TableCell className="text-sm">{d.transport_name || d.transport_mode || '-'}</TableCell>
+                        <TableCell className="text-sm">{d.transport_name || d.transporter || d.transport_mode || '-'}</TableCell>
                         <TableCell className="text-sm font-mono">{d.tracking_number || d.lr_number || '-'}</TableCell>
                         <TableCell>
                           <Badge className={
@@ -636,7 +470,7 @@ export default function ClientDetailPage() {
               {transactions.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No finance transactions found for this client</p>
+                  <p>No finance transactions found for this vendor</p>
                 </div>
               ) : (
                 <Table>
@@ -683,91 +517,78 @@ export default function ClientDetailPage() {
           </Card>
         </TabsContent>
 
-        {/* ===== OUTSTANDINGS TAB ===== */}
-        <TabsContent value="outstandings" className="mt-4 space-y-4">
-          {totalOutstanding > 0 && (
+        {/* ===== OUTSTANDING TAB ===== */}
+        <TabsContent value="outstanding" className="mt-4 space-y-4">
+          {outstandingPOs.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="bg-red-500/10 border-red-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-red-600">Total Outstanding</span>
+                    <span className="text-xs font-medium text-red-600">Outstanding Amount</span>
                     <CreditCard className="h-4 w-4 text-red-600" />
                   </div>
-                  <p className="text-2xl font-bold text-red-700">{fmt(totalOutstanding)}</p>
-                  <p className="text-xs text-red-500 mt-1">{outstandings.length} pending bills</p>
+                  <p className="text-2xl font-bold text-red-700">{fmt(outstandingAmount)}</p>
+                  <p className="text-xs text-red-500 mt-1">{outstandingPOs.length} pending POs</p>
                 </CardContent>
               </Card>
               <Card className="bg-orange-500/10 border-orange-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-orange-600">Overdue</span>
+                    <span className="text-xs font-medium text-orange-600">Pending Orders</span>
                     <Clock className="h-4 w-4 text-orange-600" />
                   </div>
-                  <p className="text-2xl font-bold text-orange-700">{overdueCount}</p>
-                  <p className="text-xs text-orange-500 mt-1">overdue bills</p>
+                  <p className="text-2xl font-bold text-orange-700">{outstandingPOs.filter(po => po.status === 'pending' || po.status === 'draft').length}</p>
+                  <p className="text-xs text-orange-500 mt-1">awaiting approval</p>
                 </CardContent>
               </Card>
-              <Card className="bg-amber-500/10 border-amber-200">
+              <Card className="bg-blue-500/10 border-blue-200">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-amber-600">Avg Overdue Days</span>
-                    <Calendar className="h-4 w-4 text-amber-600" />
+                    <span className="text-xs font-medium text-blue-600">In Transit</span>
+                    <Package className="h-4 w-4 text-blue-600" />
                   </div>
-                  <p className="text-2xl font-bold text-amber-700">
-                    {overdueCount > 0 ? Math.round(outstandings.filter(o => o.days_overdue > 0).reduce((s, o) => s + o.days_overdue, 0) / overdueCount) : 0}
-                  </p>
-                  <p className="text-xs text-amber-500 mt-1">days average</p>
+                  <p className="text-2xl font-bold text-blue-700">{outstandingPOs.filter(po => po.status === 'ordered' || po.status === 'approved').length}</p>
+                  <p className="text-xs text-blue-500 mt-1">ordered / in transit</p>
                 </CardContent>
               </Card>
             </div>
           )}
           <Card>
             <CardContent className="p-0">
-              {outstandings.length === 0 ? (
+              {outstandingPOs.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No outstanding balance — all clear!</p>
+                  <p>No outstanding orders — all clear!</p>
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Bill No</TableHead>
+                      <TableHead>PO Number</TableHead>
                       <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Paid</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Overdue</TableHead>
+                      <TableHead>Expected Delivery</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {outstandings.map((o: any) => (
-                      <TableRow key={o.id} className={(o.days_overdue || 0) > 0 ? 'bg-red-50/50' : ''}>
-                        <TableCell className="font-mono font-medium text-blue-600">{o.bill_no}</TableCell>
-                        <TableCell>{o.date ? new Date(o.date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell className="text-right font-semibold">{fmt(o.grand_total)}</TableCell>
-                        <TableCell className="text-right text-emerald-600">{fmt(o.paid_amount)}</TableCell>
-                        <TableCell className="text-right font-bold text-red-600">{fmt(o.balance)}</TableCell>
+                    {outstandingPOs.map((po: any) => (
+                      <TableRow key={`out-${po.id}`}>
+                        <TableCell className="font-mono font-medium text-blue-600">{po.po_number || `PO-${po.id}`}</TableCell>
+                        <TableCell>{po.date ? new Date(po.date).toLocaleDateString('en-IN') : '-'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {o.due_date ? new Date(o.due_date).toLocaleDateString() : '-'}
+                            {po.expected_delivery ? new Date(po.expected_delivery).toLocaleDateString('en-IN') : '-'}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          {(o.days_overdue || 0) > 0 ? (
-                            <span className="text-sm font-semibold text-red-600">{o.days_overdue} days</span>
-                          ) : <span className="text-slate-400">-</span>}
-                        </TableCell>
+                        <TableCell className="text-right font-bold text-red-600">{fmt(Number(po.total_amount) || 0)}</TableCell>
                         <TableCell>
                           <Badge className={
-                            o.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                            o.status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                            o.status === 'cleared' ? 'bg-emerald-100 text-emerald-700' :
+                            po.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
+                            po.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
                             'bg-slate-100 text-slate-700'
-                          }>{o.status}</Badge>
+                          }>{po.status}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}

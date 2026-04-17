@@ -1,7 +1,7 @@
 ﻿import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, FolderOpen, ChevronRight, ChevronDown, Boxes, Tag } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, ChevronRight, ChevronDown, Boxes, Tag, Edit } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -13,7 +13,7 @@ import { useSharedState } from '../contexts/SharedStateContext';
 import { ConfirmDialog } from './ui/confirm-dialog';
 import { productsService } from '../services/products.service';
 
-interface Category { id: string; name: string; subcategories: string[]; }
+interface Category { id: string; name: string; subcategories: string[]; dbId?: number; subDbIds?: Record<string, number>; }
 
 interface ProductManagementProps {
   productCategories?: Category[];
@@ -26,7 +26,6 @@ export default function ProductManagement({ productCategories = [], onCategories
   const { t } = useI18n();
   const { currentUser } = useSharedState();
   const navigate = useNavigate();
-  const businessId = currentUser?.business_id || null;
 
   const [categories, setCategories] = useState<Category[]>(productCategories);
   const [showAddCategory, setShowAddCategory] = useState(false);
@@ -35,43 +34,76 @@ export default function ProductManagement({ productCategories = [], onCategories
   const [newCatName, setNewCatName] = useState('');
   const [newSubName, setNewSubName] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: 'category' | 'subcategory'; id: string; parentId?: string }>({ open: false, type: 'category', id: '' });
-  const [editingCat, setEditingCat] = useState<{ id: string; name: string } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: 'category' | 'subcategory'; id: string; parentId?: string; dbId?: number }>({ open: false, type: 'category', id: '', dbId: undefined });
+  const [editingCat, setEditingCat] = useState<{ id: string; name: string; dbId?: number } | null>(null);
+  const [editingSub, setEditingSub] = useState<{ parentId: string; oldName: string; newName: string; dbId?: number } | null>(null);
 
   useEffect(() => { if (productCategories.length > 0) setCategories(productCategories); }, [productCategories]);
 
-  const save = (cats: Category[]) => { setCategories(cats); onCategoriesChange?.(cats); productsService.saveCategories(cats, businessId); };
+  const updateLocal = (cats: Category[]) => { setCategories(cats); onCategoriesChange?.(cats); };
 
   const toggle = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const handleAddCategory = () => {
+  const handleAddCategory = async () => {
     const name = newCatName.trim();
     if (!name) { toast.error('Category name is required'); return; }
     if (categories.some(c => c.name.toLowerCase() === name.toLowerCase())) { toast.error('Category already exists'); return; }
-    save([...categories, { id: name.toLowerCase().replace(/\s+/g, '-'), name, subcategories: [] }]);
-    setNewCatName(''); setShowAddCategory(false); toast.success('Category added');
+    try {
+      const created = await productsService.createCategory(name);
+      updateLocal([...categories, { id: created.id, name: created.name, dbId: created.dbId, subcategories: [], subDbIds: {} }]);
+      setNewCatName(''); setShowAddCategory(false); toast.success('Category added');
+    } catch (err: any) { toast.error(err.message || 'Failed to add category'); }
   };
 
-  const handleAddSub = () => {
+  const handleAddSub = async () => {
     if (!addSubTarget) return;
     const parts = newSubName.split(',').map(s => s.trim()).filter(Boolean);
     if (!parts.length) { toast.error('Subcategory name is required'); return; }
-    save(categories.map(c => c.id !== addSubTarget ? c : { ...c, subcategories: [...c.subcategories, ...parts.filter(p => !c.subcategories.includes(p))] }));
-    setNewSubName(''); setShowAddSubcategory(false); setAddSubTarget(null);
-    toast.success(parts.length > 1 ? parts.length + ' subcategories added' : 'Subcategory added');
+    const parentCat = categories.find(c => c.id === addSubTarget);
+    if (!parentCat?.dbId) { toast.error('Parent category not found'); return; }
+    try {
+      const created = await productsService.addSubcategories(parentCat.dbId, parts);
+      const newSubDbIds = { ...(parentCat.subDbIds || {}) };
+      created.forEach((s: any) => { newSubDbIds[s.name] = s.id; });
+      const newSubs = [...parentCat.subcategories, ...parts.filter(p => !parentCat.subcategories.includes(p))];
+      updateLocal(categories.map(c => c.id !== addSubTarget ? c : { ...c, subcategories: newSubs, subDbIds: newSubDbIds }));
+      setNewSubName(''); setShowAddSubcategory(false); setAddSubTarget(null);
+      toast.success(parts.length > 1 ? parts.length + ' subcategories added' : 'Subcategory added');
+    } catch (err: any) { toast.error(err.message || 'Failed to add subcategories'); }
   };
 
-  const handleRename = () => {
-    if (!editingCat || !editingCat.name.trim()) return;
-    save(categories.map(c => c.id === editingCat.id ? { ...c, name: editingCat.name.trim() } : c));
-    setEditingCat(null); toast.success('Category renamed');
+  const handleRename = async () => {
+    if (!editingCat || !editingCat.name.trim() || !editingCat.dbId) return;
+    try {
+      await productsService.updateCategory(editingCat.dbId, editingCat.name.trim());
+      const newSlug = editingCat.name.trim().toLowerCase().replace(/\s+/g, '-');
+      updateLocal(categories.map(c => c.id === editingCat.id ? { ...c, id: newSlug, name: editingCat.name.trim() } : c));
+      setEditingCat(null); toast.success('Category renamed');
+    } catch (err: any) { toast.error(err.message || 'Failed to rename category'); }
   };
 
-  const handleDelete = () => {
-    const { type, id, parentId } = deleteConfirm;
+  const handleRenameSub = async () => {
+    if (!editingSub || !editingSub.newName.trim() || !editingSub.dbId) return;
+    try {
+      await productsService.updateCategory(editingSub.dbId, editingSub.newName.trim());
+      updateLocal(categories.map(c => c.id !== editingSub.parentId ? c : {
+        ...c,
+        subcategories: c.subcategories.map(s => s === editingSub.oldName ? editingSub.newName.trim() : s),
+        subDbIds: Object.fromEntries(Object.entries(c.subDbIds || {}).map(([k, v]) => [k === editingSub.oldName ? editingSub.newName.trim() : k, v])),
+      }));
+      setEditingSub(null); toast.success('Subcategory renamed');
+    } catch (err: any) { toast.error(err.message || 'Failed to rename subcategory'); }
+  };
+
+  const handleDelete = async () => {
+    const { type, id, parentId, dbId } = deleteConfirm;
     setDeleteConfirm(prev => ({ ...prev, open: false }));
-    if (type === 'category') { save(categories.filter(c => c.id !== id)); toast.success('Category deleted'); }
-    else if (parentId) { save(categories.map(c => c.id === parentId ? { ...c, subcategories: c.subcategories.filter(s => s !== id) } : c)); toast.success('Subcategory deleted'); }
+    if (!dbId) { toast.error('Cannot delete: missing ID'); return; }
+    try {
+      await productsService.deleteCategory(dbId);
+      if (type === 'category') { updateLocal(categories.filter(c => c.id !== id)); toast.success('Category deleted'); }
+      else if (parentId) { updateLocal(categories.map(c => c.id === parentId ? { ...c, subcategories: c.subcategories.filter(s => s !== id) } : c)); toast.success('Subcategory deleted'); }
+    } catch (err: any) { toast.error(err.message || 'Failed to delete'); }
   };
 
   const totalSub = categories.reduce((s, c) => s + c.subcategories.length, 0);
@@ -108,8 +140,8 @@ export default function ProductManagement({ productCategories = [], onCategories
                 </div>
                 <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                   <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50" onClick={() => { setAddSubTarget(cat.id); setNewSubName(''); setShowAddSubcategory(true); }}><Plus className="w-3 h-3 mr-1" /> Sub</Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-gray-500 hover:bg-gray-100" onClick={() => setEditingCat({ id: cat.id, name: cat.name })}>Rename</Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => setDeleteConfirm({ open: true, type: 'category', id: cat.id })}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-gray-500 hover:bg-gray-100" onClick={() => setEditingCat({ id: cat.id, name: cat.name, dbId: (cat as any).dbId })}>Rename</Button>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => setDeleteConfirm({ open: true, type: 'category', id: cat.id, dbId: (cat as any).dbId })}><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
               </div>
               {isOpen && (
@@ -121,7 +153,10 @@ export default function ProductManagement({ productCategories = [], onCategories
                       {cat.subcategories.map(sub => (
                         <div key={sub} className="flex items-center justify-between px-4 py-2 pl-12 hover:bg-gray-100/50 transition-colors">
                           <div className="flex items-center gap-2"><Tag className="w-3.5 h-3.5 text-violet-400" /><span className="text-sm text-gray-700">{sub}</span></div>
-                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: cat.id })}><Trash2 className="w-3 h-3" /></Button>
+                          <div className="flex items-center gap-1">
+                            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100" onClick={() => setEditingSub({ parentId: cat.id, oldName: sub, newName: sub, dbId: (cat as any).subDbIds?.[sub] })}><Edit className="w-3 h-3" /></Button>
+                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: cat.id, dbId: (cat as any).subDbIds?.[sub] })}><Trash2 className="w-3 h-3" /></Button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -160,7 +195,15 @@ export default function ProductManagement({ productCategories = [], onCategories
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog open={deleteConfirm.open} onOpenChange={open => setDeleteConfirm(p => ({ ...p, open }))} title={deleteConfirm.type === 'category' ? 'Delete Category' : 'Delete Subcategory'} description={deleteConfirm.type === 'category' ? 'Are you sure? This removes the category and all its subcategories.' : 'Are you sure you want to delete this subcategory?'} onConfirm={handleDelete} confirmText="Delete" variant="destructive" />
+      <Dialog open={!!editingSub} onOpenChange={open => !open && setEditingSub(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Rename Subcategory</DialogTitle></DialogHeader>
+          <div className="py-2"><Label className="text-xs text-gray-500">Subcategory Name *</Label><Input value={editingSub?.newName || ''} onChange={e => setEditingSub(p => p ? { ...p, newName: e.target.value } : null)} className="h-9" onKeyDown={e => e.key === 'Enter' && handleRenameSub()} autoFocus /></div>
+          <DialogFooter><Button variant="outline" size="sm" onClick={() => setEditingSub(null)}>Cancel</Button><Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleRenameSub}>Save</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmDialog open={deleteConfirm.open} onOpenChange={open => !open && setDeleteConfirm(p => ({ ...p, open: false }))} title={deleteConfirm.type === 'category' ? 'Delete Category' : 'Delete Subcategory'} description={deleteConfirm.type === 'category' ? 'Are you sure? This removes the category and all its subcategories.' : 'Are you sure you want to delete this subcategory?'} onConfirm={handleDelete} onCancel={() => setDeleteConfirm(p => ({ ...p, open: false }))} confirmLabel="Delete" variant="danger" />
     </div>
   );
 }

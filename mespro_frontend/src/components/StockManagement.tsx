@@ -780,7 +780,7 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
             size="sm"
             onClick={handleAddStock}
             className="bg-blue-600 hover:bg-blue-700 text-white"
-            disabled={!stockForm.name || !stockForm.category || !stockForm.current_stock || !stockForm.reorder_level || !stockForm.buying_price || !stockForm.selling_price}
+            disabled={!stockForm.name || !stockForm.category || !stockForm.current_stock || !stockForm.reorder_level || !stockForm.selling_price}
           >
             <Plus className="w-4 h-4 mr-1" />
             {t('addStockItem')}

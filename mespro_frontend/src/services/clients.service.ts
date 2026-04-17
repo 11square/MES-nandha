@@ -52,6 +52,14 @@ class ClientsService {
     return apiService.get<any[]>(`/clients/${clientId}/outstandings`);
   }
 
+  async getClientDispatches(clientId: string): Promise<any[]> {
+    return apiService.get<any[]>(`/clients/${clientId}/dispatches?limit=100`);
+  }
+
+  async getClientTransactions(clientId: string): Promise<any[]> {
+    return apiService.get<any[]>(`/clients/${clientId}/transactions?limit=100`);
+  }
+
   async getSalesHistory(): Promise<any[]> {
     return apiService.get<any[]>('/sales/history');
   }

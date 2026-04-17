@@ -17,6 +17,7 @@ interface FinanceManagementProps {
 }
 import { financeService } from '../services/finance.service';
 import { clientsService } from '../services/clients.service';
+import { vendorsService } from '../services/vendors.service';
 import { billingService } from '../services/billing.service';
 import { 
   Bell, 
@@ -33,6 +34,7 @@ import {
   Trash2,
   ArrowUpRight,
   ArrowDownRight,
+  ArrowLeft,
   CreditCard,
   Building,
   Calendar,
@@ -42,6 +44,8 @@ import {
 
 interface Transaction {
   id: string;
+  _source?: 'transaction' | 'order' | 'bill' | 'purchase_order';
+  _sourceId?: number;
   date: string;
   type: 'income' | 'expense';
   category: string;
@@ -51,15 +55,22 @@ interface Transaction {
   gst_number: string;
   mobile_number?: string;
   client?: string;
+  client_name?: string;
+  vendor?: string;
+  vendor_name?: string;
+  party_type?: 'client' | 'vendor' | 'others';
   address?: string;
   bill_id?: number;
   payment_type?: string;
   status: 'completed' | 'pending' | 'cancelled';
+  reference?: string;
 }
 
 export default function FinanceManagement({ language = 'en' }: FinanceManagementProps) {
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
   const [searchTerm, setSearchTerm] = useState('');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'income' | 'expense'>('all');
   const [showAddTransaction, setShowAddTransaction] = useState(false);
   const [showViewTransaction, setShowViewTransaction] = useState(false);
   const [showEditTransaction, setShowEditTransaction] = useState(false);
@@ -74,9 +85,10 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
     description: '',
     amount: '',
     payment_method: 'Cash',
-    gst_number: '',
+    party_type: 'client' as 'client' | 'vendor' | 'others',
     mobile_number: '',
     client: '',
+    vendor: '',
     address: '',
     payment_type: '' as '' | 'cash' | 'credit',
     status: 'completed' as 'completed' | 'pending' | 'cancelled'
@@ -99,9 +111,10 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
     description: '',
     amount: '',
     payment_method: 'Cash',
-    gst_number: '',
+    party_type: 'client' as 'client' | 'vendor' | 'others',
     mobile_number: '',
     client: '',
+    vendor: '',
     address: '',
     payment_type: '' as '' | 'cash' | 'credit',
     status: 'completed' as 'completed' | 'pending' | 'cancelled'
@@ -112,15 +125,22 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
 
   const [transactionsData, setTransactionsData] = useState<Transaction[]>([]);
   const [clientsList, setClientsList] = useState<Array<{ id: string; name: string; phone: string; address: string; gst_number: string }>>([]);
+  const [vendorsList, setVendorsList] = useState<Array<{ id: string; name: string; phone: string; address: string; outstanding_amount: number }>>([]);
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [showEditClientDropdown, setShowEditClientDropdown] = useState(false);
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const [showEditVendorDropdown, setShowEditVendorDropdown] = useState(false);
   const clientDropdownRef = useRef<HTMLDivElement>(null);
   const editClientDropdownRef = useRef<HTMLDivElement>(null);
+  const vendorDropdownRef = useRef<HTMLDivElement>(null);
+  const editVendorDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (clientDropdownRef.current && !clientDropdownRef.current.contains(e.target as Node)) setShowClientDropdown(false);
       if (editClientDropdownRef.current && !editClientDropdownRef.current.contains(e.target as Node)) setShowEditClientDropdown(false);
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(e.target as Node)) setShowVendorDropdown(false);
+      if (editVendorDropdownRef.current && !editVendorDropdownRef.current.contains(e.target as Node)) setShowEditVendorDropdown(false);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -194,7 +214,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   const refreshFinance = useCallback(async () => {
     try {
       const [txData, rcData, outData, summaryData, billsData] = await Promise.all([
-        financeService.getTransactions(),
+        financeService.getAllTransactions(),
         financeService.getReceipts(),
         clientsService.getCreditOutstandings({ page: 1, limit: 10000 }),
         financeService.getSummary(),
@@ -228,6 +248,16 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         gst_number: c.gst_number || '',
       })));
     }).catch(() => {});
+    vendorsService.getVendors().then(data => {
+      const items = Array.isArray(data) ? data : (data as any)?.items || [];
+      setVendorsList(items.map((v: any) => ({
+        id: String(v.id),
+        name: v.name || '',
+        phone: v.phone || '',
+        address: v.address || '',
+        outstanding_amount: Number(v.outstanding_amount || 0),
+      })));
+    }).catch(() => {});
   }, []);
 
   const filteredClientsList = clientsList.filter(c =>
@@ -235,6 +265,12 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   );
   const filteredEditClientsList = clientsList.filter(c =>
     c.name.toLowerCase().includes((editTransactionForm.client || '').toLowerCase())
+  );
+  const filteredVendorsList = vendorsList.filter(v =>
+    v.name.toLowerCase().includes((transactionForm.vendor || '').toLowerCase())
+  );
+  const filteredEditVendorsList = vendorsList.filter(v =>
+    v.name.toLowerCase().includes((editTransactionForm.vendor || '').toLowerCase())
   );
 
   // Compute selected client's total credit outstanding balance
@@ -245,6 +281,14 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       .reduce((sum: number, o: any) => sum + Math.max(0, Number(o.balance || 0)), 0);
   };
   const selectedClientBalance = getClientCreditBalance(transactionForm.client);
+
+  // Compute selected vendor's outstanding balance
+  const getVendorOutstanding = (vendorName: string) => {
+    if (!vendorName) return 0;
+    const vendor = vendorsList.find(v => v.name.toLowerCase() === vendorName.toLowerCase());
+    return vendor ? vendor.outstanding_amount : 0;
+  };
+  const selectedVendorBalance = getVendorOutstanding(transactionForm.vendor);
 
   const [receiptForm, setReceiptForm] = useState({
     bill_no: '',
@@ -308,9 +352,10 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       description: '',
       amount: '',
       payment_method: 'Cash',
-      gst_number: '',
+      party_type: 'client',
       mobile_number: '',
       client: '',
+      vendor: '',
       address: '',
       payment_type: '' as '' | 'cash' | 'credit',
       status: 'completed'
@@ -324,11 +369,9 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       type: { required: true },
       category: { required: true },
       amount: { required: true, numeric: true, min: 0 },
-      description: { required: true },
       payment_method: { required: true },
     });
     if (Object.keys(validationErrors).length) { setTxErrors(validationErrors); return; }
-    if (transactionForm.gst_number && validateGstNumber(transactionForm.gst_number)) { setGstError(validateGstNumber(transactionForm.gst_number)); return; }
     try {
       await financeService.createTransaction({
         date: transactionForm.date,
@@ -337,15 +380,24 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         description: transactionForm.description,
         amount: parseFloat(transactionForm.amount) || 0,
         payment_method: transactionForm.payment_method,
-        gst_number: transactionForm.gst_number,
+        party_type: transactionForm.party_type,
         mobile_number: transactionForm.mobile_number,
-        client: transactionForm.client,
+        client: transactionForm.party_type === 'client' ? transactionForm.client : undefined,
+        vendor: transactionForm.party_type === 'vendor' ? transactionForm.vendor : undefined,
         address: transactionForm.address,
         payment_type: transactionForm.payment_type || undefined,
         status: transactionForm.status,
       });
       toast.success('Transaction created successfully');
       await refreshFinance();
+      // Refresh vendor list to get updated outstanding amounts
+      vendorsService.getVendors().then(data => {
+        const items = Array.isArray(data) ? data : (data as any)?.items || [];
+        setVendorsList(items.map((v: any) => ({
+          id: String(v.id), name: v.name || '', phone: v.phone || '',
+          address: v.address || '', outstanding_amount: Number(v.outstanding_amount || 0),
+        })));
+      }).catch(() => {});
       setShowAddTransaction(false);
       resetTransactionForm();
     } catch (err: any) {
@@ -381,10 +433,15 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   };
 
   const handleViewTransaction = async (transaction: Transaction) => {
-    try {
-      const data = await financeService.getTransactionById(String(transaction.id));
-      setSelectedTransaction((data as Transaction) || transaction);
-    } catch {
+    if (!transaction._source || transaction._source === 'transaction') {
+      try {
+        const rawId = String(transaction.id).replace(/^tx-/, '');
+        const data = await financeService.getTransactionById(rawId);
+        setSelectedTransaction((data as Transaction) || transaction);
+      } catch {
+        setSelectedTransaction(transaction);
+      }
+    } else {
       setSelectedTransaction(transaction);
     }
     setShowViewTransaction(true);
@@ -392,35 +449,40 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
 
   const handleEditTransactionOpen = async (transaction: Transaction) => {
     try {
-      const data = await financeService.getTransactionById(String(transaction.id));
+      // Extract numeric ID from prefixed id (e.g. "tx-123" → "123")
+      const rawId = String(transaction.id).replace(/^tx-/, '');
+      const data = await financeService.getTransactionById(rawId);
       const tx = (data as Transaction) || transaction;
       setEditTransactionForm({
-        id: String(tx.id),
+        id: rawId,
         date: tx.date ? String(tx.date).split('T')[0] : new Date().toISOString().split('T')[0],
         type: tx.type,
         category: tx.category || '',
         description: tx.description || '',
         amount: String(tx.amount ?? ''),
         payment_method: tx.payment_method || 'Cash',
-        gst_number: tx.gst_number || '',
+        party_type: ((tx as any).party_type || (tx.vendor_name ? 'vendor' : 'client')) as 'client' | 'vendor' | 'others',
         mobile_number: tx.mobile_number || '',
-        client: tx.client_name || tx.client || '',
+        client: (tx as any).client_name || tx.client || '',
+        vendor: (tx as any).vendor_name || tx.vendor || '',
         address: tx.address || '',
         payment_type: ((tx as any).payment_type || '') as '' | 'cash' | 'credit',
         status: (tx.status as any) || 'completed',
       });
     } catch {
+      const rawId = String(transaction.id).replace(/^tx-/, '');
       setEditTransactionForm({
-        id: String(transaction.id),
+        id: rawId,
         date: transaction.date ? String(transaction.date).split('T')[0] : new Date().toISOString().split('T')[0],
         type: transaction.type,
         category: transaction.category || '',
         description: transaction.description || '',
         amount: String(transaction.amount ?? ''),
         payment_method: transaction.payment_method || 'Cash',
-        gst_number: transaction.gst_number || '',
+        party_type: ((transaction as any).party_type || (transaction.vendor_name ? 'vendor' : 'client')) as 'client' | 'vendor' | 'others',
         mobile_number: transaction.mobile_number || '',
-        client: transaction.client_name || transaction.client || '',
+        client: (transaction as any).client_name || transaction.client || '',
+        vendor: (transaction as any).vendor_name || transaction.vendor || '',
         address: transaction.address || '',
         payment_type: (transaction.payment_type || '') as '' | 'cash' | 'credit',
         status: (transaction.status as any) || 'completed',
@@ -437,11 +499,9 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       type: { required: true },
       category: { required: true },
       amount: { required: true, numeric: true, min: 0 },
-      description: { required: true },
       payment_method: { required: true },
     });
     if (Object.keys(validationErrors).length) { setEditTxErrors(validationErrors); return; }
-    if (editTransactionForm.gst_number && validateGstNumber(editTransactionForm.gst_number)) { setEditGstError(validateGstNumber(editTransactionForm.gst_number)); return; }
 
     try {
       await financeService.updateTransaction(editTransactionForm.id, {
@@ -451,9 +511,10 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         description: editTransactionForm.description,
         amount: parseFloat(editTransactionForm.amount) || 0,
         payment_method: editTransactionForm.payment_method,
-        gst_number: editTransactionForm.gst_number,
+        party_type: editTransactionForm.party_type,
         mobile_number: editTransactionForm.mobile_number,
-        client: editTransactionForm.client,
+        client: editTransactionForm.party_type === 'client' ? editTransactionForm.client : undefined,
+        vendor: editTransactionForm.party_type === 'vendor' ? editTransactionForm.vendor : undefined,
         address: editTransactionForm.address,
         payment_type: editTransactionForm.payment_type || undefined,
         status: editTransactionForm.status,
@@ -468,7 +529,9 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
 
   const confirmDeleteTransaction = async () => {
     try {
-      await financeService.deleteTransaction(deleteConfirm.id);
+      // Extract numeric ID from prefixed id (e.g. "tx-123" → "123")
+      const rawId = deleteConfirm.id.replace(/^tx-/, '');
+      await financeService.deleteTransaction(rawId);
       toast.success('Transaction deleted successfully');
       await refreshFinance();
     } catch (err: any) {
@@ -492,6 +555,13 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   const totalIncome = computedIncome || summary.totalIncome;
   const totalExpense = computedExpense || summary.totalExpense;
 
+  // Filter transactions by source and type
+  const filteredTransactions = transactionsData.filter(tx => {
+    if (sourceFilter !== 'all' && (tx._source || 'transaction') !== sourceFilter) return false;
+    if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
+    return true;
+  });
+
   const totalReceivable = computedPending || outstandings
     .filter((item: any) => getOutstandingBalance(item) > 0)
     .reduce((sum: number, item: any) => sum + getOutstandingBalance(item), 0);
@@ -501,6 +571,443 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
 
   return (
     <div className="space-y-6">
+      {showAddTransaction ? (
+      /* ===== Full-Page Add Transaction Form ===== */
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" onClick={() => { setShowAddTransaction(false); resetTransactionForm(); setTxErrors({}); }}>
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold">{t('addNewTransaction')}</h1>
+            <p className="text-sm text-muted-foreground">Fill in the details to record a new transaction</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Form Fields (2/3) */}
+          <div className="lg:col-span-2 space-y-4">
+            <div className="rounded-lg border bg-white p-6 space-y-4 shadow-sm">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('date')} *</Label>
+                <Input 
+                  type="date"
+                  value={transactionForm.date}
+                  onChange={(e) => { setTransactionForm({...transactionForm, date: e.target.value}); setTxErrors(prev => ({...prev, date: ''})); }}
+                />
+                <FieldError message={txErrors.date} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('type')} *</Label>
+                <Select 
+                  value={transactionForm.type} 
+                  onValueChange={(value: 'income' | 'expense') => { setTransactionForm({...transactionForm, type: value}); setTxErrors(prev => ({...prev, type: ''})); }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="income">
+                      <span className="flex items-center gap-2">
+                        <ArrowDownRight className="w-4 h-4 text-emerald-600" />
+                        {t('income')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="expense">
+                      <span className="flex items-center gap-2">
+                        <ArrowUpRight className="w-4 h-4 text-red-600" />
+                        {t('expense')}
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {txErrors.type && <FieldError message={txErrors.type} />}
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('category')} *</Label>
+                {showAddCategory ? (
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={language === 'en' ? 'New category name' : 'புதிய வகை பெயர்'}
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(newCategoryName, true); } }}
+                      autoFocus
+                    />
+                    <Button type="button" size="sm" onClick={() => handleAddCategory(newCategoryName, true)} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                    <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} className="h-9 px-3">
+                      ✕
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Select 
+                      value={transactionForm.category} 
+                      onValueChange={(value: string) => { setTransactionForm({...transactionForm, category: value}); setTxErrors(prev => ({...prev, category: ''})); }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={t('selectCategory')} />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-56 overflow-y-auto">
+                        {allCategories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button type="button" size="sm" variant="outline" onClick={() => setShowAddCategory(true)} title="Add new category" className="h-9 px-3">
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
+                <FieldError message={txErrors.category} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('amount')} *</Label>
+                <Input 
+                  type="number"
+                  value={transactionForm.amount}
+                  onChange={(e) => { setTransactionForm({...transactionForm, amount: e.target.value}); setTxErrors(prev => ({...prev, amount: ''})); }}
+                  onKeyDown={blockInvalidNumberKeys}
+                  placeholder="0.00"
+                />
+                <FieldError message={txErrors.amount} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('paymentMethod')} *</Label>
+                <Select 
+                  value={transactionForm.payment_method} 
+                  onValueChange={(value: string) => { setTransactionForm({...transactionForm, payment_method: value}); setTxErrors(prev => ({...prev, payment_method: ''})); }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {paymentMethods.map((method) => (
+                      <SelectItem key={method} value={method}>{method}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {txErrors.payment_method && <FieldError message={txErrors.payment_method} />}
+              </div>
+              <div className="space-y-2">
+                <Label>{t('mobileNumber')}</Label>
+                <Input 
+                  value={transactionForm.mobile_number}
+                  onChange={(e) => setTransactionForm({...transactionForm, mobile_number: e.target.value})}
+                  placeholder="+91 9876543210"
+                  type="tel"
+                />
+              </div>
+            </div>
+
+            {/* Party Type Toggle + Client/Vendor Search inline */}
+            <div className="space-y-2">
+              <Label>Select Client or Vendor</Label>
+              <div className="flex gap-2 items-start">
+                <div className="flex gap-1 shrink-0 pt-0.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={transactionForm.party_type === 'client' ? 'default' : 'outline'}
+                    className={transactionForm.party_type === 'client' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                    onClick={() => setTransactionForm(prev => ({ ...prev, party_type: 'client', vendor: '' }))}
+                  >
+                    <Building className="w-4 h-4 mr-1" /> Client
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={transactionForm.party_type === 'vendor' ? 'default' : 'outline'}
+                    className={transactionForm.party_type === 'vendor' ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}
+                    onClick={() => setTransactionForm(prev => ({ ...prev, party_type: 'vendor', client: '' }))}
+                  >
+                    <Building className="w-4 h-4 mr-1" /> Vendor
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={transactionForm.party_type === 'others' ? 'default' : 'outline'}
+                    className={transactionForm.party_type === 'others' ? 'bg-slate-600 hover:bg-slate-700 text-white' : ''}
+                    onClick={() => setTransactionForm(prev => ({ ...prev, party_type: 'others', client: '', vendor: '' }))}
+                  >
+                    Others
+                  </Button>
+                </div>
+              {transactionForm.party_type === 'client' ? (
+                <div className="flex-1 relative" ref={clientDropdownRef}>
+                  <Input 
+                    value={transactionForm.client}
+                    onChange={(e) => { setTransactionForm({...transactionForm, client: e.target.value}); setShowClientDropdown(true); }}
+                    onFocus={() => setShowClientDropdown(true)}
+                    placeholder="Search client..."
+                    autoComplete="off"
+                  />
+                  {showClientDropdown && filteredClientsList.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredClientsList.map(c => {
+                        const cBal = getClientCreditBalance(c.name);
+                        return (
+                          <button
+                            key={c.id}
+                            type="button"
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-100 last:border-b-0"
+                            onClick={() => {
+                              setTransactionForm(prev => ({
+                                ...prev,
+                                client: c.name,
+                                address: c.address || prev.address,
+                                mobile_number: c.phone || prev.mobile_number,
+                                payment_type: cBal > 0 ? 'credit' : 'cash',
+                              }));
+                              setShowClientDropdown(false);
+                            }}
+                          >
+                            <div className="flex justify-between items-center">
+                              <div className="font-medium">{c.name}</div>
+                              {cBal > 0 && <span className="text-xs font-medium text-orange-600">₹{cBal.toLocaleString()} due</span>}
+                            </div>
+                            {c.phone && <div className="text-xs text-slate-500">{c.phone}</div>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : transactionForm.party_type === 'vendor' ? (
+                <div className="flex-1 relative" ref={vendorDropdownRef}>
+                  <Input 
+                    value={transactionForm.vendor}
+                    onChange={(e) => { setTransactionForm({...transactionForm, vendor: e.target.value}); setShowVendorDropdown(true); }}
+                    onFocus={() => setShowVendorDropdown(true)}
+                    placeholder="Search vendor..."
+                    autoComplete="off"
+                  />
+                  {showVendorDropdown && filteredVendorsList.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredVendorsList.map(v => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-purple-50 text-sm border-b border-slate-100 last:border-b-0"
+                          onClick={() => {
+                            setTransactionForm(prev => ({
+                              ...prev,
+                              vendor: v.name,
+                              address: v.address || prev.address,
+                              mobile_number: v.phone || prev.mobile_number,
+                            }));
+                            setShowVendorDropdown(false);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="font-medium">{v.name}</div>
+                            {v.outstanding_amount > 0 && <span className="text-xs font-medium text-orange-600">₹{v.outstanding_amount.toLocaleString()} due</span>}
+                          </div>
+                          {v.phone && <div className="text-xs text-slate-500">{v.phone}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{t('address')}</Label>
+                <Input 
+                  value={transactionForm.address}
+                  onChange={(e) => setTransactionForm({...transactionForm, address: e.target.value})}
+                  placeholder="Enter address"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t('status')}</Label>
+                <Select 
+                  value={transactionForm.status} 
+                  onValueChange={(value: 'completed' | 'pending' | 'cancelled') => setTransactionForm({...transactionForm, status: value})}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="completed">
+                      <span className="flex items-center gap-2">
+                        <CheckCircle className="w-4 h-4 text-emerald-600" />
+                        {t('completed')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="pending">
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-amber-600" />
+                        {t('pending')}
+                      </span>
+                    </SelectItem>
+                    <SelectItem value="cancelled">
+                      <span className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-red-600" />
+                        {t('cancelled')}
+                      </span>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t('description')}</Label>
+              <Textarea 
+                value={transactionForm.description}
+                onChange={(e) => { setTransactionForm({...transactionForm, description: e.target.value}); }}
+                placeholder="Optional description"
+                rows={2}
+              />
+            </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" onClick={() => { setShowAddTransaction(false); resetTransactionForm(); setTxErrors({}); }}>
+                {t('cancel')}
+              </Button>
+              <Button 
+                onClick={handleAddTransaction} 
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                disabled={!transactionForm.date || !transactionForm.category || !transactionForm.amount}
+              >
+                {t('addTransaction')}
+              </Button>
+            </div>
+          </div>
+
+          {/* Right: Payment Summary Panel (1/3) */}
+          <div className="space-y-4">
+            <div className="rounded-lg border bg-white shadow-sm">
+              <div className="py-3 px-4 border-b border-slate-200">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Payment Summary</h3>
+              </div>
+              <div className="px-4 pb-4 pt-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Type</span>
+                  <span className={`font-medium ${transactionForm.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {transactionForm.type === 'income' ? 'Income' : 'Expense'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Method</span>
+                  <span className="font-medium">{transactionForm.payment_method || '—'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Category</span>
+                  <span className="font-medium truncate ml-2">{transactionForm.category || '—'}</span>
+                </div>
+                {transactionForm.party_type !== 'others' && (transactionForm.client || transactionForm.vendor) && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">{transactionForm.party_type === 'client' ? 'Client' : 'Vendor'}</span>
+                    <span className="font-medium truncate ml-2">{transactionForm.client || transactionForm.vendor}</span>
+                  </div>
+                )}
+                <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
+                  <span>Amount</span>
+                  <span className={transactionForm.type === 'income' ? 'text-emerald-700' : 'text-red-700'}>
+                    ₹{parseFloat(transactionForm.amount || '0').toLocaleString()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Outstanding Balance Card — Client */}
+            {transactionForm.party_type === 'client' && transactionForm.client && selectedClientBalance > 0 && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 shadow-sm">
+                <div className="py-3 px-4 border-b border-orange-200">
+                  <h3 className="text-sm font-semibold text-orange-700 uppercase tracking-wide">Outstanding Balance</h3>
+                </div>
+                <div className="px-4 pb-4 pt-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-orange-600">Client</span>
+                    <span className="font-medium text-gray-800 truncate ml-2">{transactionForm.client}</span>
+                  </div>
+                  <div className="flex justify-between font-bold border-t border-orange-200 pt-2 mt-1">
+                    <span className="text-orange-700">Outstanding</span>
+                    <span className="text-orange-700">₹{selectedClientBalance.toLocaleString()}</span>
+                  </div>
+                  {transactionForm.type === 'income' && transactionForm.amount && parseFloat(transactionForm.amount) > 0 && (
+                    <div className="flex justify-between border-t border-orange-200 pt-2 mt-1">
+                      <span className="text-orange-600">After Payment</span>
+                      <span className={`font-bold ${(selectedClientBalance - (parseFloat(transactionForm.amount) || 0)) <= 0 ? 'text-emerald-600' : 'text-orange-700'}`}>
+                        ₹{Math.max(0, selectedClientBalance - (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {transactionForm.type === 'expense' && transactionForm.amount && parseFloat(transactionForm.amount) > 0 && (
+                    <div className="flex justify-between border-t border-orange-200 pt-2 mt-1">
+                      <span className="text-orange-600">After Expense</span>
+                      <span className="font-bold text-red-600">
+                        ₹{(selectedClientBalance + (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Outstanding Balance Card — Vendor */}
+            {transactionForm.party_type === 'vendor' && transactionForm.vendor && selectedVendorBalance > 0 && (
+              <div className="rounded-lg border border-orange-200 bg-orange-50 shadow-sm">
+                <div className="py-3 px-4 border-b border-orange-200">
+                  <h3 className="text-sm font-semibold text-orange-700 uppercase tracking-wide">Outstanding Balance</h3>
+                </div>
+                <div className="px-4 pb-4 pt-3 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-orange-600">Vendor</span>
+                    <span className="font-medium text-gray-800 truncate ml-2">{transactionForm.vendor}</span>
+                  </div>
+                  <div className="flex justify-between font-bold border-t border-orange-200 pt-2 mt-1">
+                    <span className="text-orange-700">Outstanding</span>
+                    <span className="text-orange-700">₹{selectedVendorBalance.toLocaleString()}</span>
+                  </div>
+                  {transactionForm.type === 'income' && transactionForm.amount && parseFloat(transactionForm.amount) > 0 && (
+                    <div className="flex justify-between border-t border-orange-200 pt-2 mt-1">
+                      <span className="text-orange-600">After Payment</span>
+                      <span className={`font-bold ${(selectedVendorBalance - (parseFloat(transactionForm.amount) || 0)) <= 0 ? 'text-emerald-600' : 'text-orange-700'}`}>
+                        ₹{Math.max(0, selectedVendorBalance - (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  {transactionForm.type === 'expense' && transactionForm.amount && parseFloat(transactionForm.amount) > 0 && (
+                    <div className="flex justify-between border-t border-orange-200 pt-2 mt-1">
+                      <span className="text-orange-600">After Expense</span>
+                      <span className="font-bold text-red-600">
+                        ₹{(selectedVendorBalance + (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Status Preview */}
+            <div className="rounded-lg border bg-white shadow-sm">
+              <div className="py-3 px-4 border-b border-slate-200">
+                <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Status</h3>
+              </div>
+              <div className="px-4 pb-4 pt-3 flex flex-col items-center gap-2">
+                {transactionForm.status === 'completed' && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-sm font-medium"><CheckCircle className="w-4 h-4" /> Completed</span>}
+                {transactionForm.status === 'pending' && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-sm font-medium"><Clock className="w-4 h-4" /> Pending</span>}
+                {transactionForm.status === 'cancelled' && <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-700 text-sm font-medium"><AlertCircle className="w-4 h-4" /> Cancelled</span>}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      ) : (
+      <>
       {/* Header */}
       <div className="flex justify-between items-start">
         <div>
@@ -617,6 +1124,53 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                 </div>
                 
               </div>
+              {/* Type & Source filters */}
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                {[
+                  { key: 'all' as const, label: 'All Types' },
+                  { key: 'income' as const, label: 'Income' },
+                  { key: 'expense' as const, label: 'Expense' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setTypeFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                      typeFilter === f.key
+                        ? f.key === 'income' ? 'bg-emerald-600 text-white border-emerald-600'
+                          : f.key === 'expense' ? 'bg-red-600 text-white border-red-600'
+                          : 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                {[
+                  { key: 'all', label: 'All' },
+                  { key: 'transaction', label: 'Manual' },
+                  { key: 'order', label: 'Orders' },
+                  { key: 'bill', label: 'Invoices' },
+                  { key: 'purchase_order', label: 'Purchase Orders' },
+                ].map(f => (
+                  <button
+                    key={f.key}
+                    onClick={() => setSourceFilter(f.key)}
+                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                      sourceFilter === f.key
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {f.label}
+                    {f.key !== 'all' && (
+                      <span className="ml-1.5 text-[10px] opacity-80">
+                        ({transactionsData.filter(tx => (tx._source || 'transaction') === f.key).length})
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -625,7 +1179,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   <tr>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Date</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Type</th>
-                    <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Client</th>
+                    <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Client / Vendor</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Category</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Description</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Amount</th>
@@ -635,7 +1189,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {transactionsData.map((transaction) => (
+                  {filteredTransactions.map((transaction) => (
                     <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-700">
@@ -659,11 +1213,29 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-700 font-medium">{transaction.client_name || transaction.client || '—'}</div>
+                        <div className="text-sm text-gray-700 font-medium">{transaction.vendor_name || transaction.client_name || transaction.client || transaction.vendor || '—'}</div>
+                        {(transaction as any).party_type && <div className="text-xs text-gray-400">{(transaction as any).party_type === 'vendor' ? 'Vendor' : 'Client'}</div>}
                         {transaction.address && <div className="text-xs text-gray-500 truncate max-w-[150px]">{transaction.address}</div>}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">{transaction.category}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px] truncate">{transaction.description}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-sm text-gray-600">{transaction.category}</span>
+                          {transaction._source && transaction._source !== 'transaction' && (
+                            <span className={`inline-flex items-center w-fit px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              transaction._source === 'order' ? 'bg-blue-50 text-blue-600 border border-blue-200' :
+                              transaction._source === 'bill' ? 'bg-violet-50 text-violet-600 border border-violet-200' :
+                              transaction._source === 'purchase_order' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                              'bg-gray-50 text-gray-600 border border-gray-200'
+                            }`}>
+                              {transaction._source === 'order' ? 'Order' : transaction._source === 'bill' ? 'Invoice' : transaction._source === 'purchase_order' ? 'PO' : 'Transaction'}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700 max-w-[200px]">
+                        <div className="truncate">{transaction.description}</div>
+                        {transaction.reference && <div className="text-xs text-gray-400 truncate">{transaction.reference}</div>}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`text-sm font-medium ${
                           transaction.type === 'income' ? 'text-emerald-600' : 'text-red-600'
@@ -705,20 +1277,24 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                           >
                             <Eye className="w-4 h-4 text-gray-600" />
                           </button>
-                          <button
-                            className="p-1.5 hover:bg-gray-100 rounded transition-colors"
-                            title="Edit"
-                            onClick={() => handleEditTransactionOpen(transaction)}
-                          >
-                            <Edit className="w-4 h-4 text-gray-600" />
-                          </button>
-                          <button
-                            className="p-1.5 hover:bg-red-50 rounded transition-colors"
-                            title="Delete"
-                            onClick={() => setDeleteConfirm({ open: true, id: String(transaction.id) })}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-600" />
-                          </button>
+                          {(!transaction._source || transaction._source === 'transaction') && (
+                            <>
+                              <button
+                                className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                                title="Edit"
+                                onClick={() => handleEditTransactionOpen(transaction)}
+                              >
+                                <Edit className="w-4 h-4 text-gray-600" />
+                              </button>
+                              <button
+                                className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                                title="Delete"
+                                onClick={() => setDeleteConfirm({ open: true, id: String(transaction.id) })}
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -825,8 +1401,8 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                 <p className="text-sm font-medium">{toCapitalized(selectedTransaction.type)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-500">Client</p>
-                <p className="text-sm font-medium">{selectedTransaction.client_name || selectedTransaction.client || '—'}</p>
+                <p className="text-xs text-gray-500">{(selectedTransaction as any).party_type === 'vendor' ? 'Vendor' : 'Client'}</p>
+                <p className="text-sm font-medium">{(selectedTransaction as any).vendor_name || selectedTransaction.client_name || selectedTransaction.client || selectedTransaction.vendor || '—'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Category</p>
@@ -853,10 +1429,6 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
               <div>
                 <p className="text-xs text-gray-500">Status</p>
                 <p className="text-sm font-medium">{toCapitalized(selectedTransaction.status || '')}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">GST Number</p>
-                <p className="text-sm font-medium font-mono">{selectedTransaction.gst_number || '—'}</p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Mobile Number</p>
@@ -946,12 +1518,6 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label>{t('description')} *</Label>
-              <Textarea value={editTransactionForm.description} onChange={(e) => { setEditTransactionForm({ ...editTransactionForm, description: e.target.value }); setEditTxErrors(prev => ({ ...prev, description: '' })); }} rows={2} />
-              <FieldError message={editTxErrors.description} />
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>{t('paymentMethod')} *</Label>
@@ -976,36 +1542,119 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Payment Type</Label>
-                <Select value={editTransactionForm.payment_type} onValueChange={(value: 'cash' | 'credit') => setEditTransactionForm({ ...editTransactionForm, payment_type: value })}>
-                  <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">
-                      <span className="flex items-center gap-2"><DollarSign className="w-4 h-4 text-emerald-600" />Cash</span>
-                    </SelectItem>
-                    <SelectItem value="credit">
-                      <span className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-orange-600" />Credit</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             <div className="space-y-2">
-              <Label>{t('gstNumber')}</Label>
-              <Input 
-                value={editTransactionForm.gst_number} 
-                onChange={(e) => { 
-                  const val = e.target.value.toUpperCase();
-                  setEditTransactionForm({ ...editTransactionForm, gst_number: val });
-                  setEditGstError(val ? validateGstNumber(val) : '');
-                }}
-                placeholder={t('enterGstNumber')}
-                maxLength={15}
-                className={editGstError ? 'border-red-500' : ''}
-              />
-              {editGstError && <p className="text-xs text-red-500">{editGstError}</p>}
+              <Label>{t('description')}</Label>
+              <Textarea value={editTransactionForm.description} onChange={(e) => { setEditTransactionForm({ ...editTransactionForm, description: e.target.value }); setEditTxErrors(prev => ({ ...prev, description: '' })); }} rows={2} placeholder="Optional description" />
+            </div>
+
+            {/* Party Type Toggle + Client/Vendor Search inline */}
+            <div className="space-y-2">
+              <Label>Select Client or Vendor</Label>
+              <div className="flex gap-2 items-start">
+                <div className="flex gap-1 shrink-0 pt-0.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={editTransactionForm.party_type === 'client' ? 'default' : 'outline'}
+                    className={editTransactionForm.party_type === 'client' ? 'bg-blue-600 hover:bg-blue-700 text-white' : ''}
+                    onClick={() => setEditTransactionForm(prev => ({ ...prev, party_type: 'client', vendor: '' }))}
+                  >
+                    <Building className="w-4 h-4 mr-1" /> Client
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={editTransactionForm.party_type === 'vendor' ? 'default' : 'outline'}
+                    className={editTransactionForm.party_type === 'vendor' ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}
+                    onClick={() => setEditTransactionForm(prev => ({ ...prev, party_type: 'vendor', client: '' }))}
+                  >
+                    <Building className="w-4 h-4 mr-1" /> Vendor
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={editTransactionForm.party_type === 'others' ? 'default' : 'outline'}
+                    className={editTransactionForm.party_type === 'others' ? 'bg-slate-600 hover:bg-slate-700 text-white' : ''}
+                    onClick={() => setEditTransactionForm(prev => ({ ...prev, party_type: 'others', client: '', vendor: '' }))}
+                  >
+                    Others
+                  </Button>
+                </div>
+              {editTransactionForm.party_type === 'client' ? (
+                <div className="flex-1 relative" ref={editClientDropdownRef}>
+                  <Input 
+                    value={editTransactionForm.client}
+                    onChange={(e) => { setEditTransactionForm({ ...editTransactionForm, client: e.target.value }); setShowEditClientDropdown(true); }}
+                    onFocus={() => setShowEditClientDropdown(true)}
+                    placeholder="Search client..."
+                    autoComplete="off"
+                  />
+                  {showEditClientDropdown && filteredEditClientsList.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredEditClientsList.map(c => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-100 last:border-b-0"
+                          onClick={() => {
+                            const cBal = getClientCreditBalance(c.name);
+                            setEditTransactionForm(prev => ({
+                              ...prev,
+                              client: c.name,
+                              address: c.address || prev.address,
+                              mobile_number: c.phone || prev.mobile_number,
+                              payment_type: cBal > 0 ? 'credit' : 'cash',
+                            }));
+                            setShowEditClientDropdown(false);
+                          }}
+                        >
+                          <div className="font-medium">{c.name}</div>
+                          {c.phone && <div className="text-xs text-slate-500">{c.phone}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : editTransactionForm.party_type === 'vendor' ? (
+                <div className="flex-1 relative" ref={editVendorDropdownRef}>
+                  <Input 
+                    value={editTransactionForm.vendor}
+                    onChange={(e) => { setEditTransactionForm({ ...editTransactionForm, vendor: e.target.value }); setShowEditVendorDropdown(true); }}
+                    onFocus={() => setShowEditVendorDropdown(true)}
+                    placeholder="Search vendor..."
+                    autoComplete="off"
+                  />
+                  {showEditVendorDropdown && filteredEditVendorsList.length > 0 && (
+                    <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {filteredEditVendorsList.map(v => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 hover:bg-purple-50 text-sm border-b border-slate-100 last:border-b-0"
+                          onClick={() => {
+                            setEditTransactionForm(prev => ({
+                              ...prev,
+                              vendor: v.name,
+                              address: v.address || prev.address,
+                              mobile_number: v.phone || prev.mobile_number,
+                            }));
+                            setShowEditVendorDropdown(false);
+                          }}
+                        >
+                          <div className="flex justify-between items-center">
+                            <div className="font-medium">{v.name}</div>
+                            {v.outstanding_amount > 0 && <span className="text-xs font-medium text-orange-600">₹{v.outstanding_amount.toLocaleString()} due</span>}
+                          </div>
+                          {v.phone && <div className="text-xs text-slate-500">{v.phone}</div>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -1017,50 +1666,14 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   type="tel"
                 />
               </div>
-              <div className="space-y-2 relative" ref={editClientDropdownRef}>
-                <Label>{t('client')}</Label>
+              <div className="space-y-2">
+                <Label>{t('address')}</Label>
                 <Input 
-                  value={editTransactionForm.client}
-                  onChange={(e) => { setEditTransactionForm({ ...editTransactionForm, client: e.target.value }); setShowEditClientDropdown(true); }}
-                  onFocus={() => setShowEditClientDropdown(true)}
-                  placeholder="Search or enter client name"
-                  autoComplete="off"
+                  value={editTransactionForm.address}
+                  onChange={(e) => setEditTransactionForm({ ...editTransactionForm, address: e.target.value })}
+                  placeholder="Enter address"
                 />
-                {showEditClientDropdown && filteredEditClientsList.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {filteredEditClientsList.map(c => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-100 last:border-b-0"
-                        onClick={() => {
-                          const cBal = getClientCreditBalance(c.name);
-                          setEditTransactionForm(prev => ({
-                            ...prev,
-                            client: c.name,
-                            address: c.address || prev.address,
-                            mobile_number: c.phone || prev.mobile_number,
-                            gst_number: c.gst_number || prev.gst_number,
-                            payment_type: cBal > 0 ? 'credit' : 'cash',
-                          }));
-                          setShowEditClientDropdown(false);
-                        }}
-                      >
-                        <div className="font-medium">{c.name}</div>
-                        {c.phone && <div className="text-xs text-slate-500">{c.phone}</div>}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('address')}</Label>
-              <Input 
-                value={editTransactionForm.address}
-                onChange={(e) => setEditTransactionForm({ ...editTransactionForm, address: e.target.value })}
-                placeholder="Enter address"
-              />
             </div>
           </div>
           <DialogFooter>
@@ -1080,304 +1693,6 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         onConfirm={confirmDeleteTransaction}
         onCancel={() => setDeleteConfirm({ open: false, id: '' })}
       />
-
-      {/* Add Transaction Dialog */}
-      <Dialog open={showAddTransaction} onOpenChange={(open: boolean) => {
-        setShowAddTransaction(open);
-        if (!open) resetTransactionForm();
-        setTxErrors({});
-      }}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{t('addNewTransaction')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('date')} *</Label>
-                <Input 
-                  type="date"
-                  value={transactionForm.date}
-                  onChange={(e) => { setTransactionForm({...transactionForm, date: e.target.value}); setTxErrors(prev => ({...prev, date: ''})); }}
-                />
-                <FieldError message={txErrors.date} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('type')} *</Label>
-                <Select 
-                  value={transactionForm.type} 
-                  onValueChange={(value: 'income' | 'expense') => { setTransactionForm({...transactionForm, type: value}); setTxErrors(prev => ({...prev, type: ''})); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="income">
-                      <span className="flex items-center gap-2">
-                        <ArrowDownRight className="w-4 h-4 text-emerald-600" />
-                        {t('income')}
-                      </span>
-                    </SelectItem>
-                    <SelectItem value="expense">
-                      <span className="flex items-center gap-2">
-                        <ArrowUpRight className="w-4 h-4 text-red-600" />
-                        {t('expense')}
-                      </span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {txErrors.type && <FieldError message={txErrors.type} />}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('category')} *</Label>
-                {showAddCategory ? (
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={language === 'en' ? 'New category name' : 'புதிய வகை பெயர்'}
-                      value={newCategoryName}
-                      onChange={(e) => setNewCategoryName(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(newCategoryName, true); } }}
-                      autoFocus
-                    />
-                    <Button type="button" size="sm" onClick={() => handleAddCategory(newCategoryName, true)} className="bg-blue-600 hover:bg-blue-700 text-white h-9 px-3">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                    <Button type="button" size="sm" variant="outline" onClick={() => { setShowAddCategory(false); setNewCategoryName(''); }} className="h-9 px-3">
-                      ✕
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <Select 
-                      value={transactionForm.category} 
-                      onValueChange={(value: string) => { setTransactionForm({...transactionForm, category: value}); setTxErrors(prev => ({...prev, category: ''})); }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={t('selectCategory')} />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-56 overflow-y-auto">
-                        {allCategories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button type="button" size="sm" variant="outline" onClick={() => setShowAddCategory(true)} title="Add new category" className="h-9 px-3">
-                      <Plus className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-                <FieldError message={txErrors.category} />
-              </div>
-              <div className="space-y-2">
-                <Label>{t('amount')} *</Label>
-                <Input 
-                  type="number"
-                  value={transactionForm.amount}
-                  onChange={(e) => { setTransactionForm({...transactionForm, amount: e.target.value}); setTxErrors(prev => ({...prev, amount: ''})); }}
-                  onKeyDown={blockInvalidNumberKeys}
-                  placeholder="0.00"
-                />
-                <FieldError message={txErrors.amount} />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('description')} *</Label>
-              <Textarea 
-                value={transactionForm.description}
-                onChange={(e) => { setTransactionForm({...transactionForm, description: e.target.value}); setTxErrors(prev => ({...prev, description: ''})); }}
-                placeholder={t('enterTransactionDescription')}
-                rows={2}
-              />
-              <FieldError message={txErrors.description} />
-            </div>
-            <div className="space-y-2">
-              <Label>{t('gstNumber')}</Label>
-              <Input 
-                value={transactionForm.gst_number}
-                onChange={(e) => { 
-                  const val = e.target.value.toUpperCase();
-                  setTransactionForm({...transactionForm, gst_number: val});
-                  setGstError(val ? validateGstNumber(val) : '');
-                }}
-                placeholder={t('enterGstNumber')}
-                maxLength={15}
-                className={gstError ? 'border-red-500' : ''}
-              />
-              {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>{t('paymentMethod')} *</Label>
-                <Select 
-                  value={transactionForm.payment_method} 
-                  onValueChange={(value: string) => { setTransactionForm({...transactionForm, payment_method: value}); setTxErrors(prev => ({...prev, payment_method: ''})); }}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {paymentMethods.map((method) => (
-                      <SelectItem key={method} value={method}>{method}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {txErrors.payment_method && <FieldError message={txErrors.payment_method} />}
-              </div>
-              <div className="space-y-2">
-                <Label>{t('mobileNumber')}</Label>
-                <Input 
-                  value={transactionForm.mobile_number}
-                  onChange={(e) => setTransactionForm({...transactionForm, mobile_number: e.target.value})}
-                  placeholder="+91 9876543210"
-                  type="tel"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 relative" ref={clientDropdownRef}>
-                <Label>{t('client')}</Label>
-                <Input 
-                  value={transactionForm.client}
-                  onChange={(e) => { setTransactionForm({...transactionForm, client: e.target.value}); setShowClientDropdown(true); }}
-                  onFocus={() => setShowClientDropdown(true)}
-                  placeholder="Search or enter client name"
-                  autoComplete="off"
-                />
-                {showClientDropdown && filteredClientsList.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                    {filteredClientsList.map(c => {
-                      const cBal = getClientCreditBalance(c.name);
-                      return (
-                        <button
-                          key={c.id}
-                          type="button"
-                          className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-slate-100 last:border-b-0"
-                          onClick={() => {
-                            setTransactionForm(prev => ({
-                              ...prev,
-                              client: c.name,
-                              address: c.address || prev.address,
-                              mobile_number: c.phone || prev.mobile_number,
-                              gst_number: c.gst_number || prev.gst_number,
-                              payment_type: cBal > 0 ? 'credit' : 'cash',
-                            }));
-                            setShowClientDropdown(false);
-                          }}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div className="font-medium">{c.name}</div>
-                            {cBal > 0 && <span className="text-xs font-medium text-orange-600">₹{cBal.toLocaleString()} due</span>}
-                          </div>
-                          {c.phone && <div className="text-xs text-slate-500">{c.phone}</div>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                {transactionForm.client && selectedClientBalance > 0 && (
-                  <div className="mt-1.5 p-2.5 rounded-lg border border-orange-200 bg-orange-50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-medium text-orange-700">Credit Outstanding</span>
-                      <span className="text-sm font-bold text-orange-700">₹{selectedClientBalance.toLocaleString()}</span>
-                    </div>
-                    {transactionForm.amount && parseFloat(transactionForm.amount) > 0 && (
-                      <div className="mt-1.5 pt-1.5 border-t border-orange-200 flex items-center justify-between">
-                        <span className="text-xs text-orange-600">Balance after payment</span>
-                        <span className={`text-sm font-bold ${(selectedClientBalance - (parseFloat(transactionForm.amount) || 0)) <= 0 ? 'text-emerald-600' : 'text-orange-700'}`}>
-                          ₹{Math.max(0, selectedClientBalance - (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label>{t('address')}</Label>
-                <Input 
-                  value={transactionForm.address}
-                  onChange={(e) => setTransactionForm({...transactionForm, address: e.target.value})}
-                  placeholder="Enter address"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Payment Type</Label>
-              <Select 
-                value={transactionForm.payment_type} 
-                onValueChange={(value: 'cash' | 'credit') => setTransactionForm({...transactionForm, payment_type: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cash">
-                    <span className="flex items-center gap-2">
-                      <DollarSign className="w-4 h-4 text-emerald-600" />
-                      Cash
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="credit">
-                    <span className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-orange-600" />
-                      Credit
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>{t('status')}</Label>
-              <Select 
-                value={transactionForm.status} 
-                onValueChange={(value: 'completed' | 'pending' | 'cancelled') => setTransactionForm({...transactionForm, status: value})}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="completed">
-                    <span className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-emerald-600" />
-                      {t('completed')}
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="pending">
-                    <span className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-amber-600" />
-                      {t('pending')}
-                    </span>
-                  </SelectItem>
-                  <SelectItem value="cancelled">
-                    <span className="flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-red-600" />
-                      {t('cancelled')}
-                    </span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setShowAddTransaction(false);
-              resetTransactionForm();
-            }}>
-              {t('cancel')}
-            </Button>
-            <Button 
-              onClick={handleAddTransaction} 
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={!transactionForm.date || !transactionForm.category || !transactionForm.amount || !transactionForm.description}
-            >
-              {t('addTransaction')}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Add Receipt Dialog */}
       <Dialog open={showAddReceipt} onOpenChange={(open: boolean) => {
@@ -1538,6 +1853,8 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
+      )}
     </div>
   );
 }

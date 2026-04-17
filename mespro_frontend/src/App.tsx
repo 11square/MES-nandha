@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 
 import { translations } from './translations';
+import GlobalSearch from './components/GlobalSearch';
 
 /** Map feature_key → icon component */
 const moduleIconMap: Record<string, LucideIcon> = {
@@ -423,19 +424,7 @@ export default function App() {
 
             {/* Professional search bar */}
             <div className="hidden md:flex flex-1 max-w-2xl">
-              <div className="relative w-full group">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 transition-colors group-focus-within:text-gray-600" />
-                <input 
-                  type="text"
-                  placeholder={t('searchPlaceholder')}
-                  className="w-full h-12 pl-12 pr-4 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 placeholder-gray-400 hover:border-gray-300 focus:bg-white focus:border-gray-400 focus:shadow-sm transition-all outline-none"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs text-gray-600">
-                    <span>⌘</span>K
-                  </kbd>
-                </div>
-              </div>
+              <GlobalSearch placeholder={t('searchPlaceholder')} />
             </div>
           </div>
 

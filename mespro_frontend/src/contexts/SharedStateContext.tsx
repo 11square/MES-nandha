@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import { ProductCategory, Product, OrderForBilling, OrderForProduction, BillForDispatch, Lead } from '../types';
 import type { Module } from '../services/auth.service';
 import { productsService } from '../services/products.service';
-import { stockService } from '../services/stock.service';
 
 interface SharedState {
   productCategories: ProductCategory[];
@@ -52,82 +51,40 @@ export function SharedStateProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const bid = currentUser.business_id;
     const token = localStorage.getItem('token');
-    if (!token) {
-      const saved = productsService.getCategories(bid);
-      if (saved.length) setProductCategories(saved);
-      return;
-    }
+    if (!token) return;
 
-    // Fetch both products and stock items to derive categories from all sources
+    // Fetch products and categories from API in parallel
     Promise.all([
       productsService.getProducts().catch(() => []),
-      stockService.getAllStockItems().catch(() => []),
+      productsService.getCategories().catch(() => []),
     ])
-      .then(([prodData, stockData]) => {
+      .then(([prodData, categoryData]) => {
         // Handle both array and wrapped responses
         const raw = Array.isArray(prodData) ? prodData : (prodData as any)?.items || (prodData as any)?.rows || [];
-        // Map selling_price/base_price → unit_price for frontend compatibility
         const items = raw.map((p: any) => ({
           ...p,
           unit_price: p.unit_price ?? p.selling_price ?? p.base_price ?? 0,
         }));
         setProducts(items);
 
-        const stockItems = Array.isArray(stockData) ? stockData : (stockData as any)?.items || (stockData as any)?.rows || [];
+        // Map DB-backed categories to the ProductCategory shape
+        const merged: ProductCategory[] = categoryData.map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          subcategories: cat.subcategories || [],
+          dbId: cat.dbId,
+          subDbIds: cat.subDbIds,
+        }));
 
-        // Merge: start with saved categories from localStorage (business-scoped)
-        const saved = productsService.getCategories(bid);
-        const catMap = new Map<string, Set<string>>();
+        setProductCategories(merged);
 
-        // Seed from saved categories
-        saved.forEach(cat => {
-          catMap.set(cat.id, new Set(cat.subcategories || []));
-        });
-
-        // Derive categories from products
-        items.forEach((p: Product) => {
-          if (p.category) {
-            const catId = p.category.toLowerCase().replace(/\s+/g, '-');
-            if (!catMap.has(catId)) catMap.set(catId, new Set());
-            if (p.subcategory) catMap.get(catId)!.add(p.subcategory);
-          }
-        });
-
-        // Also derive categories from stock items
-        stockItems.forEach((s: any) => {
-          if (s.category) {
-            const catId = s.category.toLowerCase().replace(/\s+/g, '-');
-            if (!catMap.has(catId)) catMap.set(catId, new Set());
-            if (s.subcategory) catMap.get(catId)!.add(s.subcategory);
-          }
-        });
-
-        const merged: ProductCategory[] = Array.from(catMap.entries()).map(([id, subs]) => {
-          const savedCat = saved.find(c => c.id === id);
-          // Derive a nice display name from the id if no saved name exists
-          const displayName = savedCat?.name || id.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-          return {
-            id,
-            name: displayName,
-            subcategories: Array.from(subs),
-          };
-        });
-
-        if (merged.length > 0) {
-          setProductCategories(merged);
-          productsService.saveCategories(merged, bid);
-        } else if (saved.length > 0) {
-          setProductCategories(saved);
-        } else {
-          setProductCategories([]);
-        }
+        // Clean up legacy localStorage data if present
+        const bid = currentUser.business_id;
+        productsService.clearLegacyCategories(bid);
       })
       .catch(() => {
-        // If all fetches fail, still load saved categories
-        const saved = productsService.getCategories(bid);
-        if (saved.length) setProductCategories(saved);
+        // If fetches fail, categories stay empty
       });
   }, [currentUser]);
 

@@ -32,6 +32,7 @@ import ProductManagement from './ProductManagement';
 import AuditModule from './AuditModule';
 import SettingsModule from './SettingsModule';
 import VendorManagement from './VendorManagement';
+import VendorDetailPageComponent from './VendorDetailPage';
 import SuperAdminManagement from './SuperAdminManagement';
 
 /* ---------- helper ---------- */
@@ -145,6 +146,10 @@ export function ClientsPage() {
 
 export function ClientDetailPageWrapper() {
   return <ClientDetailPageComponent />;
+}
+
+export function VendorDetailPageWrapper() {
+  return <VendorDetailPageComponent />;
 }
 
 export function StockPage() {

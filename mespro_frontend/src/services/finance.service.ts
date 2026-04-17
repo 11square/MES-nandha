@@ -7,7 +7,11 @@ import { apiService } from './api.service';
 
 class FinanceService {
   async getTransactions(): Promise<any[]> {
-    return apiService.get<any[]>('/finance/transactions');
+    return apiService.get<any[]>('/finance/transactions?limit=10000');
+  }
+
+  async getAllTransactions(): Promise<any> {
+    return apiService.get<any>('/finance/transactions/all');
   }
 
   async getTransactionById(id: string): Promise<any> {
@@ -27,7 +31,7 @@ class FinanceService {
   }
 
   async getReceipts(): Promise<any[]> {
-    return apiService.get<any[]>('/finance/receipts');
+    return apiService.get<any[]>('/finance/receipts?limit=10000');
   }
 
   async createReceipt(receipt: any): Promise<any> {

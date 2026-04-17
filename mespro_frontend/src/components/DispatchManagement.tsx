@@ -53,7 +53,7 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'stock'>('stock');
-  const [viewMode, setViewMode] = useState<'tile' | 'grid' | 'list'>('tile');
+  const viewMode = 'list';
   const [showAddDispatch, setShowAddDispatch] = useState(false);
   const [isBillPrefilledDispatch, setIsBillPrefilledDispatch] = useState(false);
   const [billOrderNumber, setBillOrderNumber] = useState('');
@@ -1477,75 +1477,12 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
           <h1 className="text-3xl font-bold">{t('dispatchManagement')}</h1>
           <p className="text-muted-foreground">{t('manageDispatch')}</p>
         </div>
-       
-      </div>
-
-      {/* Search and Filter */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <Input 
-            placeholder={t('searchByCustomer')}
-            className="pl-10"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Select defaultValue="all">
-          <SelectTrigger className="w-48">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{language === 'en' ? 'All Status' : 'அனைத்து நிலை'}</SelectItem>
-            <SelectItem value="ready">{language === 'en' ? 'Ready to Dispatch' : 'அனுப்ப தயார்'}</SelectItem>
-            <SelectItem value="transit">{language === 'en' ? 'In Transit' : 'போக்குவரத்தில்'}</SelectItem>
-            <SelectItem value="delivered">{language === 'en' ? 'Delivered' : 'டெலிவரி'}</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Dispatch Content */}
-      
       <div className="w-full">
-        <div className='flex justify-between items-center'>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
-          <button
-            onClick={() => setViewMode('tile')}
-            className={`p-2 rounded-md transition-all ${viewMode === 'tile' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-            title="Tile View"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-md transition-all ${viewMode === 'grid' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-            title="Grid View"
-          >
-            <LayoutList className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2 rounded-md transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-            title="List View"
-          >
-            <List className="w-4 h-4" />
-          </button>
-        </div>
-         <Button 
-          className="bg-blue-600 hover:bg-blue-700"
-          onClick={() => {
-            setIsBillPrefilledDispatch(false);
-            setShowAddDispatch(true);
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          {t('createNewDispatch')}
-        </Button>
-        </div>
-
-        {/* Stock Dispatch Stats & Cards */}
-        <div className="space-y-6 mt-6">
+        {/* Stock Dispatch Stats */}
+        <div className="space-y-6">
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <motion.div
@@ -1614,10 +1551,45 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
             </motion.div>
           </div>
 
+          {/* Search, Filter and Create Button */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input 
+                placeholder={t('searchByCustomer')}
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Select defaultValue="all">
+              <SelectTrigger className="w-48">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{language === 'en' ? 'All Status' : 'அனைத்து நிலை'}</SelectItem>
+                <SelectItem value="ready">{language === 'en' ? 'Ready to Dispatch' : 'அனுப்ப தயார்'}</SelectItem>
+                <SelectItem value="transit">{language === 'en' ? 'In Transit' : 'போக்குவரத்தில்'}</SelectItem>
+                <SelectItem value="delivered">{language === 'en' ? 'Delivered' : 'டெலிவரி'}</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex-1" />
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={() => {
+                setIsBillPrefilledDispatch(false);
+                setShowAddDispatch(true);
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {t('createNewDispatch')}
+            </Button>
+          </div>
+
           {/* Dispatch Cards / Grid / List */}
           {stockDispatches.length > 0 ? (
-            viewMode === 'list' ? (
-              <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
@@ -1640,15 +1612,6 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
                   </table>
                 </div>
               </div>
-            ) : viewMode === 'grid' ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {stockDispatches.map(dispatch => renderDispatchGridCard(dispatch))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {stockDispatches.map(dispatch => renderDispatchCard(dispatch, 'stock'))}
-              </div>
-            )
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">

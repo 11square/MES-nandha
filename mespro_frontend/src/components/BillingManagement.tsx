@@ -260,7 +260,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         total_tax: Number(b.total_tax) || 0,
         paid_amount: Number(b.paid_amount) || 0,
         gst_rate: Number(b.gst_rate) || 0,
-      }));
+      })).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setBills(mapped);
       // Auto-set bill number if form is open and bill_number is empty
       if (!billForm.bill_number && !editingBill) {
@@ -1039,7 +1039,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         place_of_supply: billForm.place_of_supply,
         terms_conditions: billForm.terms_conditions,
         state: billForm.place_of_supply,
-        deduct_stock: (billForm.bill_number || '').startsWith('QTN') ? billForm.deduct_stock : true,
+        deduct_stock: (billForm.bill_number || '').startsWith('QTN') ? true : billForm.deduct_stock,
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
@@ -2495,8 +2495,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
           {errors.items && <FieldError message={errors.items} />}
 
-          {/* Deduct Stock option for Quotations */}
-          {(billForm.bill_number || '').startsWith('QTN') && (
+          {/* Deduct Stock option - only for invoices, quotations always deduct */}
+          {!(billForm.bill_number || '').startsWith('QTN') && (
             <div className="flex items-center gap-2 px-1">
               <input
                 type="checkbox"
@@ -2506,7 +2506,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                 className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
               />
               <label htmlFor="deduct-stock-checkbox" className="text-sm text-gray-700 cursor-pointer select-none">
-                Deduct stock on creating this quotation
+                Deduct from stock
               </label>
             </div>
           )}

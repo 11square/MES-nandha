@@ -5,6 +5,21 @@
 
 import { apiService } from './api.service';
 
+interface CategoryFromAPI {
+  id: number;
+  slug: string;
+  name: string;
+  subcategories?: { id: number; slug: string; name: string }[];
+}
+
+export interface CategoryLocal {
+  id: string;
+  name: string;
+  dbId?: number;
+  subcategories: string[];
+  subDbIds?: Record<string, number>;
+}
+
 class ProductsService {
   async getProducts(): Promise<any[]> {
     return apiService.get<any[]>('/products?limit=500');
@@ -26,14 +41,63 @@ class ProductsService {
     return apiService.delete<void>(`/products/${id}`);
   }
 
-  // ── Category persistence (localStorage, scoped per business) ──
+  // ── Category persistence (Database-backed via API) ──
+
+  /** Fetch categories from the API and return in the local format */
+  async getCategories(): Promise<CategoryLocal[]> {
+    try {
+      const data = await apiService.get<CategoryFromAPI[]>('/products/categories');
+      const rows = Array.isArray(data) ? data : [];
+      return rows.map(cat => {
+        const subDbIds: Record<string, number> = {};
+        const subcategories = (cat.subcategories || []).map(s => {
+          subDbIds[s.name] = s.id;
+          return s.name;
+        });
+        return {
+          id: cat.slug,
+          name: cat.name,
+          dbId: cat.id,
+          subcategories,
+          subDbIds,
+        };
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /** Create a new category via API */
+  async createCategory(name: string): Promise<CategoryLocal> {
+    const data = await apiService.post<any>('/products/categories', { name });
+    return { id: data.slug, name: data.name, dbId: data.id, subcategories: [], subDbIds: {} };
+  }
+
+  /** Rename a category via API */
+  async updateCategory(dbId: number, name: string): Promise<void> {
+    await apiService.put<any>(`/products/categories/${dbId}`, { name });
+  }
+
+  /** Delete a category (or subcategory) via API */
+  async deleteCategory(dbId: number): Promise<void> {
+    await apiService.delete<void>(`/products/categories/${dbId}`);
+  }
+
+  /** Add subcategories to a parent via API */
+  async addSubcategories(parentDbId: number, names: string[]): Promise<any[]> {
+    const data = await apiService.post<any[]>('/products/categories/bulk-subcategories', {
+      parent_id: parentDbId,
+      names,
+    });
+    return Array.isArray(data) ? data : [];
+  }
+
+  // ── Legacy localStorage helpers (kept for one-time migration, then removed) ──
 
   private readonly CATEGORIES_PREFIX = 'mespro_product_categories';
 
-  /** Get the business-scoped localStorage key */
   private getCategoriesKey(businessId?: number | string | null): string {
     if (businessId) return `${this.CATEGORIES_PREFIX}_${businessId}`;
-    // Fallback: try to read business_id from the stored user profile
     try {
       const token = localStorage.getItem('token');
       if (token) {
@@ -44,38 +108,35 @@ class ProductsService {
     return this.CATEGORIES_PREFIX;
   }
 
-  getCategories(businessId?: number | string | null): { id: string; name: string; subcategories: string[] }[] {
+  getLegacyCategories(businessId?: number | string | null): { id: string; name: string; subcategories: string[] }[] {
     try {
       const scopedKey = this.getCategoriesKey(businessId);
       let raw = localStorage.getItem(scopedKey);
-
-      // Migration: if scoped key is empty, check the old global key and migrate
       if (!raw && scopedKey !== this.CATEGORIES_PREFIX) {
         const legacyRaw = localStorage.getItem(this.CATEGORIES_PREFIX);
         if (legacyRaw) {
-          // Copy legacy data into the new business-scoped key
-          localStorage.setItem(scopedKey, legacyRaw);
-          // Remove the legacy key so it won't leak to other businesses
-          localStorage.removeItem(this.CATEGORIES_PREFIX);
           raw = legacyRaw;
         }
       }
-
       return raw ? JSON.parse(raw) : [];
     } catch {
       return [];
     }
   }
 
-  saveCategories(categories: { id: string; name: string; subcategories: string[] }[], businessId?: number | string | null): void {
-    localStorage.setItem(this.getCategoriesKey(businessId), JSON.stringify(categories));
-  }
-
-  /** Remove categories for a specific business (called on logout) */
-  clearCategories(businessId?: number | string | null): void {
-    // Clear specific key and also the legacy un-scoped key
+  clearLegacyCategories(businessId?: number | string | null): void {
     localStorage.removeItem(this.getCategoriesKey(businessId));
     localStorage.removeItem(this.CATEGORIES_PREFIX);
+  }
+
+  /** @deprecated — use getCategories() instead */
+  saveCategories(): void {
+    // no-op: categories are now saved via API
+  }
+
+  /** @deprecated — use clearLegacyCategories for cleanup */
+  clearCategories(businessId?: number | string | null): void {
+    this.clearLegacyCategories(businessId);
   }
 }
 

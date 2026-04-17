@@ -6,6 +6,8 @@ export interface ProductCategory {
   name: string;
   subcategories: string[];
   items?: string[];
+  dbId?: number;
+  subDbIds?: Record<string, number>;
 }
 
 export interface Product {

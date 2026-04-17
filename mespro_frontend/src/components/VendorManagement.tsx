@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErrors } from '../lib/validation';
 import { ConfirmDialog } from './ui/confirm-dialog';
-import { Card, CardContent, CardTitle } from './ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Pencil, Trash2, Plus, Building2, Mail, Phone, MapPin, Package, IndianRupee, ShoppingCart, Calendar, FileText } from 'lucide-react';
+import { Trash2, Plus, Building2, Mail, Phone, MapPin, Package, IndianRupee, Search, Eye, Edit } from 'lucide-react';
 import { translations, Language } from '../translations';
 import { Badge } from './ui/badge';
 
 import { vendorsService } from '../services/vendors.service';
-import { purchaseOrdersService } from '../services/purchaseOrders.service';
-import { financeService } from '../services/finance.service';
 interface VendorManagementProps {
   language?: Language;
 }
@@ -39,11 +37,11 @@ interface Vendor {
 
 const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) => {
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
+  const navigate = useNavigate();
   
   // Vendor data from API
   const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [vendorPurchaseOrders, setVendorPurchaseOrders] = useState<any[]>([]);
-  const [vendorTransactions, setVendorTransactions] = useState<any[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const refreshVendors = useCallback(async () => {
     try {
@@ -54,7 +52,6 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
 
   useEffect(() => { refreshVendors(); }, [refreshVendors]);
   
-  const [selectedVendorId, setSelectedVendorId] = useState<string>('');
   const [isVendorDialogOpen, setIsVendorDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [formErrors, setFormErrors] = useState<ValidationErrors>({});
@@ -147,9 +144,6 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
       await vendorsService.deleteVendor(id);
       toast.success('Vendor deleted successfully');
       await refreshVendors();
-      if (selectedVendorId === id) {
-        setSelectedVendorId('');
-      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to delete vendor');
     }
@@ -173,56 +167,16 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
   };
 
   const formatCurrency = (amount: number) => {
-    return `₹${amount.toLocaleString('en-IN')}`;
+    return `₹${(amount ?? 0).toLocaleString('en-IN')}`;
   };
 
-  const selectedVendor = vendors.find(v => String(v.id) === String(selectedVendorId));
+  const getStatusColor = (status: string) => {
+    return status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600';
+  };
 
-  useEffect(() => {
-    const loadVendorHistory = async () => {
-      if (!selectedVendor) {
-        setVendorPurchaseOrders([]);
-        setVendorTransactions([]);
-        return;
-      }
-
-      try {
-        const purchaseData = await purchaseOrdersService.getPurchaseOrders();
-        const purchaseItems = Array.isArray(purchaseData) ? purchaseData : (purchaseData as any)?.items || [];
-        const filteredPurchaseOrders = purchaseItems.filter((po: any) => {
-          const poVendorId = po?.vendor_id != null ? String(po.vendor_id) : '';
-          const selectedId = String(selectedVendor.id);
-          const poVendorName = String(po?.vendor_name || '').toLowerCase().trim();
-          const selectedVendorName = String(selectedVendor.name || '').toLowerCase().trim();
-
-          return poVendorId === selectedId || (!!poVendorName && poVendorName === selectedVendorName);
-        });
-        setVendorPurchaseOrders(filteredPurchaseOrders);
-      } catch {
-        setVendorPurchaseOrders([]);
-      }
-
-      try {
-        const txData = await financeService.getTransactions();
-        const txItems = Array.isArray(txData) ? txData : (txData as any)?.items || [];
-        const vendorName = String(selectedVendor.name || '').toLowerCase().trim();
-        const filteredTransactions = txItems.filter((tx: any) => {
-          const description = String(tx?.description || '').toLowerCase();
-          const reference = String(tx?.reference || '').toLowerCase();
-          return !!vendorName && (description.includes(vendorName) || reference.includes(vendorName));
-        });
-        setVendorTransactions(filteredTransactions);
-      } catch {
-        setVendorTransactions([]);
-      }
-    };
-
-    loadVendorHistory();
-  }, [selectedVendor]);
-
-  const vendorOutstandingItems = vendorPurchaseOrders.filter((po: any) => {
-    const status = String(po?.status || '').toLowerCase();
-    return status !== 'received' && status !== 'cancelled';
+  const filteredVendors = vendors.filter(v => {
+    const q = searchQuery.toLowerCase();
+    return !q || v.name.toLowerCase().includes(q) || v.contact_person.toLowerCase().includes(q) || v.email.toLowerCase().includes(q) || v.phone.includes(q) || v.category.toLowerCase().includes(q);
   });
 
   return (
@@ -234,12 +188,56 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
         </div>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
-        <div className='flex justify-between items-center'>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="list">{t('vendorList')}</TabsTrigger>
-          <TabsTrigger value="details">{t('vendorDetails')}</TabsTrigger>
-        </TabsList>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-slate-600 font-medium">{t('totalVendors') || 'Total Vendors'}</span>
+            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><Building2 className="w-5 h-5 text-blue-600" /></div>
+          </div>
+          <p className="text-3xl text-slate-900 font-bold">{vendors.length}</p>
+          <p className="text-xs text-emerald-600 mt-1">{vendors.filter(v => v.status === 'Active').length} {t('active')}</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-slate-600 font-medium">{t('totalPurchases')}</span>
+            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5 text-emerald-600" /></div>
+          </div>
+          <p className="text-3xl text-slate-900 font-bold">{formatCurrency(vendors.reduce((s, v) => s + (Number(v.total_amount) || 0), 0))}</p>
+          <p className="text-xs text-emerald-600 mt-1">{vendors.reduce((s, v) => s + (Number(v.total_purchases) || 0), 0)} orders</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-slate-600 font-medium">{t('outstanding')}</span>
+            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5 text-red-600" /></div>
+          </div>
+          <p className="text-3xl text-red-600 font-bold">{formatCurrency(vendors.reduce((s, v) => s + (Number(v.outstanding_amount) || 0), 0))}</p>
+          <p className="text-xs text-red-500 mt-1">{vendors.filter(v => Number(v.outstanding_amount) > 0).length} vendors</p>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm text-slate-600 font-medium">{t('category') || 'Categories'}</span>
+            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center"><Package className="w-5 h-5 text-violet-600" /></div>
+          </div>
+          <p className="text-3xl text-slate-900 font-bold">{new Set(vendors.map(v => v.category).filter(Boolean)).size}</p>
+          <p className="text-xs text-slate-500 mt-1">vendor categories</p>
+        </motion.div>
+      </div>
+
+      {/* Search + Add Vendor */}
+      <div className="flex items-center gap-4 justify-between">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Input
+            placeholder={t('searchVendors') || 'Search vendors...'}
+            className="pl-10"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
         <Dialog open={isVendorDialogOpen} onOpenChange={(open: boolean) => {
                   setIsVendorDialogOpen(open);
                   if (!open) resetVendorForm();
@@ -358,7 +356,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                           <FieldError message={formErrors.address} />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="vendor-opening-balance">{t('openingBalance') || 'Opening Balance'}</Label>
+                          <Label htmlFor="vendor-opening-balance">{t('outstanding') || 'Outstanding Balance'}</Label>
                           <Input
                             id="vendor-opening-balance"
                             type="number"
@@ -369,7 +367,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                             onKeyDown={blockInvalidNumberKeys}
                             placeholder="₹0.00"
                           />
-                          <p className="text-xs text-gray-500">{language === 'en' ? 'Pending balance before using this software' : 'இந்த மென்பொருளைப் பயன்படுத்துவதற்கு முன் நிலுவைத் தொகை'}</p>
+                          <p className="text-xs text-gray-500">{language === 'en' ? 'Pending outstanding balance before using this software' : 'இந்த மென்பொருளைப் பயன்படுத்துவதற்கு முன் நிலுவைத் தொகை'}</p>
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="vendor-status">{t('status')}</Label>
@@ -398,372 +396,93 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                     </form>
                   </DialogContent>
                 </Dialog>
+      </div>
+
+      {/* Vendor Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {filteredVendors.map((vendor, index) => (
+          <motion.div
+            key={vendor.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.03 }}
+            whileHover={{ y: -1 }}
+            className="bg-white rounded-md border border-slate-200 p-3 shadow-sm hover:shadow transition-all cursor-pointer"
+            onClick={() => navigate(`/vendors/${vendor.id}`)}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center text-white text-xs font-semibold">
+                  {vendor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                 </div>
-
-        {/* Vendor List Tab */}
-        <TabsContent value="list" className="space-y-4">
-          <Card>
-            <CardContent>
-              {vendors.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  {t('noVendorsFound')}. {t('addYourFirstVendor')}.
+                <div>
+                  <h3 className="text-sm text-slate-900 font-semibold leading-tight">{vendor.name}</h3>
+                  <p className="text-[10px] text-slate-400">{vendor.id}</p>
                 </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>{t('vendorName')}</TableHead>
-                      <TableHead>{t('contactPerson')}</TableHead>
-                      <TableHead>{t('email')}</TableHead>
-                      <TableHead>{t('phone')}</TableHead>
-                      <TableHead>{t('category')}</TableHead>
-                      <TableHead>{t('status')}</TableHead>
-                      <TableHead className="text-right">{t('actions')}</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {vendors.map((vendor) => (
-                      <TableRow key={vendor.id}>
-                        <TableCell className="font-medium">{vendor.name}</TableCell>
-                        <TableCell>{vendor.contact_person}</TableCell>
-                        <TableCell>{vendor.email}</TableCell>
-                        <TableCell>{vendor.phone}</TableCell>
-                        <TableCell>{vendor.category}</TableCell>
-                        <TableCell>
-                          <Badge variant={vendor.status === 'Active' ? 'default' : 'secondary'}>
-                            {vendor.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditVendor(vendor)}
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteVendor(vendor.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Vendor Details Tab */}
-        <TabsContent value="details" className="space-y-4">
-          <Card>
-            <CardContent>
-              <div className="space-y-6 pt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="vendor-select">{t('selectVendor')}</Label>
-                  <Select value={selectedVendorId} onValueChange={setSelectedVendorId}>
-                    <SelectTrigger id="vendor-select">
-                      <SelectValue placeholder={t('chooseAVendor')} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {vendors.map((vendor) => (
-                        <SelectItem key={vendor.id} value={String(vendor.id)}>
-                          {vendor.name} ({vendor.id})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedVendor ? (
-                  <div className="space-y-6">
-                    {/* Vendor Header */}
-                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4">
-                          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-lg flex items-center justify-center text-white font-bold text-2xl shadow-md">
-                            {selectedVendor.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                          </div>
-                          <div>
-                            <h3 className="text-2xl font-bold text-slate-900">{selectedVendor.name}</h3>
-                            <p className="text-sm text-slate-600 mt-1">{selectedVendor.id}</p>
-                            <Badge className="mt-2" variant={selectedVendor.status === 'Active' ? 'default' : 'secondary'}>
-                              {selectedVendor.status}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEditVendor(selectedVendor)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            {t('edit')}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stats Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('totalPurchases')}</p>
-                              <p className="text-2xl font-bold text-slate-900">{selectedVendor.total_purchases}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                              <ShoppingCart className="w-6 h-6 text-blue-600" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('totalAmount')}</p>
-                              <p className="text-2xl font-bold text-blue-900">{formatCurrency(selectedVendor.total_amount)}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                              <IndianRupee className="w-6 h-6 text-green-600" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('outstanding')}</p>
-                              <p className="text-2xl font-bold text-red-600">{formatCurrency(selectedVendor.outstanding_amount)}</p>
-                            </div>
-                            <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                              <IndianRupee className="w-6 h-6 text-red-600" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardContent className="pt-6">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('lastPurchase')}</p>
-                              <p className="text-lg font-bold text-slate-900">
-                                {new Date(selectedVendor.last_purchase_date).toLocaleDateString('en-IN')}
-                              </p>
-                            </div>
-                            <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                              <Calendar className="w-6 h-6 text-purple-600" />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-
-                    {/* Contact Information */}
-                    <Card>
-                      <div className="px-6 pt-6">
-                        <CardTitle className="text-lg">{t('contactInformation')}</CardTitle>
-                      </div>
-                      <CardContent>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Building2 className="w-5 h-5 text-slate-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('contactPerson')}</p>
-                              <p className="text-sm font-medium text-slate-900">{selectedVendor.contact_person}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Mail className="w-5 h-5 text-slate-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('email')}</p>
-                              <p className="text-sm font-medium text-slate-900">{selectedVendor.email}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Phone className="w-5 h-5 text-slate-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('phone')}</p>
-                              <p className="text-sm font-medium text-slate-900">{selectedVendor.phone}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <MapPin className="w-5 h-5 text-slate-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('address')}</p>
-                              <p className="text-sm font-medium text-slate-900">{selectedVendor.address}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <Package className="w-5 h-5 text-slate-600" />
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-600 mb-1">{t('category')}</p>
-                              <p className="text-sm font-medium text-slate-900">{selectedVendor.category}</p>
-                            </div>
-                          </div>
-
-                          {selectedVendor.gst_number && (
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <FileText className="w-5 h-5 text-slate-600" />
-                              </div>
-                              <div>
-                                <p className="text-xs text-slate-600 mb-1">{t('gstNumber')}</p>
-                                <p className="text-sm font-medium text-slate-900">{selectedVendor.gst_number}</p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* History Tabs */}
-                    <Card>
-                      <CardContent className="p-0">
-                        <Tabs defaultValue="purchase" className="w-full">
-                          <div className="border-b border-slate-200 px-6 py-4">
-                            <TabsList className="bg-slate-100 p-1 rounded-lg">
-                              <TabsTrigger value="purchase" className="px-4 py-2">
-                                {t('purchaseHistory')}
-                              </TabsTrigger>
-                              <TabsTrigger value="outstanding" className="px-4 py-2">
-                                {t('outstandingHistory')}
-                              </TabsTrigger>
-                              <TabsTrigger value="transaction" className="px-4 py-2">
-                                {t('transactionHistory')}
-                              </TabsTrigger>
-                            </TabsList>
-                          </div>
-
-                          <TabsContent value="purchase" className="p-6">
-                            {vendorPurchaseOrders.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">{t('noDataFound')}</div>
-                            ) : (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>{t('poNumber')}</TableHead>
-                                    <TableHead>{t('date')}</TableHead>
-                                    <TableHead>{t('items')}</TableHead>
-                                    <TableHead className="text-right">{t('amount')}</TableHead>
-                                    <TableHead>{t('status')}</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {vendorPurchaseOrders.map((po: any) => (
-                                    <TableRow key={po.id}>
-                                      <TableCell className="font-medium">{po.po_number || `PO-${po.id}`}</TableCell>
-                                      <TableCell>{po.date ? new Date(po.date).toLocaleDateString('en-IN') : '—'}</TableCell>
-                                      <TableCell>{po.items?.length ? `${po.items.length} item(s)` : (po.notes || '—')}</TableCell>
-                                      <TableCell className="text-right">{formatCurrency(Number(po.total_amount || 0))}</TableCell>
-                                      <TableCell>
-                                        <Badge variant="secondary">{String(po.status || 'pending')}</Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            )}
-                          </TabsContent>
-
-                          <TabsContent value="outstanding" className="p-6">
-                            {vendorOutstandingItems.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">{t('noDataFound')}</div>
-                            ) : (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>{t('poNumber')}</TableHead>
-                                    <TableHead>{t('date')}</TableHead>
-                                    <TableHead>{t('dueDate')}</TableHead>
-                                    <TableHead className="text-right">{t('amount')}</TableHead>
-                                    <TableHead className="text-right">{t('outstanding')}</TableHead>
-                                    <TableHead>{t('status')}</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {vendorOutstandingItems.map((po: any) => (
-                                    <TableRow key={`out-${po.id}`}>
-                                      <TableCell className="font-medium">{po.po_number || `PO-${po.id}`}</TableCell>
-                                      <TableCell>{po.date ? new Date(po.date).toLocaleDateString('en-IN') : '—'}</TableCell>
-                                      <TableCell>{po.expected_delivery ? new Date(po.expected_delivery).toLocaleDateString('en-IN') : '—'}</TableCell>
-                                      <TableCell className="text-right">{formatCurrency(Number(po.total_amount || 0))}</TableCell>
-                                      <TableCell className="text-right text-red-600 font-medium">{formatCurrency(Number(po.total_amount || 0))}</TableCell>
-                                      <TableCell>
-                                        <Badge variant="secondary">{String(po.status || 'pending')}</Badge>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            )}
-                          </TabsContent>
-
-                          <TabsContent value="transaction" className="p-6">
-                            {vendorTransactions.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">{t('noDataFound')}</div>
-                            ) : (
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>{t('transactionId')}</TableHead>
-                                    <TableHead>{t('date')}</TableHead>
-                                    <TableHead>{t('description')}</TableHead>
-                                    <TableHead>{t('method')}</TableHead>
-                                    <TableHead className="text-right">{t('amount')}</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {vendorTransactions.map((tx: any) => (
-                                    <TableRow key={`txn-${tx.id}`}>
-                                      <TableCell className="font-medium">{tx.reference || `TXN-${tx.id}`}</TableCell>
-                                      <TableCell>{tx.date ? new Date(tx.date).toLocaleDateString('en-IN') : '—'}</TableCell>
-                                      <TableCell>{tx.description || '—'}</TableCell>
-                                      <TableCell>{tx.payment_method || '—'}</TableCell>
-                                      <TableCell className="text-right text-emerald-600 font-medium">{formatCurrency(Number(tx.amount || 0))}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            )}
-                          </TabsContent>
-                        </Tabs>
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                    <p>{t('pleaseSelectAVendorFromTheDropdownAboveToViewDetails')}</p>
-                  </div>
-                )}
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <div className="flex items-center gap-1.5">
+                <Badge className={`text-[10px] px-1.5 py-0 h-5 ${getStatusColor(vendor.status)}`}>
+                  {vendor.status}
+                </Badge>
+                <Badge className="text-[10px] px-1.5 py-0 h-5 bg-violet-100 text-violet-700">
+                  {vendor.category}
+                </Badge>
+              </div>
+            </div>
+
+            <div className="space-y-0.5 mb-2 text-[11px] text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <Phone className="w-3 h-3" />
+                <span className="truncate">{vendor.contact_person} • {vendor.phone}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Mail className="w-3 h-3" />
+                <span className="truncate">{vendor.email}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <MapPin className="w-3 h-3" />
+                <span className="truncate">{vendor.address}</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between py-2 border-t border-slate-100 text-[11px]">
+              <div>
+                <span className="text-slate-400">Purchases: </span>
+                <span className="font-semibold text-slate-700">{vendor.total_purchases}</span>
+              </div>
+              <div>
+                <span className="text-slate-400">Amount: </span>
+                <span className="font-semibold text-slate-700">{formatCurrency(Number(vendor.total_amount) || 0)}</span>
+              </div>
+              <div>
+                <span className="text-slate-400">Outstanding: </span>
+                <span className={`font-semibold ${Number(vendor.outstanding_amount) > 0 ? 'text-red-600' : 'text-slate-600'}`}>{formatCurrency(Number(vendor.outstanding_amount) || 0)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-1.5 mt-1.5">
+              <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] px-2" onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/vendors/${vendor.id}`); }}>
+                <Eye className="w-3 h-3 mr-1" />
+                {t('view')}
+              </Button>
+              <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] px-2" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleEditVendor(vendor); }}>
+                <Edit className="w-3 h-3 mr-1" />
+                {t('edit')}
+              </Button>
+              <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleDeleteVendor(vendor.id); }}>
+                <Trash2 className="w-3 h-3" />
+              </Button>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {filteredVendors.length === 0 && (
+        <div className="text-center py-12 text-muted-foreground">
+          <Building2 className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+          {searchQuery ? <p>No vendors match your search.</p> : <p>{t('noVendorsFound')}. {t('addYourFirstVendor')}.</p>}
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteConfirm.open}

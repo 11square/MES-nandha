@@ -30,6 +30,7 @@ const User = require('./User')(sequelize);
 const Client = require('./Client')(sequelize);
 const Vendor = require('./Vendor')(sequelize);
 const Product = require('./Product')(sequelize);
+const ProductCategory = require('./ProductCategory')(sequelize);
 const ProductMaterial = require('./ProductMaterial')(sequelize);
 const Lead = require('./Lead')(sequelize);
 const LeadProduct = require('./LeadProduct')(sequelize);
@@ -62,6 +63,7 @@ const Sale = require('./Sale')(sequelize);
 const SalesTarget = require('./SalesTarget')(sequelize);
 const SalesFollowup = require('./SalesFollowup')(sequelize);
 const ClientFollowup = require('./ClientFollowup')(sequelize);
+const VendorFollowup = require('./VendorFollowup')(sequelize);
 const CreditOutstanding = require('./CreditOutstanding')(sequelize);
 const Document = require('./Document')(sequelize);
 const Business = require('./Business')(sequelize);
@@ -89,6 +91,14 @@ ClientFollowup.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
 // Client - CreditOutstanding
 Client.hasMany(CreditOutstanding, { foreignKey: 'client_id', as: 'outstandings' });
 CreditOutstanding.belongsTo(Client, { foreignKey: 'client_id', as: 'client' });
+
+// Vendor - VendorFollowup
+Vendor.hasMany(VendorFollowup, { foreignKey: 'vendor_id', as: 'followups' });
+VendorFollowup.belongsTo(Vendor, { foreignKey: 'vendor_id', as: 'vendor' });
+
+// ProductCategory self-referencing (parent/subcategories)
+ProductCategory.hasMany(ProductCategory, { foreignKey: 'parent_id', as: 'subcategories' });
+ProductCategory.belongsTo(ProductCategory, { foreignKey: 'parent_id', as: 'parent' });
 
 // Product - ProductMaterial
 Product.hasMany(ProductMaterial, { foreignKey: 'product_id', as: 'materials' });
@@ -200,6 +210,9 @@ Vendor.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
 Business.hasMany(Product, { foreignKey: 'business_id', as: 'products' });
 Product.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
 
+Business.hasMany(ProductCategory, { foreignKey: 'business_id', as: 'productCategories' });
+ProductCategory.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
+
 Business.hasMany(Lead, { foreignKey: 'business_id', as: 'leads' });
 Lead.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
 
@@ -270,6 +283,7 @@ const db = {
   Client,
   Vendor,
   Product,
+  ProductCategory,
   ProductMaterial,
   Lead,
   LeadProduct,
@@ -302,6 +316,7 @@ const db = {
   SalesTarget,
   SalesFollowup,
   ClientFollowup,
+  VendorFollowup,
   CreditOutstanding,
   Document,
   Business,

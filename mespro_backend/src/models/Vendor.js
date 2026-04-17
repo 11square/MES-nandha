@@ -77,6 +77,21 @@ module.exports = (sequelize) => {
     tableName: 'vendors',
     timestamps: true,
     underscored: true,
+    hooks: {
+      beforeCreate: (vendor) => {
+        if (vendor.opening_balance && Number(vendor.opening_balance) > 0) {
+          vendor.outstanding_amount = Number(vendor.opening_balance);
+        }
+      },
+      beforeUpdate: (vendor) => {
+        if (vendor.changed('opening_balance')) {
+          const oldOpening = Number(vendor.previous('opening_balance')) || 0;
+          const newOpening = Number(vendor.opening_balance) || 0;
+          const diff = newOpening - oldOpening;
+          vendor.outstanding_amount = Math.max(0, Number(vendor.outstanding_amount) + diff);
+        }
+      },
+    },
   });
 
   return Vendor;

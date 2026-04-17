@@ -23,6 +23,7 @@ import {
   PayrollPage,
   ClientsPage,
   ClientDetailPageWrapper,
+  VendorDetailPageWrapper,
   StockPage,
   FinancePage,
   LibraryPage,
@@ -87,6 +88,7 @@ createRoot(document.getElementById("root")!).render(
             <Route path="staff" element={<ModuleGuard moduleKey="staff"><StaffPage /></ModuleGuard>} />
             <Route path="attendance" element={<ModuleGuard moduleKey="attendance"><AttendancePage /></ModuleGuard>} />
             <Route path="vendors" element={<ModuleGuard moduleKey="vendors"><VendorsPage /></ModuleGuard>} />
+            <Route path="vendors/:vendorId" element={<ModuleGuard moduleKey="vendors"><VendorDetailPageWrapper /></ModuleGuard>} />
             <Route path="users" element={<ModuleGuard moduleKey="users"><UsersPage /></ModuleGuard>} />
             <Route path="reports" element={<ModuleGuard moduleKey="reports"><ReportsPageRoute /></ModuleGuard>} />
             <Route path="settings" element={<ModuleGuard moduleKey="settings"><SettingsPage /></ModuleGuard>} />

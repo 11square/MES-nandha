@@ -36,7 +36,6 @@ const limiter = rateLimit({
   message: { success: false, message: 'Too many requests, please try again later.' },
 });
 app.use('/api', limiter);
-app.use('/api/v1', limiter);
 
 // ---------------------
 // Body Parsing
