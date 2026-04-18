@@ -88,6 +88,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   }, [refreshPOs]);
 
   const [showAddPO, setShowAddPO] = useState(false);
+  const [addPOIsInvoice, setAddPOIsInvoice] = useState(false);
   const [showEditPO, setShowEditPO] = useState(false);
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -238,9 +239,9 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
           <Button variant="outline" size="sm" onClick={() => setShowAddPO(false)}>
             ← {t('back')}
           </Button>
-          <h1 className="text-xl font-bold">{t('createNewPurchaseOrder')}</h1>
+          <h1 className="text-xl font-bold">{addPOIsInvoice ? t('createNewPurchaseOrder') + ' (Invoice)' : t('createNewPurchaseOrder') + ' (Quotation)'}</h1>
         </div>
-        <AddPOForm onClose={() => setShowAddPO(false)} onSubmit={handleAddPO} language={language} stockItem={stockItem} />
+        <AddPOForm onClose={() => setShowAddPO(false)} onSubmit={handleAddPO} language={language} stockItem={stockItem} isInvoice={addPOIsInvoice} />
       </div>
     );
   }
@@ -402,13 +403,15 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
             <TabsTrigger value="gst">{t('invoice')}</TabsTrigger>
             <TabsTrigger value="non-gst">{t('quotationBill')}</TabsTrigger>
           </TabsList>
-          <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowAddPO(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('createPO')}
-          </Button>
         </div>
         {/* Invoice Tab */}
         <TabsContent value="gst" className="space-y-4 mt-4">
+          <div className="flex justify-end mb-2">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setAddPOIsInvoice(true); setShowAddPO(true); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Invoice PO
+            </Button>
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>{t('invoicePurchaseOrders')} ({dateFilteredPOs.filter(po => po.is_gst).length})</CardTitle>
@@ -486,6 +489,12 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 
         {/* Quotation Bill Tab */}
         <TabsContent value="non-gst" className="space-y-4 mt-4">
+          <div className="flex justify-end mb-2">
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setAddPOIsInvoice(false); setShowAddPO(true); }}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create Quotation PO
+            </Button>
+          </div>
           <Card>
             <CardHeader>
               <CardTitle>{t('quotationBillPurchaseOrders')} ({dateFilteredPOs.filter(po => !po.is_gst).length})</CardTitle>
@@ -577,7 +586,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 };
 
 // Add PO Form Component - Full page like Create Order
-function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose: () => void; onSubmit: (po: PurchaseOrder) => void; language?: string; stockItem?: any }) {
+function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = false }: { onClose: () => void; onSubmit: (po: PurchaseOrder) => void; language?: string; stockItem?: any; isInvoice?: boolean }) {
   const t = (key: keyof typeof translations.en) => translations[language]?.[key] || translations.en[key];
   const savingAsDraftRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
@@ -982,7 +991,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
       created_by: selectedStaffMember?.name || formData.created_by,
       addedItems: addedItems,
       vendor_gst: gstNumber || '',
-      is_gst: !!gstNumber,
+      is_gst: isInvoice,
     });
     formSubmittedRef.current = true;
     clearDraft('po');
@@ -1124,6 +1133,23 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                   {formData.vendor_contact && <p className="mt-0.5">{formData.vendor_contact}</p>}
                   {formData.vendor_email && <p className="mt-0.5">{formData.vendor_email}</p>}
                   {gstNumber && <p className="mt-0.5 font-mono text-gray-500">GSTIN: {gstNumber}</p>}
+                </div>
+              )}
+              {/* GST Number field - only for Invoice POs */}
+              {isInvoice && (
+                <div className="mt-2">
+                  <Label className="text-xs text-gray-500">GST Number</Label>
+                  <Input
+                    value={gstNumber}
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      setGstNumber(val);
+                      setGstError(validateGstNumber(val));
+                    }}
+                    placeholder="e.g. 22AAAAA0000A1Z5"
+                    className={`h-8 text-sm font-mono ${gstError ? 'border-red-500' : ''}`}
+                  />
+                  {gstError && <p className="text-xs text-red-500 mt-1">{gstError}</p>}
                 </div>
               )}
             </div>
