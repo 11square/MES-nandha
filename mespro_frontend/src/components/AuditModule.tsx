@@ -197,12 +197,12 @@ export default function AuditModule({}: AuditModuleProps) {
         const purchased = purchasedByItem[itemName] || { qty: 0, value: 0 };
         return {
           item: item.name || 'Unknown Item',
-          purchased: purchased.qty || currentStock,
+          purchased: purchased.qty,
           used: sold.qty,
           in_stock: currentStock,
-          po_value: purchased.value || currentStock * unitPrice,
+          po_value: purchased.value,
           bill_value: sold.value,
-          variance: purchased.qty > 0 ? (purchased.qty - sold.qty - currentStock) : (currentStock <= reorderLevel && currentStock > 0 ? 1 : 0),
+          variance: (purchased.qty + currentStock) > 0 ? (purchased.qty - sold.qty - currentStock) : 0,
           month: -1,
           year: -1,
           last_restocked: item.last_restocked,
