@@ -1652,7 +1652,6 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     const validationErrors: ValidationErrors = {};
     if (!selectedVendorId && !formData.vendor_name) validationErrors.vendor = 'Vendor is required';
     if (!formData.date) validationErrors.date = 'Date is required';
-    if (!formData.expected_delivery) validationErrors.expected_delivery = 'Expected Delivery is required';
     if (!formData.status) validationErrors.status = 'Status is required';
     if (addedItems.length === 0) validationErrors.items = 'At least one item is required';
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
@@ -1700,9 +1699,8 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                 {errors.date && <FieldError message={errors.date} />}
               </div>
               <div>
-                <Label className="text-xs text-gray-500">{t('expectedDelivery')} *</Label>
+                <Label className="text-xs text-gray-500">{t('expectedDelivery')}</Label>
                 <Input type="date" value={formData.expected_delivery} onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
-                {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
               </div>
               <div>
                 <Label className="text-xs text-gray-500">{t('status')} *</Label>
@@ -1719,17 +1717,6 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                   <option value="cancelled">{t('cancelled')}</option>
                 </select>
                 {errors.status && <FieldError message={errors.status} />}
-              </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
-                <Input
-                  value={gstNumber}
-                  onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
-                  placeholder="e.g. 33AUJPM8458P1ZR"
-                  maxLength={15}
-                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
-                />
-                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
               </div>
             </div>
           </CardContent>
