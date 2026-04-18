@@ -98,86 +98,118 @@ export default function AuditModule({}: AuditModuleProps) {
   const fetchAuditData = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([
-        // Fetch all Purchase Orders and map API fields to audit format
-        purchaseOrdersService.getAllPurchaseOrders().then(data => {
-          const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.data || [];
-          const mapped = items.map((po: any) => {
-            const totalAmount = parseFloat(po.total_amount) || 0;
-            const isGst = po.is_gst !== false;
-            const gstRate = isGst ? 0.18 : 0;
-            const amount = isGst ? Math.round(totalAmount / (1 + gstRate)) : totalAmount;
-            const gst = isGst ? totalAmount - amount : 0;
-            const gstType = isGst ? (po.vendor_gst ? 'CGST+SGST' : 'IGST') : 'N/A';
-            const status = po.status ? po.status.charAt(0).toUpperCase() + po.status.slice(1) : 'Pending';
-            return {
-              id: po.po_number || `PO-${po.id}`,
-              vendor: po.vendor_name || 'Unknown Vendor',
-              date: po.date,
-              amount,
-              gst,
-              total_amount: totalAmount,
-              status,
-              gst_type: gstType,
-            };
-          });
-          setAllPurchaseOrders(mapped);
-        }).catch(() => {
-          setAllPurchaseOrders([]);
-        }),
-
-        // Fetch all Bills/Invoices and map API fields to audit format
-        billingService.getAllBills().then(data => {
-          const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.data || [];
-          const mapped = items.map((bill: any) => {
-            const subtotal = parseFloat(bill.subtotal) || 0;
-            const totalTax = parseFloat(bill.total_tax) || 0;
-            const grandTotal = parseFloat(bill.grand_total) || (subtotal + totalTax);
-            const gstType = totalTax > 0 ? (bill.client_gst ? 'CGST+SGST' : 'IGST') : 'N/A';
-            const statusMap: Record<string, string> = { paid: 'Paid', partial: 'Partial', pending: 'Pending', overdue: 'Overdue' };
-            const status = statusMap[bill.payment_status] || (bill.payment_status ? bill.payment_status.charAt(0).toUpperCase() + bill.payment_status.slice(1) : 'Pending');
-            return {
-              id: bill.bill_no || `INV-${bill.id}`,
-              customer: bill.client_name || 'Unknown Client',
-              date: bill.date,
-              amount: subtotal,
-              gst: totalTax,
-              total_amount: grandTotal,
-              status,
-              gst_type: gstType,
-            };
-          });
-          setAllSalesBills(mapped);
-        }).catch(() => {
-          setAllSalesBills([]);
-        }),
-
-        // Fetch stock items — map to reconciliation view
-        stockService.getAllStockItems().then(data => {
-          const items = Array.isArray(data) ? data : (data as any)?.items || (data as any)?.data || [];
-          const mapped = items.map((item: any) => {
-            const currentStock = parseFloat(item.current_stock) || 0;
-            const unitPrice = parseFloat(item.unit_price) || 0;
-            const reorderLevel = parseFloat(item.reorder_level) || 0;
-            return {
-              item: item.name || 'Unknown Item',
-              purchased: currentStock,
-              used: 0,
-              in_stock: currentStock,
-              po_value: currentStock * unitPrice,
-              bill_value: 0,
-              variance: currentStock <= reorderLevel && currentStock > 0 ? 1 : 0,
-              month: -1,
-              year: -1,
-              last_restocked: item.last_restocked,
-              status: item.status,
-            };
-          });
-          setAllStockReconciliation(mapped);
-        }).catch(() => {
-          setAllStockReconciliation([]);
-        }),
+      // Fetch all three data sources in parallel
+      const [posResult, billsResult, stockResult] = await Promise.allSettled([
+        purchaseOrdersService.getAllPurchaseOrders(),
+        billingService.getAllBills(),
+        stockService.getAllStockItems(),
       ]);
+
+      // --- Process Purchase Orders ---
+      const rawPOs = posResult.status === 'fulfilled'
+        ? (Array.isArray(posResult.value) ? posResult.value : (posResult.value as any)?.items || (posResult.value as any)?.data || [])
+        : [];
+      const mappedPOs = rawPOs.map((po: any) => {
+        const totalAmount = parseFloat(po.total_amount) || 0;
+        const isGst = po.is_gst !== false;
+        const gstRate = isGst ? 0.18 : 0;
+        const amount = isGst ? Math.round(totalAmount / (1 + gstRate)) : totalAmount;
+        const gst = isGst ? totalAmount - amount : 0;
+        const gstType = isGst ? (po.vendor_gst ? 'CGST+SGST' : 'IGST') : 'N/A';
+        const status = po.status ? po.status.charAt(0).toUpperCase() + po.status.slice(1) : 'Pending';
+        return {
+          id: po.po_number || `PO-${po.id}`,
+          vendor: po.vendor_name || 'Unknown Vendor',
+          date: po.date,
+          amount,
+          gst,
+          total_amount: totalAmount,
+          status,
+          gst_type: gstType,
+        };
+      });
+      setAllPurchaseOrders(mappedPOs);
+
+      // --- Process Bills ---
+      const rawBills = billsResult.status === 'fulfilled'
+        ? (Array.isArray(billsResult.value) ? billsResult.value : (billsResult.value as any)?.items || (billsResult.value as any)?.data || [])
+        : [];
+      const mappedBills = rawBills.map((bill: any) => {
+        const subtotal = parseFloat(bill.subtotal) || 0;
+        const totalTax = parseFloat(bill.total_tax) || 0;
+        const grandTotal = parseFloat(bill.grand_total) || (subtotal + totalTax);
+        const gstType = totalTax > 0 ? (bill.client_gst ? 'CGST+SGST' : 'IGST') : 'N/A';
+        const statusMap: Record<string, string> = { paid: 'Paid', partial: 'Partial', pending: 'Pending', overdue: 'Overdue' };
+        const status = statusMap[bill.payment_status] || (bill.payment_status ? bill.payment_status.charAt(0).toUpperCase() + bill.payment_status.slice(1) : 'Pending');
+        return {
+          id: bill.bill_no || `INV-${bill.id}`,
+          customer: bill.client_name || 'Unknown Client',
+          date: bill.date,
+          amount: subtotal,
+          gst: totalTax,
+          total_amount: grandTotal,
+          status,
+          gst_type: gstType,
+        };
+      });
+      setAllSalesBills(mappedBills);
+
+      // --- Aggregate sold quantities & values from bill items ---
+      const soldByItem: Record<string, { qty: number; value: number }> = {};
+      rawBills.forEach((bill: any) => {
+        const billItems = Array.isArray(bill.items) ? bill.items : [];
+        billItems.forEach((bi: any) => {
+          const name = (bi.name || '').trim().toLowerCase();
+          if (!name) return;
+          const qty = parseFloat(bi.quantity) || 0;
+          const val = parseFloat(bi.total) || 0;
+          if (!soldByItem[name]) soldByItem[name] = { qty: 0, value: 0 };
+          soldByItem[name].qty += qty;
+          soldByItem[name].value += val;
+        });
+      });
+
+      // --- Aggregate purchased quantities & values from PO items ---
+      const purchasedByItem: Record<string, { qty: number; value: number }> = {};
+      rawPOs.forEach((po: any) => {
+        const poItems = Array.isArray(po.items) ? po.items : [];
+        poItems.forEach((pi: any) => {
+          const name = (pi.name || '').trim().toLowerCase();
+          if (!name) return;
+          const qty = parseFloat(pi.quantity) || 0;
+          const val = parseFloat(pi.amount) || 0;
+          if (!purchasedByItem[name]) purchasedByItem[name] = { qty: 0, value: 0 };
+          purchasedByItem[name].qty += qty;
+          purchasedByItem[name].value += val;
+        });
+      });
+
+      // --- Process Stock Items with aggregated data ---
+      const rawStock = stockResult.status === 'fulfilled'
+        ? (Array.isArray(stockResult.value) ? stockResult.value : (stockResult.value as any)?.items || (stockResult.value as any)?.data || [])
+        : [];
+      const mappedStock = rawStock.map((item: any) => {
+        const currentStock = parseFloat(item.current_stock) || 0;
+        const unitPrice = parseFloat(item.unit_price) || 0;
+        const reorderLevel = parseFloat(item.reorder_level) || 0;
+        const itemName = (item.name || '').trim().toLowerCase();
+        const sold = soldByItem[itemName] || { qty: 0, value: 0 };
+        const purchased = purchasedByItem[itemName] || { qty: 0, value: 0 };
+        return {
+          item: item.name || 'Unknown Item',
+          purchased: purchased.qty || currentStock,
+          used: sold.qty,
+          in_stock: currentStock,
+          po_value: purchased.value || currentStock * unitPrice,
+          bill_value: sold.value,
+          variance: purchased.qty > 0 ? (purchased.qty - sold.qty - currentStock) : (currentStock <= reorderLevel && currentStock > 0 ? 1 : 0),
+          month: -1,
+          year: -1,
+          last_restocked: item.last_restocked,
+          status: item.status,
+        };
+      });
+      setAllStockReconciliation(mappedStock);
     } finally {
       setIsLoading(false);
     }
