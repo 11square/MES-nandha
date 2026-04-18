@@ -1023,17 +1023,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem }: { onClose:
                 />
                 {errors.expected_delivery && <FieldError message={errors.expected_delivery} />}
               </div>
-              <div>
-                <Label className="text-xs text-gray-500">{t('gstNumber')}</Label>
-                <Input
-                  value={gstNumber}
-                  onChange={(e) => { const val = e.target.value.toUpperCase(); setGstNumber(val); setGstError(val ? validateGstNumber(val) : ''); }}
-                  placeholder="e.g. 33AUJPM8458P1ZR"
-                  maxLength={15}
-                  className={`h-8 text-sm font-mono${gstError ? ' border-red-500' : ''}`}
-                />
-                {gstError && <p className="text-xs text-red-500">{gstError}</p>}
-              </div>
             </div>
           </CardContent>
         </Card>
