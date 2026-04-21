@@ -1176,9 +1176,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       return `
         <tr>
           <td class="tc">${idx + 1}</td>
-          <td>${item.name}${item.category ? ' (' + item.category + ')' : ''}</td>
-          <td class="tc">${item.hsn_sac || ''}</td>
-          <td class="tr">${item.quantity}</td>
+          <td>
+            <div class="item-name">${item.name}</div>
+            ${item.category ? `<div class="item-cat">${item.category}</div>` : ''}
+          </td>
+          <td class="tc">${item.hsn_sac || '-'}</td>
+          <td class="tc">${item.quantity}</td>
           <td class="tc">${item.unit || 'Pcs'}</td>
           <td class="tr">${fmtCur(item.unit_price)}</td>
           <td class="tr">${fmtCur(taxablePrice)}</td>
@@ -1261,196 +1264,409 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     const html = `<!DOCTYPE html>
 <html>
 <head>
+  <meta charset="UTF-8">
   <title>${bill.bill_no} - ${docTitle}</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Arial, sans-serif; color: #222; font-size: 12px; line-height: 1.5; padding: 20px; max-width: 800px; margin: 0 auto; }
-    .doc-title { text-align: center; font-size: 16px; font-weight: 700; padding: 10px 0; border-bottom: 2px solid #222; margin-bottom: 0; }
-    .top-section { display: flex; border: 1px solid #444; border-top: none; }
-    .company-info { flex: 1; padding: 10px 12px; border-right: 1px solid #444; }
-    .company-name { font-size: 18px; font-weight: 800; }
-    .company-detail { font-size: 11px; color: #444; line-height: 1.6; margin-top: 2px; }
-    .invoice-meta { width: 260px; }
-    .invoice-meta table { width: 100%; border-collapse: collapse; }
-    .invoice-meta td { padding: 6px 10px; border-bottom: 1px solid #ccc; font-size: 12px; }
-    .invoice-meta td:first-child { font-weight: 600; width: 45%; border-right: 1px solid #ccc; }
-    .invoice-meta tr:last-child td { border-bottom: none; }
-    .bill-to { border: 1px solid #444; border-top: none; padding: 10px 12px; }
-    .bill-to .label { font-size: 11px; color: #666; margin-bottom: 4px; }
-    .bill-to .client-name { font-size: 14px; font-weight: 700; }
-    .bill-to p { font-size: 12px; line-height: 1.6; }
-    .items-table { width: 100%; border-collapse: collapse; margin-top: -1px; }
-    .items-table th { background: #f5f5f5; padding: 8px 6px; border: 1px solid #444; font-size: 11px; font-weight: 700; text-transform: uppercase; }
-    .items-table td { padding: 7px 6px; border: 1px solid #ccc; font-size: 11.5px; }
-    .items-table tr:last-child td { border-bottom: 1px solid #444; }
-    .items-table .total-row td { font-weight: 700; background: #f9f9f9; border: 1px solid #444; }
+    html, body { background: #f5f6f8; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      color: #1f2937;
+      font-size: 12px;
+      line-height: 1.5;
+      padding: 24px;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .page {
+      max-width: 820px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 100%);
+      color: #ffffff;
+      padding: 22px 28px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+    .header .brand .company-name { font-size: 22px; font-weight: 700; letter-spacing: 0.2px; }
+    .header .brand .company-tag { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    .header .brand .company-meta { font-size: 11px; opacity: 0.9; margin-top: 10px; line-height: 1.6; }
+    .header .doc-meta { text-align: right; }
+    .header .doc-meta .doc-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+    }
+    .header .doc-meta .doc-sub { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+    .header .doc-meta .meta-grid {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: auto auto;
+      gap: 4px 14px;
+      font-size: 11.5px;
+    }
+    .header .doc-meta .meta-grid .k { opacity: 0.8; text-align: right; }
+    .header .doc-meta .meta-grid .v { font-weight: 600; text-align: right; }
+    .status-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.4);
+      margin-top: 6px;
+    }
+
+    /* ===== Parties (Bill To / Ship To) ===== */
+    .parties { display: grid; grid-template-columns: 1fr 1fr; gap: 0; padding: 18px 28px 6px; }
+    .party { padding-right: 18px; }
+    .party .label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .party .name { font-size: 14px; font-weight: 700; color: #111827; }
+    .party .addr { font-size: 11.5px; color: #374151; line-height: 1.6; margin-top: 2px; }
+    .party .kv { font-size: 11.5px; color: #374151; margin-top: 2px; }
+    .party .kv span { color: #6b7280; }
+
+    /* ===== Items ===== */
+    .items-wrap { padding: 10px 28px 0; }
+    .items-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+    .items-table thead th {
+      background: #1f2937;
+      color: #ffffff;
+      padding: 9px 8px;
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      border: none;
+    }
+    .items-table thead th:first-child { border-top-left-radius: 4px; }
+    .items-table thead th:last-child { border-top-right-radius: 4px; }
+    .items-table tbody td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+    .items-table tbody tr:nth-child(even) td { background: #fafbfc; }
+    .items-table .item-name { font-weight: 600; color: #111827; }
+    .items-table .item-cat { color: #6b7280; font-size: 10.5px; }
+    .items-table tfoot td {
+      background: #f3f4f6;
+      padding: 9px 8px;
+      font-weight: 700;
+      border-top: 2px solid #d1d5db;
+    }
     .tc { text-align: center; }
     .tr { text-align: right; }
     .bold { font-weight: 700; }
-    .bottom-section { display: flex; border: 1px solid #444; border-top: none; }
-    .amount-words { flex: 1; padding: 10px 12px; border-right: 1px solid #444; font-size: 11px; }
-    .amount-words .label { font-weight: 600; margin-bottom: 4px; }
-    .amounts-table { width: 280px; }
-    .amounts-table table { width: 100%; border-collapse: collapse; }
-    .amounts-table td { padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #ddd; }
-    .amounts-table td:first-child { font-weight: 600; }
-    .amounts-table td:last-child { text-align: right; }
-    .amounts-table tr:last-child td { border-bottom: none; }
-    .amounts-table .grand-total td { font-size: 13px; font-weight: 800; background: #f5f5f5; border-top: 2px solid #444; border-bottom: 2px solid #444; }
-    .hsn-section { margin-top: 16px; }
-    .hsn-table { width: 100%; border-collapse: collapse; }
-    .hsn-table th { background: #f5f5f5; padding: 6px 8px; border: 1px solid #444; font-size: 10.5px; font-weight: 700; }
-    .hsn-table td { padding: 6px 8px; border: 1px solid #ccc; font-size: 11px; }
-    .hsn-table .total-row td { font-weight: 700; background: #f9f9f9; border: 1px solid #444; }
-    .footer-section { display: flex; margin-top: 16px; border: 1px solid #444; min-height: 120px; }
-    .terms-box { flex: 1; padding: 10px 12px; border-right: 1px solid #444; }
-    .terms-box .label { font-size: 11px; font-weight: 700; margin-bottom: 6px; }
-    .terms-box p { font-size: 11px; color: #444; }
-    .signatory-box { width: 260px; padding: 10px 12px; text-align: center; position: relative; }
-    .signatory-box .for-text { font-size: 12px; font-weight: 600; }
-    .signatory-box .sig-label { position: absolute; bottom: 10px; left: 0; right: 0; font-size: 11px; font-weight: 700; }
-    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 3px; font-size: 10px; font-weight: 700; color: white; text-transform: uppercase; letter-spacing: 0.5px; margin-left: 8px; }
-    @media print { body { padding: 10px; } @page { margin: 10mm; } }
+
+    /* ===== Bottom section: words + amounts ===== */
+    .bottom-section {
+      display: grid;
+      grid-template-columns: 1fr 320px;
+      padding: 18px 28px 0;
+      gap: 20px;
+    }
+    .words-box {
+      border: 1px dashed #d1d5db;
+      padding: 12px 14px;
+      border-radius: 4px;
+      background: #fafbfc;
+      font-size: 11.5px;
+    }
+    .words-box .label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .words-box .words { font-style: italic; color: #1f2937; }
+    .amounts-box { border: 1px solid #e5e7eb; border-radius: 4px; overflow: hidden; }
+    .amounts-box table { width: 100%; border-collapse: collapse; }
+    .amounts-box td {
+      padding: 7px 12px;
+      font-size: 11.5px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .amounts-box td:first-child { color: #4b5563; }
+    .amounts-box td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+    .amounts-box tr:last-child td { border-bottom: none; }
+    .amounts-box .grand-total td {
+      background: #1f2937;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 10px 12px;
+    }
+    .amounts-box .balance td {
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 700;
+    }
+    .amounts-box .paid td {
+      color: #047857;
+      font-weight: 600;
+    }
+
+    /* ===== HSN breakdown ===== */
+    .hsn-section { padding: 18px 28px 0; }
+    .hsn-section .label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .hsn-table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+    .hsn-table th {
+      background: #f3f4f6;
+      color: #374151;
+      padding: 7px 8px;
+      border: 1px solid #e5e7eb;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .hsn-table td {
+      padding: 6px 8px;
+      border: 1px solid #e5e7eb;
+    }
+    .hsn-table tfoot td, .hsn-table .total-row td {
+      background: #f9fafb;
+      font-weight: 700;
+    }
+
+    /* ===== Footer: Terms + Signatory ===== */
+    .footer-section {
+      display: grid;
+      grid-template-columns: 1fr 260px;
+      padding: 18px 28px 24px;
+      gap: 20px;
+    }
+    .terms-box { font-size: 11px; color: #374151; }
+    .terms-box .label {
+      font-size: 10px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .terms-box p { line-height: 1.6; }
+    .sig-box {
+      border: 1px solid #e5e7eb;
+      border-radius: 4px;
+      padding: 14px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 120px;
+      background: #fafbfc;
+    }
+    .sig-box .for-text { font-size: 12px; font-weight: 700; color: #111827; }
+    .sig-box .sig-line {
+      margin-top: 32px;
+      border-top: 1px solid #9ca3af;
+      padding-top: 6px;
+      font-size: 10.5px;
+      color: #6b7280;
+      letter-spacing: 0.4px;
+    }
+
+    .page-footer {
+      text-align: center;
+      padding: 12px 28px 20px;
+      font-size: 10px;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+      background: #fafbfc;
+    }
+
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .page { border: none; box-shadow: none; border-radius: 0; max-width: 100%; }
+      @page { size: A4; margin: 10mm; }
+    }
   </style>
 </head>
 <body>
-  <!-- Title -->
-  <div class="doc-title">${docTitle}</div>
-
-  <!-- Company Info + Invoice Meta -->
-  <div class="top-section">
-    <div class="company-info">
-      <div class="company-name">MES Pro</div>
-      <div class="company-detail">
-        Manufacturing Execution System<br>
-        State: ${placeOfSupply}
+  <div class="page">
+    <!-- Header -->
+    <div class="header">
+      <div class="brand">
+        <div class="company-name">MES Pro</div>
+        <div class="company-tag">Manufacturing Execution System</div>
+        <div class="company-meta">State: ${placeOfSupply}</div>
+      </div>
+      <div class="doc-meta">
+        <div class="doc-title">${docTitle}</div>
+        <div class="doc-sub">${isQuotation ? 'Quotation Document' : 'Original for Recipient'}</div>
+        <div class="meta-grid">
+          <div class="k">${isQuotation ? 'Quotation No.' : 'Invoice No.'}</div>
+          <div class="v">${bill.bill_no}</div>
+          <div class="k">Date</div>
+          <div class="v">${new Date(bill.date).toLocaleDateString('en-GB')}</div>
+          <div class="k">Place of Supply</div>
+          <div class="v">${placeOfSupply}</div>
+        </div>
       </div>
     </div>
-    <div class="invoice-meta">
-      <table>
-        <tr><td>${isQuotation ? 'Quotation No.' : 'Invoice No.'}</td><td>${bill.bill_no}</td></tr>
-        <tr><td>Date</td><td>${new Date(bill.date).toLocaleDateString('en-IN')}</td></tr>
-        <tr><td>Place of Supply</td><td>${placeOfSupply}</td></tr>
+
+    <!-- Parties -->
+    <div class="parties">
+      <div class="party">
+        <div class="label">Bill To</div>
+        <div class="name">${bill.client_name}</div>
+        <div class="addr">${clientAddress}</div>
+        ${bill.client_gst ? `<div class="kv"><span>GSTIN:</span> ${bill.client_gst}</div>` : ''}
+        <div class="kv"><span>State:</span> ${placeOfSupply}</div>
+      </div>
+      <div class="party">
+        <div class="label">${isQuotation ? 'Quotation Summary' : 'Payment Summary'}</div>
+        <div class="kv"><span>Payment Status:</span> <strong>${(bill.payment_status || 'Pending').toUpperCase()}</strong></div>
+        <div class="kv"><span>Payment Type:</span> ${(bill.payment_type || '—')}</div>
+        <div class="kv"><span>Amount Paid:</span> ${fmtCur(bill.paid_amount)}</div>
+        <div class="kv"><span>Balance Due:</span> <strong style="color:${balance > 0 ? '#b91c1c' : '#047857'};">${fmtCur(balance)}</strong></div>
+      </div>
+    </div>
+
+    <!-- Items -->
+    <div class="items-wrap">
+      <table class="items-table">
+        <thead>
+          <tr>
+            <th style="width:32px;">#</th>
+            <th style="text-align:left;">Item Name</th>
+            <th>HSN/SAC</th>
+            <th>Qty</th>
+            <th>Unit</th>
+            <th>Price/Unit</th>
+            <th>Taxable</th>
+            <th>GST</th>
+            <th>Final Rate</th>
+            <th>Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsRows}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td class="tc" colspan="3">Total</td>
+            <td class="tr">${totalQty}</td>
+            <td colspan="3"></td>
+            <td class="tr">${fmtCur(bill.total_tax)}</td>
+            <td></td>
+            <td class="tr">${fmtCur(bill.grand_total)}</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
-  </div>
 
-  <!-- Bill To -->
-  <div class="bill-to">
-    <div class="label">Bill To</div>
-    <div class="client-name">${bill.client_name}</div>
-    <p>${clientAddress}</p>
-    ${bill.client_gst ? `<p>GSTIN Number: ${bill.client_gst}</p>` : ''}
-    <p>State: ${placeOfSupply}</p>
-  </div>
-
-  <!-- Items Table -->
-  <table class="items-table">
-    <thead>
-      <tr>
-        <th style="width:30px;">#</th>
-        <th>Item name</th>
-        <th>HSN/SAC</th>
-        <th>Quantity</th>
-        <th>Unit</th>
-        <th>Price/Unit</th>
-        <th>Taxable<br>Price/unit</th>
-        <th>GST</th>
-        <th>Final Rate</th>
-        <th>Amount</th>
-      </tr>
-    </thead>
-    <tbody>
-      ${itemsRows}
-      <tr class="total-row">
-        <td class="tc" colspan="2">Total</td>
-        <td></td>
-        <td class="tr">${totalQty}</td>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td class="tr">${fmtCur(bill.total_tax)}</td>
-        <td></td>
-        <td class="tr">${fmtCur(bill.grand_total)}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <!-- Amount in Words + Amounts -->
-  <div class="bottom-section">
-    <div class="amount-words">
-      <div class="label">${isQuotation ? 'Quotation' : 'Invoice'} Amount In Words</div>
-      <div>${numToWords(bill.grand_total)}</div>
+    <!-- Amount in Words + Amounts -->
+    <div class="bottom-section">
+      <div class="words-box">
+        <div class="label">${isQuotation ? 'Quotation' : 'Invoice'} Amount In Words</div>
+        <div class="words">${numToWords(bill.grand_total)}</div>
+      </div>
+      <div class="amounts-box">
+        <table>
+          <tr><td>Sub Total</td><td>${fmtCur(bill.subtotal)}</td></tr>
+          ${bill.total_discount > 0 ? `<tr><td>Discount</td><td>- ${fmtCur(bill.total_discount)}</td></tr>` : ''}
+          ${bill.total_tax > 0 ? (pdfIsIntraState
+            ? `<tr><td>CGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr><tr><td>SGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr>`
+            : `<tr><td>IGST</td><td>${fmtCur(bill.total_tax)}</td></tr>`) : ''}
+          <tr class="grand-total"><td>Grand Total</td><td>${fmtCur(bill.grand_total)}</td></tr>
+          <tr class="paid"><td>Paid</td><td>${fmtCur(bill.paid_amount)}</td></tr>
+          <tr class="balance"><td>Balance Due</td><td>${fmtCur(balance)}</td></tr>
+        </table>
+      </div>
     </div>
-    <div class="amounts-table">
-      <table>
-        <tr><td>Sub Total</td><td>${fmtCur(bill.subtotal)}</td></tr>
-        ${bill.total_discount > 0 ? `<tr><td>Discount</td><td>- ${fmtCur(bill.total_discount)}</td></tr>` : ''}
-        ${bill.total_tax > 0 ? (pdfIsIntraState 
-          ? `<tr><td>CGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr><tr><td>SGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr>` 
-          : `<tr><td>IGST</td><td>${fmtCur(bill.total_tax)}</td></tr>`) : ''}
-        <tr class="grand-total"><td>Total</td><td>${fmtCur(bill.grand_total)}</td></tr>
-        <tr><td>Paid</td><td>${fmtCur(bill.paid_amount)}</td></tr>
-        <tr><td>Balance</td><td>${fmtCur(balance)}</td></tr>
-      </table>
-    </div>
-  </div>
 
-  <!-- HSN/SAC Tax Breakdown -->
-  ${bill.total_tax > 0 ? `
-  <div class="hsn-section">
-    <table class="hsn-table">
-      <thead>
-        ${pdfIsIntraState ? `
-        <tr>
-          <th rowspan="2">HSN/SAC</th>
-          <th rowspan="2">Taxable amount</th>
-          <th colspan="2">CGST</th>
-          <th colspan="2">SGST</th>
-          <th rowspan="2">Total Tax Amount</th>
-        </tr>
-        <tr>
-          <th>Rate</th>
-          <th>Amount</th>
-          <th>Rate</th>
-          <th>Amount</th>
-        </tr>` : `
-        <tr>
-          <th>HSN/SAC</th>
-          <th>Taxable amount</th>
-          <th>IGST Rate</th>
-          <th>IGST Amount</th>
-          <th>Total Tax Amount</th>
-        </tr>`}
-      </thead>
-      <tbody>
-        ${hsnRows}
-        <tr class="total-row">
-          <td class="tc">Total</td>
-          <td class="tr">${fmtCur(hsnTotals.taxable)}</td>
+    <!-- HSN Breakdown -->
+    ${bill.total_tax > 0 ? `
+    <div class="hsn-section">
+      <div class="label">Tax Breakdown</div>
+      <table class="hsn-table">
+        <thead>
           ${pdfIsIntraState ? `
-          <td></td>
-          <td class="tr">${fmtCur(hsnTotals.cgst)}</td>
-          <td></td>
-          <td class="tr">${fmtCur(hsnTotals.sgst)}</td>` : `
-          <td></td>
-          <td class="tr">${fmtCur(hsnTotals.total)}</td>`}
-          <td class="tr bold">${fmtCur(hsnTotals.total)}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>` : ''}
+          <tr>
+            <th rowspan="2">HSN/SAC</th>
+            <th rowspan="2">Taxable Amount</th>
+            <th colspan="2">CGST</th>
+            <th colspan="2">SGST</th>
+            <th rowspan="2">Total Tax</th>
+          </tr>
+          <tr>
+            <th>Rate</th>
+            <th>Amount</th>
+            <th>Rate</th>
+            <th>Amount</th>
+          </tr>` : `
+          <tr>
+            <th>HSN/SAC</th>
+            <th>Taxable Amount</th>
+            <th>IGST Rate</th>
+            <th>IGST Amount</th>
+            <th>Total Tax</th>
+          </tr>`}
+        </thead>
+        <tbody>
+          ${hsnRows}
+          <tr class="total-row">
+            <td class="tc">Total</td>
+            <td class="tr">${fmtCur(hsnTotals.taxable)}</td>
+            ${pdfIsIntraState ? `
+            <td></td>
+            <td class="tr">${fmtCur(hsnTotals.cgst)}</td>
+            <td></td>
+            <td class="tr">${fmtCur(hsnTotals.sgst)}</td>` : `
+            <td></td>
+            <td class="tr">${fmtCur(hsnTotals.total)}</td>`}
+            <td class="tr bold">${fmtCur(hsnTotals.total)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>` : ''}
 
-  <!-- Terms & Signatory -->
-  <div class="footer-section">
-    <div class="terms-box">
-      <div class="label">Terms and conditions</div>
-      <p>${termsConditions}</p>
-      ${bill.notes ? `<div style="margin-top:8px;"><div class="label">Notes</div><p>${bill.notes}</p></div>` : ''}
+    <!-- Terms & Signatory -->
+    <div class="footer-section">
+      <div class="terms-box">
+        <div class="label">Terms &amp; Conditions</div>
+        <p>${termsConditions}</p>
+        ${bill.notes ? `<div style="margin-top:10px;"><div class="label">Notes</div><p>${bill.notes}</p></div>` : ''}
+      </div>
+      <div class="sig-box">
+        <div class="for-text">For: MES Pro</div>
+        <div class="sig-line">Authorized Signatory</div>
+      </div>
     </div>
-    <div class="signatory-box">
-      <div class="for-text">For: MES Pro</div>
-      <div class="sig-label">Authorized Signatory</div>
+
+    <div class="page-footer">
+      This is a computer generated ${isQuotation ? 'quotation' : 'invoice'} and does not require a physical signature.
     </div>
   </div>
 </body>
