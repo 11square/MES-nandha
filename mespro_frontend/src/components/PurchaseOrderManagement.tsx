@@ -52,6 +52,7 @@ interface PurchaseOrderManagementProps {
 
 interface PurchaseOrder {
   id: string;
+  po_number?: string;
   date: string;
   vendor_name: string;
   vendor_contact: string;
@@ -67,6 +68,43 @@ interface PurchaseOrder {
   notes?: string;
   is_gst?: boolean;
 }
+
+const UNIT_OPTIONS = ['Pcs', 'Kg', 'Ltr', 'Mtr', 'Box', 'Bag', 'Set', 'Nos', 'Pair', 'Roll', 'Pack', 'Dozen', 'Ton', 'Sq.ft', 'Sq.mtr'];
+const GST_RATE_OPTIONS = [0, 5, 12, 18, 28];
+
+type POItemEntryRow = {
+  id: number;
+  itemId: string;
+  itemName: string;
+  category: string;
+  subcategory: string;
+  quantity: number;
+  unitPrice: number;
+  unit: string;
+  hsnSac: string;
+  gstRate: number;
+};
+
+type POItem = {
+  id: string;
+  category: string;
+  subcategory: string;
+  product: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  unit: string;
+  hsnSac: string;
+  gstRate: number;
+};
+
+const calculatePOItemTotal = (quantity: number, unitPrice: number, gstRate: number) => {
+  const subtotal = quantity * unitPrice;
+  const taxable = subtotal;
+  const taxAmount = (taxable * gstRate) / 100;
+  return taxable + taxAmount;
+};
 
 const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ language = 'en' }) => {
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
@@ -591,6 +629,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
   const savingAsDraftRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [formData, setFormData] = useState({
+    po_number: '',
     date: new Date().toISOString().split('T')[0],
     vendor_name: '',
     vendor_contact: '',
@@ -650,6 +689,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
           selling_price: (Number(p.selling_price) || 0) > 0 ? Number(p.selling_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
           unit_price: (Number(p.unit_price) || 0) > 0 ? Number(p.unit_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
           unit: p.unit || stockMatch.unit || 'pcs',
+          hsn_sac: p.hsn_sac || p.hsnSac || p.hsn_code || p.hsnCode || stockMatch.hsn_sac || stockMatch.hsnSac || stockMatch.hsn_code || stockMatch.hsnCode || '',
         };
       }
       return p;
@@ -666,6 +706,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
           base_price: Number(s.buying_price) || Number(s.unit_price) || 0,
           selling_price: Number(s.selling_price) || Number(s.unit_price) || 0,
           unit_price: Number(s.selling_price) || Number(s.unit_price) || 0,
+          hsn_sac: s.hsn_sac || s.hsnSac || s.hsn_code || s.hsnCode || '',
         });
         existingNames.add((s.name || '').toLowerCase());
       }
@@ -680,6 +721,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
         base_price: Number(stockItem.buying_price) || Number(stockItem.unit_price) || 0,
         selling_price: Number(stockItem.selling_price) || Number(stockItem.unit_price) || 0,
         unit_price: Number(stockItem.selling_price) || Number(stockItem.unit_price) || 0,
+        hsn_sac: stockItem.hsn_sac || stockItem.hsnSac || stockItem.hsn_code || stockItem.hsnCode || '',
       });
     }
     return merged;
@@ -732,24 +774,13 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
   }, [allItems]);
 
   // Multi-row item entry (like billing)
-  const [itemEntryRows, setItemEntryRows] = useState<Array<{ id: number; itemId: string; itemName: string; category: string; subcategory: string; quantity: number; unitPrice: number; unit: string }>>([
-    { id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }
+  const [itemEntryRows, setItemEntryRows] = useState<POItemEntryRow[]>([
+    { id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }
   ]);
   const [activeRowDropdown, setActiveRowDropdown] = useState<number | null>(null);
   const [itemRowErrors, setItemRowErrors] = useState<Record<number, { itemId?: string; quantity?: string }>>({});
 
   // Added items list
-  interface POItem {
-    id: string;
-    category: string;
-    subcategory: string;
-    product: string;
-    productName: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-    unit: string;
-  }
   const [addedItems, setAddedItems] = useState<POItem[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -786,7 +817,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
   // Multi-row item entry functions
   const addNewItemRow = () => {
     const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
-    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }]);
     setTimeout(() => {
       const el = document.querySelector(`[data-row-search="${newId}"]`) as HTMLInputElement;
       el?.focus();
@@ -809,7 +840,19 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     const catId = (item.category || 'other').toLowerCase().replace(/\s+/g, '-');
     const unitPrice = Number(item.base_price || item.selling_price || item.unit_price || item.unitPrice) || 0;
     setItemEntryRows(rows => rows.map(row =>
-      row.id === rowId ? { ...row, itemId: String(item.id), itemName: item.name, category: catId, subcategory: item.subcategory || 'General', unitPrice, unit: item.unit || 'Pcs' } : row
+      row.id === rowId
+        ? {
+            ...row,
+            itemId: String(item.id),
+            itemName: item.name,
+            category: catId,
+            subcategory: item.subcategory || 'General',
+            unitPrice,
+            unit: item.unit || 'Pcs',
+            hsnSac: item.hsn_sac || item.hsnSac || item.hsn_code || item.hsnCode || row.hsnSac || '',
+            gstRate: Number(item.gst_rate ?? item.gstRate ?? row.gstRate ?? 18),
+          }
+        : row
     ));
     setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
     setActiveRowDropdown(null);
@@ -819,7 +862,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     if (itemEntryRows.length > 1) {
       setItemEntryRows(rows => rows.filter(row => row.id !== rowId));
     } else {
-      setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+      setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }]);
     }
   };
 
@@ -848,11 +891,13 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       productName: row.itemName,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
-      total: row.quantity * row.unitPrice,
+      total: calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate),
       unit: row.unit || 'Pcs',
+      hsnSac: row.hsnSac || '',
+      gstRate: row.gstRate ?? 18,
     }));
     setAddedItems([...addedItems, ...newPOItems]);
-    setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }]);
     setItemRowErrors({});
     setErrors(prev => { const {items: _, ...rest} = prev; return rest; });
   };
@@ -906,6 +951,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
         quantity: reorderQty,
         unitPrice: unitPrice,
         unit: 'Pcs',
+        hsnSac: stockItem.hsn_sac || '',
+        gstRate: Number(stockItem.gst_rate || 18),
       }]);
 
       // Also pre-fill the vendor if supplier info is available
@@ -979,6 +1026,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       rate: item.unitPrice,
       amount: item.total,
       category: item.category || 'Uncategorised',
+      hsn_sac: item.hsnSac || '',
+      gst_rate: item.gstRate ?? 18,
     }));
     onSubmit({
       ...formData,
@@ -1012,6 +1061,16 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
             <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">Bill Number</Label>
+                <Input
+                  type="text"
+                  value={formData.po_number}
+                  onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                  placeholder="Enter bill number"
+                  className="h-8 text-sm"
+                />
+              </div>
               <div>
                 <Label className="text-xs text-gray-500">{t('date')} *</Label>
                 <Input
@@ -1202,12 +1261,14 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[30%]">{t('item')} *</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">{t('quantity')} *</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">UNIT</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">PRICE/UNIT</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">AMOUNT</th>
-                  <th className="w-[60px]"></th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[24%]">{t('item')} *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">HSN/SAC</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">{t('quantity')} *</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[9%]">UNIT</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[11%]">PRICE/UNIT</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">GST %</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">AMOUNT</th>
+                  <th className="w-[10%]"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1277,6 +1338,16 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                     </td>
                     <td className="py-1 pr-2">
                       <Input
+                        type="text"
+                        placeholder="HSN"
+                        value={row.hsnSac}
+                        onChange={(e) => updateItemRow(row.id, 'hsnSac', e.target.value)}
+                        className="h-7 text-xs font-mono"
+                        maxLength={10}
+                      />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <Input
                         type="number"
                         min="1"
                         value={row.quantity}
@@ -1295,7 +1366,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                         onChange={(e) => updateItemRow(row.id, 'unit', e.target.value)}
                         className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white"
                       >
-                        {['Pcs', 'Kg', 'Ltr', 'Mtr', 'Box', 'Bag', 'Set', 'Nos', 'Pair', 'Roll', 'Pack', 'Dozen', 'Ton', 'Sq.ft', 'Sq.mtr'].map(u => <option key={u} value={u}>{u}</option>)}
+                        {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
                     <td className="py-1 pr-2">
@@ -1315,8 +1386,21 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                         className="h-7 text-xs text-right"
                       />
                     </td>
+                    <td className="py-1 pr-2">
+                      <select
+                        value={row.gstRate}
+                        onChange={(e) => updateItemRow(row.id, 'gstRate', Number(e.target.value))}
+                        className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white text-center"
+                      >
+                        {GST_RATE_OPTIONS.map(rate => (
+                          <option key={rate} value={rate}>{rate}%</option>
+                        ))}
+                      </select>
+                    </td>
                     <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
-                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${(row.unitPrice * row.quantity).toLocaleString()}` : '-'}
+                      {(row.itemId || row.itemName.trim()) && row.quantity > 0
+                        ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate).toLocaleString()}`
+                        : '-'}
                     </td>
                     <td className="py-1 flex gap-0.5 justify-center">
                       <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeItemRow(row.id)} title="Remove row">
@@ -1356,8 +1440,11 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                   <tr className="border-b">
                     <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
                     <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-20">HSN/SAC</th>
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-12">Unit</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
                     <th className="w-10"></th>
                   </tr>
@@ -1367,8 +1454,11 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                     <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
                       <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
                       <td className="py-1.5 px-2 font-medium">{item.productName}</td>
+                      <td className="py-1.5 px-2 text-gray-500 font-mono">{item.hsnSac || '-'}</td>
                       <td className="py-1.5 px-2 text-center">{item.quantity}</td>
+                      <td className="py-1.5 px-2 text-center">{item.unit || 'Pcs'}</td>
                       <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-1.5 px-2 text-center">{item.gstRate ?? 18}%</td>
                       <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       <td className="py-1.5 px-2">
                         <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
@@ -1379,12 +1469,10 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                   ))}
                   {/* Totals Row */}
                   <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
-                    <td className="py-2 px-2"></td>
-                    <td className="py-2 px-2">Total</td>
-                    <td className="py-2 px-2 text-center">{addedItems.reduce((s, i) => s + i.quantity, 0)}</td>
-                    <td className="py-2 px-2"></td>
+                    <td colSpan={3} className="py-2 px-2">Total Qty: {addedItems.reduce((s, i) => s + i.quantity, 0)}</td>
+                    <td colSpan={4} className="py-2 px-2"></td>
                     <td className="py-2 px-2 text-right text-blue-700">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td></td>
+                    <td className="py-2 px-2"></td>
                   </tr>
                 </tbody>
               </table>
@@ -1458,6 +1546,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
 
   const [formData, setFormData] = useState({
     id: po.id,
+    po_number: (po as any).po_number || '',
     date: po.date || new Date().toISOString().split('T')[0],
     vendor_name: po.vendor_name || '',
     vendor_contact: po.vendor_contact || '',
@@ -1511,6 +1600,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
           selling_price: (Number(p.selling_price) || 0) > 0 ? Number(p.selling_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
           unit_price: (Number(p.unit_price) || 0) > 0 ? Number(p.unit_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
           unit: p.unit || stockMatch.unit || 'pcs',
+          hsn_sac: p.hsn_sac || p.hsnSac || p.hsn_code || p.hsnCode || stockMatch.hsn_sac || stockMatch.hsnSac || stockMatch.hsn_code || stockMatch.hsnCode || '',
         };
       }
       return p;
@@ -1523,6 +1613,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
           base_price: Number(s.buying_price) || Number(s.unit_price) || 0,
           selling_price: Number(s.selling_price) || Number(s.unit_price) || 0,
           unit_price: Number(s.selling_price) || Number(s.unit_price) || 0,
+          hsn_sac: s.hsn_sac || s.hsnSac || s.hsn_code || s.hsnCode || '',
         });
         existingNames.add((s.name || '').toLowerCase());
       }
@@ -1531,24 +1622,13 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
   }, [sharedProducts, stockItems]);
 
   // Multi-row item entry
-  const [itemEntryRows, setItemEntryRows] = useState<Array<{ id: number; itemId: string; itemName: string; category: string; subcategory: string; quantity: number; unitPrice: number; unit: string }>>([
-    { id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }
+  const [itemEntryRows, setItemEntryRows] = useState<POItemEntryRow[]>([
+    { id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }
   ]);
   const [activeRowDropdown, setActiveRowDropdown] = useState<number | null>(null);
   const [itemRowErrors, setItemRowErrors] = useState<Record<number, { itemId?: string; quantity?: string }>>({});
 
   // Added items list
-  interface POItem {
-    id: string;
-    category: string;
-    subcategory: string;
-    product: string;
-    productName: string;
-    quantity: number;
-    unitPrice: number;
-    total: number;
-    unit: string;
-  }
   const [addedItems, setAddedItems] = useState<POItem[]>([]);
   const [errors, setErrors] = useState<ValidationErrors>({});
 
@@ -1563,8 +1643,10 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
         productName: item.name,
         quantity: Number(item.quantity) || 1,
         unitPrice: Number(item.rate) || 0,
-        total: (Number(item.quantity) || 1) * (Number(item.rate) || 0),
+        total: calculatePOItemTotal(Number(item.quantity) || 1, Number(item.rate) || 0, Number(item.gst_rate ?? item.gstRate ?? 18)),
         unit: item.unit || 'pcs',
+        hsnSac: item.hsn_sac || item.hsnSac || '',
+        gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
       }));
       setAddedItems(existingItems);
     }
@@ -1609,7 +1691,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
   // Item entry functions
   const addNewItemRow = () => {
     const newId = Math.max(...itemEntryRows.map(r => r.id), 0) + 1;
-    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setItemEntryRows([...itemEntryRows, { id: newId, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }]);
   };
 
   const updateItemRow = (rowId: number, field: string, value: string | number) => {
@@ -1622,7 +1704,19 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     const catId = (item.category || 'other').toLowerCase().replace(/\s+/g, '-');
     const unitPrice = Number(item.base_price || item.selling_price || item.unit_price || item.unitPrice) || 0;
     setItemEntryRows(rows => rows.map(row =>
-      row.id === rowId ? { ...row, itemId: String(item.id), itemName: item.name, category: catId, subcategory: item.subcategory || 'General', unitPrice, unit: item.unit || 'Pcs' } : row
+      row.id === rowId
+        ? {
+            ...row,
+            itemId: String(item.id),
+            itemName: item.name,
+            category: catId,
+            subcategory: item.subcategory || 'General',
+            unitPrice,
+            unit: item.unit || 'Pcs',
+            hsnSac: item.hsn_sac || item.hsnSac || item.hsn_code || item.hsnCode || row.hsnSac || '',
+            gstRate: Number(item.gst_rate ?? item.gstRate ?? row.gstRate ?? 18),
+          }
+        : row
     ));
     setItemRowErrors(prev => ({ ...prev, [rowId]: { ...prev[rowId], itemId: '' } }));
     setActiveRowDropdown(null);
@@ -1632,7 +1726,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     if (itemEntryRows.length > 1) {
       setItemEntryRows(rows => rows.filter(row => row.id !== rowId));
     } else {
-      setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+      setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }]);
     }
   };
 
@@ -1660,11 +1754,13 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       productName: row.itemName,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
-      total: row.quantity * row.unitPrice,
+      total: calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate),
       unit: row.unit || 'Pcs',
+      hsnSac: row.hsnSac || '',
+      gstRate: row.gstRate ?? 18,
     }));
     setAddedItems([...addedItems, ...newPOItems]);
-    setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs' }]);
+    setItemEntryRows([{ id: 1, itemId: '', itemName: '', category: '', subcategory: '', quantity: 1, unitPrice: 0, unit: 'Pcs', hsnSac: '', gstRate: 18 }]);
     setItemRowErrors({});
     setErrors(prev => { const {items: _, ...rest} = prev; return rest; });
   };
@@ -1691,6 +1787,8 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       rate: item.unitPrice,
       amount: item.total,
       category: item.category || 'Uncategorised',
+      hsn_sac: item.hsnSac || '',
+      gst_rate: item.gstRate ?? 18,
     }));
     onSubmit({
       ...formData,
@@ -1719,6 +1817,16 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
             <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+              <div>
+                <Label className="text-xs text-gray-500">Bill Number</Label>
+                <Input
+                  type="text"
+                  value={formData.po_number}
+                  onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                  placeholder="Enter bill number"
+                  className="h-8 text-sm"
+                />
+              </div>
               <div>
                 <Label className="text-xs text-gray-500">{t('date')} *</Label>
                 <Input type="date" value={formData.date} onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
@@ -1863,12 +1971,14 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[30%]">{t('item')} *</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">{t('quantity')} *</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">UNIT</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">PRICE/UNIT</th>
-                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[14%]">AMOUNT</th>
-                  <th className="w-[60px]"></th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[24%]">{t('item')} *</th>
+                  <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">HSN/SAC</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">{t('quantity')} *</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[9%]">UNIT</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[11%]">PRICE/UNIT</th>
+                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">GST %</th>
+                  <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">AMOUNT</th>
+                  <th className="w-[10%]"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1912,18 +2022,33 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                       </div>
                     </td>
                     <td className="py-1 pr-2">
+                      <Input
+                        type="text"
+                        placeholder="HSN"
+                        value={row.hsnSac}
+                        onChange={(e) => updateItemRow(row.id, 'hsnSac', e.target.value)}
+                        className="h-7 text-xs font-mono"
+                        maxLength={10}
+                      />
+                    </td>
+                    <td className="py-1 pr-2">
                       <Input type="number" min="1" value={row.quantity} onChange={(e) => updateItemRow(row.id, 'quantity', parseInt(e.target.value) || 0)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Enter') { e.preventDefault(); addAllItems(); } }} className={`h-7 text-xs text-center ${itemRowErrors[row.id]?.quantity ? 'border-red-400' : ''}`} />
                     </td>
                     <td className="py-1 pr-2">
                       <select value={row.unit} onChange={(e) => updateItemRow(row.id, 'unit', e.target.value)} className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white">
-                        {['Pcs', 'Kg', 'Ltr', 'Mtr', 'Box', 'Bag', 'Set', 'Nos', 'Pair', 'Roll', 'Pack', 'Dozen', 'Ton', 'Sq.ft', 'Sq.mtr'].map(u => <option key={u} value={u}>{u}</option>)}
+                        {UNIT_OPTIONS.map(u => <option key={u} value={u}>{u}</option>)}
                       </select>
                     </td>
                     <td className="py-1 pr-2">
                       <Input type="number" min="0" step="0.01" placeholder="Auto" value={row.unitPrice || ''} onChange={(e) => updateItemRow(row.id, 'unitPrice', parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); addNewItemRow(); } if (e.key === 'Enter') { e.preventDefault(); addNewItemRow(); } }} className="h-7 text-xs text-right" />
                     </td>
+                    <td className="py-1 pr-2">
+                      <select value={row.gstRate} onChange={(e) => updateItemRow(row.id, 'gstRate', Number(e.target.value))} className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white text-center">
+                        {GST_RATE_OPTIONS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
+                      </select>
+                    </td>
                     <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
-                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${(row.unitPrice * row.quantity).toLocaleString()}` : '-'}
+                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate).toLocaleString()}` : '-'}
                     </td>
                     <td className="py-1 flex gap-0.5 justify-center">
                       <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeItemRow(row.id)} title="Remove row"><Minus className="h-3 w-3 text-red-500" /></Button>
@@ -1951,9 +2076,11 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                   <tr className="border-b">
                     <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
                     <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
+                    <th className="text-left py-2 px-2 font-semibold text-gray-600 w-20">HSN/SAC</th>
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Unit</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
+                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
                     <th className="w-10"></th>
                   </tr>
@@ -1963,9 +2090,11 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                     <tr key={item.id} className="border-b border-gray-100 hover:bg-gray-50/50">
                       <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
                       <td className="py-1.5 px-2 font-medium">{item.productName}</td>
+                      <td className="py-1.5 px-2 text-gray-500 font-mono">{item.hsnSac || '-'}</td>
                       <td className="py-1.5 px-2 text-center">{item.quantity}</td>
                       <td className="py-1.5 px-2 text-center">{item.unit}</td>
                       <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                      <td className="py-1.5 px-2 text-center">{item.gstRate ?? 18}%</td>
                       <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       <td className="py-1.5 px-2 text-center">
                         <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
@@ -1977,7 +2106,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                 </tbody>
                 <tfoot className="bg-blue-50">
                   <tr>
-                    <td colSpan={5} className="py-2 px-2 text-right text-xs font-bold text-blue-900">{t('total')}:</td>
+                    <td colSpan={7} className="py-2 px-2 text-right text-xs font-bold text-blue-900">{t('total')}:</td>
                     <td className="py-2 px-2 text-right text-sm font-bold text-blue-900">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td></td>
                   </tr>
