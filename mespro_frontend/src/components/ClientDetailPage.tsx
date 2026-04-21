@@ -24,7 +24,7 @@ import {
   Truck, ArrowDownRight, ArrowUpRight,
 } from 'lucide-react';
 
-const fmt = (val: number) => `â‚¹${Number(val || 0).toLocaleString('en-IN')}`;
+const fmt = (val: number) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
 
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -166,7 +166,7 @@ export default function ClientDetailPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-              <p className="text-blue-100">#{client.id} â€¢ {client.contact_person}</p>
+              <p className="text-blue-100">#{client.id} • {client.contact_person}</p>
               <div className="flex items-center gap-4 mt-2 text-sm text-blue-100 flex-wrap">
                 {client.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {client.phone}</span>}
                 {client.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {client.email}</span>}
