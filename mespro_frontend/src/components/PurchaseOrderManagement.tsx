@@ -127,6 +127,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 
   const [showAddPO, setShowAddPO] = useState(false);
   const [addPOIsInvoice, setAddPOIsInvoice] = useState(false);
+  const [poTab, setPoTab] = useState<'gst' | 'non-gst'>('gst');
   const [showEditPO, setShowEditPO] = useState(false);
   const [editingPO, setEditingPO] = useState<PurchaseOrder | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -435,21 +436,22 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="gst" className="w-full">
-        <div className="flex justify-between items-center mb-4">
+      <Tabs value={poTab} onValueChange={(v: string) => setPoTab(v as 'gst' | 'non-gst')} className="w-full">
+        <div className="flex justify-between items-center mb-4 gap-4">
           <TabsList className="grid w-full max-w-lg grid-cols-2">
             <TabsTrigger value="gst">{t('invoice')}</TabsTrigger>
             <TabsTrigger value="non-gst">{t('quotationBill')}</TabsTrigger>
           </TabsList>
+          <Button
+            className="bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
+            onClick={() => { setAddPOIsInvoice(poTab === 'gst'); setShowAddPO(true); }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            {poTab === 'gst' ? 'Create Invoice PO' : 'Create Quotation PO'}
+          </Button>
         </div>
         {/* Invoice Tab */}
-        <TabsContent value="gst" className="space-y-4 mt-4">
-          <div className="flex justify-end mb-2">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setAddPOIsInvoice(true); setShowAddPO(true); }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Invoice PO
-            </Button>
-          </div>
+        <TabsContent value="gst" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{t('invoicePurchaseOrders')} ({dateFilteredPOs.filter(po => po.is_gst).length})</CardTitle>
@@ -526,13 +528,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
         </TabsContent>
 
         {/* Quotation Bill Tab */}
-        <TabsContent value="non-gst" className="space-y-4 mt-4">
-          <div className="flex justify-end mb-2">
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setAddPOIsInvoice(false); setShowAddPO(true); }}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Quotation PO
-            </Button>
-          </div>
+        <TabsContent value="non-gst" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{t('quotationBillPurchaseOrders')} ({dateFilteredPOs.filter(po => !po.is_gst).length})</CardTitle>
