@@ -575,9 +575,13 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       return true;
     })
     .sort((a: any, b: any) => {
-      const aTime = new Date(a.created_at || a.date || 0).getTime();
-      const bTime = new Date(b.created_at || b.date || 0).getTime();
-      if (bTime !== aTime) return bTime - aTime;
+      // Primary: by transaction date (desc), fall back to created_at
+      const aDate = new Date(a.date || a.created_at || 0).getTime();
+      const bDate = new Date(b.date || b.created_at || 0).getTime();
+      if (bDate !== aDate) return bDate - aDate;
+      const aCreated = new Date(a.created_at || 0).getTime();
+      const bCreated = new Date(b.created_at || 0).getTime();
+      if (bCreated !== aCreated) return bCreated - aCreated;
       return (b._sourceId || 0) - (a._sourceId || 0);
     });
 
@@ -1213,7 +1217,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-700">
                           <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                          {new Date(transaction.date).toLocaleDateString()}
+                          {new Date(transaction.date).toLocaleDateString('en-GB')}
                         </div>
                       </td>
                       <td className="px-6 py-4">
