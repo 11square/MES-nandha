@@ -1,4 +1,4 @@
-import { toast } from 'sonner';
+﻿import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -24,7 +24,7 @@ import {
   Truck, ArrowDownRight, ArrowUpRight,
 } from 'lucide-react';
 
-const fmt = (val: number) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
+const fmt = (val: number) => `â‚¹${Number(val || 0).toLocaleString('en-IN')}`;
 
 export default function ClientDetailPage() {
   const { clientId } = useParams<{ clientId: string }>();
@@ -166,7 +166,7 @@ export default function ClientDetailPage() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-              <p className="text-blue-100">#{client.id} • {client.contact_person}</p>
+              <p className="text-blue-100">#{client.id} â€¢ {client.contact_person}</p>
               <div className="flex items-center gap-4 mt-2 text-sm text-blue-100 flex-wrap">
                 {client.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {client.phone}</span>}
                 {client.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {client.email}</span>}
@@ -246,7 +246,6 @@ export default function ClientDetailPage() {
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
           <TabsTrigger value="bills" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Bills ({bills.length})</TabsTrigger>
           <TabsTrigger value="orders" className="text-xs px-3 py-1.5"><Package className="w-3.5 h-3.5 mr-1" /> Orders ({orders.length})</TabsTrigger>
-          <TabsTrigger value="outstandings" className="text-xs px-3 py-1.5"><CreditCard className="w-3.5 h-3.5 mr-1" /> Outstanding ({outstandings.length})</TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Finance ({transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
         </TabsList>
@@ -673,101 +672,6 @@ export default function ClientDetailPage() {
                             txn.status === 'cancelled' ? 'bg-red-100 text-red-700' :
                             'bg-amber-100 text-amber-700'
                           }>{txn.status || 'pending'}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ===== OUTSTANDINGS TAB ===== */}
-        <TabsContent value="outstandings" className="mt-4 space-y-4">
-          {totalOutstanding > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-red-500/10 border-red-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-red-600">Total Outstanding</span>
-                    <CreditCard className="h-4 w-4 text-red-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-red-700">{fmt(totalOutstanding)}</p>
-                  <p className="text-xs text-red-500 mt-1">{outstandings.length} pending bills</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-orange-500/10 border-orange-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-orange-600">Overdue</span>
-                    <Clock className="h-4 w-4 text-orange-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-orange-700">{overdueCount}</p>
-                  <p className="text-xs text-orange-500 mt-1">overdue bills</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-amber-500/10 border-amber-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-amber-600">Avg Overdue Days</span>
-                    <Calendar className="h-4 w-4 text-amber-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-amber-700">
-                    {overdueCount > 0 ? Math.round(outstandings.filter(o => o.days_overdue > 0).reduce((s, o) => s + o.days_overdue, 0) / overdueCount) : 0}
-                  </p>
-                  <p className="text-xs text-amber-500 mt-1">days average</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          <Card>
-            <CardContent className="p-0">
-              {outstandings.length === 0 ? (
-                <div className="p-12 text-center text-slate-400">
-                  <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No outstanding balance — all clear!</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Bill No</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Paid</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Overdue</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {outstandings.map((o: any) => (
-                      <TableRow key={o.id} className={(o.days_overdue || 0) > 0 ? 'bg-red-50/50' : ''}>
-                        <TableCell className="font-mono font-medium text-blue-600">{o.bill_no}</TableCell>
-                        <TableCell>{o.date ? new Date(o.date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell className="text-right font-semibold">{fmt(o.grand_total)}</TableCell>
-                        <TableCell className="text-right text-emerald-600">{fmt(o.paid_amount)}</TableCell>
-                        <TableCell className="text-right font-bold text-red-600">{fmt(o.balance)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {o.due_date ? new Date(o.due_date).toLocaleDateString() : '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {(o.days_overdue || 0) > 0 ? (
-                            <span className="text-sm font-semibold text-red-600">{o.days_overdue} days</span>
-                          ) : <span className="text-slate-400">-</span>}
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={
-                            o.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                            o.status === 'partial' ? 'bg-amber-100 text-amber-700' :
-                            o.status === 'cleared' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-slate-100 text-slate-700'
-                          }>{o.status}</Badge>
                         </TableCell>
                       </TableRow>
                     ))}
