@@ -404,6 +404,50 @@ module.exports = {
     }
   },
 
+  // DELETE /finance/transactions/:id — revert vendor outstanding on delete
+  delete: async (req, res, next) => {
+    const t = await sequelize.transaction();
+    try {
+      const where = { id: req.params.id };
+      applyBusinessScope(req, where);
+      const record = await Transaction.findOne({ where, transaction: t });
+      if (!record) {
+        await t.rollback();
+        return ApiResponse.notFound(res, 'Transaction not found');
+      }
+
+      const data = record.toJSON();
+      const amount = parseFloat(data.amount) || 0;
+
+      // Revert vendor outstanding — inverse of create logic
+      // create: expense/income to vendor REDUCES outstanding → delete should ADD it back
+      if (data.party_type === 'vendor' && data.vendor_id && amount > 0) {
+        const vendor = await Vendor.findByPk(data.vendor_id, { transaction: t });
+        if (vendor && (data.type === 'expense' || data.type === 'income')) {
+          const newOutstanding = parseFloat(vendor.outstanding_amount || 0) + amount;
+          await vendor.update({ outstanding_amount: newOutstanding }, { transaction: t });
+        }
+      }
+
+      // Revert client outstanding — inverse of create logic
+      // create expense to client: increased opening_outstanding → delete should subtract it back
+      if (data.party_type === 'client' && data.client_id && amount > 0 && data.type === 'expense') {
+        const client = await Client.findByPk(data.client_id, { transaction: t });
+        if (client) {
+          const newOutstanding = Math.max(0, parseFloat(client.opening_outstanding || 0) - amount);
+          await client.update({ opening_outstanding: newOutstanding }, { transaction: t });
+        }
+      }
+
+      await record.destroy({ transaction: t });
+      await t.commit();
+      return ApiResponse.success(res, null, 'Transaction deleted successfully');
+    } catch (error) {
+      await t.rollback();
+      next(error);
+    }
+  },
+
   // GET /finance/receipts
   getReceipts: async (req, res, next) => {
     try {
