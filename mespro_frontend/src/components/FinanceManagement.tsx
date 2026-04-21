@@ -1001,9 +1001,9 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   )}
                   {transactionForm.type === 'expense' && transactionForm.amount && parseFloat(transactionForm.amount) > 0 && (
                     <div className="flex justify-between border-t border-orange-200 pt-2 mt-1">
-                      <span className="text-orange-600">After Expense</span>
-                      <span className="font-bold text-red-600">
-                        ₹{(selectedVendorBalance + (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
+                      <span className="text-orange-600">After Payment</span>
+                      <span className={`font-bold ${(selectedVendorBalance - (parseFloat(transactionForm.amount) || 0)) <= 0 ? 'text-emerald-600' : 'text-orange-700'}`}>
+                        ₹{Math.max(0, selectedVendorBalance - (parseFloat(transactionForm.amount) || 0)).toLocaleString()}
                       </span>
                     </div>
                   )}
