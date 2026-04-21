@@ -37,7 +37,9 @@ import {
   Filter,
   ChevronDown,
   ChevronRight,
-  Clock
+  Clock,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { Badge } from './ui/badge';
 
@@ -69,6 +71,13 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [clientsViewMode, setClientsViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window === 'undefined') return 'grid';
+    return (localStorage.getItem('clients:viewMode') as 'grid' | 'table') || 'grid';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('clients:viewMode', clientsViewMode); } catch { /* ignore */ }
+  }, [clientsViewMode]);
   const [filterCustomerType, setFilterCustomerType] = useState('all');
   const [selectedSalesClient, setSelectedSalesClient] = useState<string>('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -748,13 +757,37 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
             <TabsTrigger value="clients">{t('clients')}</TabsTrigger>
             <TabsTrigger value="outstandings">{t('outstandings')}</TabsTrigger>
           </TabsList>
-          <Button 
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-            onClick={() => setAddDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {t('addNewClient')}
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center rounded-md border border-slate-200 bg-white p-0.5 shadow-sm">
+              <button
+                type="button"
+                onClick={() => setClientsViewMode('grid')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors ${clientsViewMode === 'grid' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                aria-label="Grid view"
+                aria-pressed={clientsViewMode === 'grid'}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Grid</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setClientsViewMode('table')}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors ${clientsViewMode === 'table' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                aria-label="Table view"
+                aria-pressed={clientsViewMode === 'table'}
+              >
+                <List className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </button>
+            </div>
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => setAddDialogOpen(true)}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              {t('addNewClient')}
+            </Button>
+          </div>
         </div>
 
         <TabsContent value="clients" className="space-y-6">
@@ -762,6 +795,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
           
 
           {/* Clients List */}
+          {clientsViewMode === 'grid' && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {filteredClients.map((client, index) => (
           <motion.div
@@ -842,6 +876,88 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
           </motion.div>
         ))}
       </div>
+      )}
+
+      {clientsViewMode === 'table' && filteredClients.length > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="w-[60px]">#</TableHead>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Orders</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>Last Order</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredClients.map((client, index) => (
+                  <TableRow
+                    key={client.id}
+                    className="cursor-pointer hover:bg-slate-50/70"
+                    onClick={() => navigate(`/clients/${client.id}`)}
+                  >
+                    <TableCell className="text-xs text-slate-500">{index + 1}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                          {client.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-900 truncate">{client.name}</div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{client.address || '—'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-slate-700">{client.contact_person || '—'}</div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <Phone className="w-3 h-3" /> {client.phone || '—'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${(client as any).gst_number ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {getCustomerType((client as any).gst_number)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium text-slate-700">{client.total_orders || 0}</TableCell>
+                    <TableCell className="text-right text-sm font-medium text-slate-700">{formatCurrency(client.total_value)}</TableCell>
+                    <TableCell className="text-xs text-slate-600">
+                      {client.last_order && !isNaN(new Date(client.last_order).getTime()) ? new Date(client.last_order).toLocaleDateString('en-GB') : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${getStatusColor(client.status)}`}>
+                        {client.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => navigate(`/clients/${client.id}`)} title={t('view')}>
+                          <Eye className="w-3.5 h-3.5 text-slate-600" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditClient(client)} title={t('edit')}>
+                          <Edit className="w-3.5 h-3.5 text-slate-600" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-red-50" onClick={() => { const cid = String(client.id); setDeletingClientId(cid); setDeleteBlocked(false); setLinkedModules({ orders: 0, bills: 0, dispatches: 0 }); setDeleteDialogOpen(true); checkClientLinks(cid); }} title="Delete">
+                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
         </TabsContent>
 
