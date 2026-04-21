@@ -10,9 +10,10 @@ import { ConfirmDialog } from './ui/confirm-dialog';
 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Trash2, Plus, Building2, Mail, Phone, MapPin, Package, IndianRupee, Search, Eye, Edit } from 'lucide-react';
+import { Trash2, Plus, Building2, Mail, Phone, MapPin, Package, IndianRupee, Search, Eye, Edit, LayoutGrid, List } from 'lucide-react';
 import { translations, Language } from '../translations';
 import { Badge } from './ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 import { vendorsService } from '../services/vendors.service';
 interface VendorManagementProps {
@@ -42,6 +43,13 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
   // Vendor data from API
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>(() => {
+    if (typeof window === 'undefined') return 'grid';
+    return (localStorage.getItem('vendors:viewMode') as 'grid' | 'table') || 'grid';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('vendors:viewMode', viewMode); } catch { /* ignore */ }
+  }, [viewMode]);
 
   const refreshVendors = useCallback(async () => {
     try {
@@ -227,7 +235,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
         </motion.div>
       </div>
 
-      {/* Search + Add Vendor */}
+      {/* Search + View Toggle + Add Vendor */}
       <div className="flex items-center gap-4 justify-between">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -238,7 +246,30 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Dialog open={isVendorDialogOpen} onOpenChange={(open: boolean) => {
+        <div className="flex items-center gap-2">
+          <div className="inline-flex items-center rounded-md border border-slate-200 bg-white p-0.5 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors ${viewMode === 'grid' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+              aria-label="Grid view"
+              aria-pressed={viewMode === 'grid'}
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Grid</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+              aria-label="Table view"
+              aria-pressed={viewMode === 'table'}
+            >
+              <List className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Table</span>
+            </button>
+          </div>
+          <Dialog open={isVendorDialogOpen} onOpenChange={(open: boolean) => {
                   setIsVendorDialogOpen(open);
                   if (!open) resetVendorForm();
                 }}>
@@ -396,9 +427,11 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                     </form>
                   </DialogContent>
                 </Dialog>
+        </div>
       </div>
 
       {/* Vendor Cards Grid */}
+      {viewMode === 'grid' && (
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {filteredVendors.map((vendor, index) => (
           <motion.div
@@ -476,6 +509,89 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
           </motion.div>
         ))}
       </div>
+      )}
+
+      {/* Vendor Table View */}
+      {viewMode === 'table' && filteredVendors.length > 0 && (
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-slate-50 hover:bg-slate-50">
+                  <TableHead className="w-[60px]">#</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Contact</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead className="text-right">Purchases</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredVendors.map((vendor, index) => (
+                  <TableRow
+                    key={vendor.id}
+                    className="cursor-pointer hover:bg-slate-50/70"
+                    onClick={() => navigate(`/vendors/${vendor.id}`)}
+                  >
+                    <TableCell className="text-xs text-slate-500">{index + 1}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                          {vendor.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-slate-900 truncate">{vendor.name}</div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{vendor.address || '—'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-xs text-slate-700">{vendor.contact_person || '—'}</div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                        <Phone className="w-3 h-3" /> {vendor.phone || '—'}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="text-[10px] px-1.5 py-0 h-5 bg-violet-100 text-violet-700">
+                        {vendor.category || '—'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right text-sm font-medium text-slate-700">{vendor.total_purchases || 0}</TableCell>
+                    <TableCell className="text-right text-sm font-medium text-slate-700">{formatCurrency(Number(vendor.total_amount) || 0)}</TableCell>
+                    <TableCell className={`text-right text-sm font-semibold ${Number(vendor.outstanding_amount) > 0 ? 'text-red-600' : 'text-slate-600'}`}>
+                      {formatCurrency(Number(vendor.outstanding_amount) || 0)}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`text-[10px] px-1.5 py-0 h-5 ${getStatusColor(vendor.status)}`}>
+                        {vendor.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right" onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => navigate(`/vendors/${vendor.id}`)} title={t('view')}>
+                          <Eye className="w-3.5 h-3.5 text-slate-600" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => handleEditVendor(vendor)} title={t('edit')}>
+                          <Edit className="w-3.5 h-3.5 text-slate-600" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 hover:bg-red-50" onClick={() => handleDeleteVendor(vendor.id)} title="Delete">
+                          <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
       {filteredVendors.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
