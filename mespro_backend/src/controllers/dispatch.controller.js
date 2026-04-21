@@ -13,9 +13,29 @@ const baseController = createCrudController(Dispatch, {
 module.exports = {
   ...baseController,
 
+  // Normalize date-like fields to null when empty or invalid
+  _sanitizeDates: (body) => {
+    const dateFields = ['dispatch_date', 'expected_delivery', 'delivered_date'];
+    for (const f of dateFields) {
+      if (f in body) {
+        const v = body[f];
+        if (v === '' || v === undefined || v === null || v === 'Invalid date') {
+          body[f] = null;
+          continue;
+        }
+        const d = new Date(v);
+        if (isNaN(d.getTime())) {
+          body[f] = null;
+        }
+      }
+    }
+    return body;
+  },
+
   // POST /dispatch — override create with validation + file upload
   create: async (req, res, next) => {
     try {
+      module.exports._sanitizeDates(req.body);
       const { customer, product, lr_number, transporter, dispatch_date } = req.body;
       const missing = [];
       if (!customer) missing.push('customer');
@@ -42,6 +62,7 @@ module.exports = {
   // PUT /dispatch/:id — override update with file upload
   update: async (req, res, next) => {
     try {
+      module.exports._sanitizeDates(req.body);
       const where = { id: req.params.id };
       applyBusinessScope(req, where);
       const record = await Dispatch.findOne({ where });
