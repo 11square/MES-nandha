@@ -568,11 +568,18 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   const totalExpense = computedExpense || summary.totalExpense;
 
   // Filter transactions by source and type
-  const filteredTransactions = transactionsData.filter(tx => {
-    if (sourceFilter !== 'all' && (tx._source || 'transaction') !== sourceFilter) return false;
-    if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
-    return true;
-  });
+  const filteredTransactions = transactionsData
+    .filter(tx => {
+      if (sourceFilter !== 'all' && ((tx as any)._source || 'transaction') !== sourceFilter) return false;
+      if (typeFilter !== 'all' && tx.type !== typeFilter) return false;
+      return true;
+    })
+    .sort((a: any, b: any) => {
+      const aTime = new Date(a.created_at || a.date || 0).getTime();
+      const bTime = new Date(b.created_at || b.date || 0).getTime();
+      if (bTime !== aTime) return bTime - aTime;
+      return (b._sourceId || 0) - (a._sourceId || 0);
+    });
 
   const totalReceivable = computedPending || outstandings
     .filter((item: any) => getOutstandingBalance(item) > 0)

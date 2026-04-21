@@ -337,18 +337,15 @@ module.exports = {
       }
 
       // --- Outstanding balance logic for Vendor ---
-      // Income from vendor → deduct (reduce) vendor outstanding
-      // Expense to vendor → increase vendor outstanding
+      // Expense to vendor (payment made) → reduce vendor outstanding
+      // Income from vendor (refund/credit received) → also reduce vendor outstanding
+      // PO creation is what INCREASES vendor outstanding, not a finance transaction.
       if (data.party_type === 'vendor' && data.vendor_id && parseFloat(data.amount) > 0) {
         const amount = parseFloat(data.amount);
         const vendor = await Vendor.findByPk(data.vendor_id, { transaction: t });
         if (vendor) {
-          if (data.type === 'expense') {
-            // Expense to vendor → increase vendor outstanding
-            const newOutstanding = parseFloat(vendor.outstanding_amount || 0) + amount;
-            await vendor.update({ outstanding_amount: newOutstanding }, { transaction: t });
-          } else if (data.type === 'income') {
-            // Income from vendor (payment received) → reduce vendor outstanding
+          if (data.type === 'expense' || data.type === 'income') {
+            // Both expense (payment) and income (refund) from vendor reduce what we owe
             const newOutstanding = Math.max(0, parseFloat(vendor.outstanding_amount || 0) - amount);
             await vendor.update({ outstanding_amount: newOutstanding }, { transaction: t });
           }
