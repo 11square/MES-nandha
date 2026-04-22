@@ -593,10 +593,10 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
     .reduce((sum: number, item: any) => sum + getOutstandingBalance(item), 0);
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       {showAddTransaction ? (
       /* ===== Full-Page Add Transaction Form ===== */
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-auto">
         <div className="flex items-center gap-4">
           <Button variant="outline" size="sm" onClick={() => { setShowAddTransaction(false); resetTransactionForm(); setTxErrors({}); }}>
             <ArrowLeft className="w-4 h-4 mr-1" /> Back
@@ -1032,79 +1032,79 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       ) : (
       <>
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">{t('financeManagement')}</h1>
-          <p className="text-muted-foreground">{t('managePaymentsAndTransactions')}</p>
+          <h1 className="text-2xl font-bold leading-tight">{t('financeManagement')}</h1>
+          <p className="text-muted-foreground text-sm">{t('managePaymentsAndTransactions')}</p>
         </div>
       </div>
 
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <ArrowDownRight className="w-5 h-5 text-emerald-600" />
+          <div className="flex items-center justify-between mb-1">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <ArrowDownRight className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-600 mb-1">{t('totalIncome')}</p>
-          <p className="text-2xl text-gray-800 font-semibold">₹{totalIncome.toLocaleString()}</p>
+          <p className="text-sm text-gray-600">{t('totalIncome')}</p>
+          <p className="text-xl text-gray-800 font-semibold">₹{totalIncome.toLocaleString()}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-              <ArrowUpRight className="w-5 h-5 text-red-600" />
+          <div className="flex items-center justify-between mb-1">
+            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+              <ArrowUpRight className="w-4 h-4 text-red-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-600 mb-1">{t('totalExpenses')}</p>
-          <p className="text-2xl text-gray-800 font-semibold">₹{totalExpense.toLocaleString()}</p>
+          <p className="text-sm text-gray-600">{t('totalExpenses')}</p>
+          <p className="text-xl text-gray-800 font-semibold">₹{totalExpense.toLocaleString()}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5 text-amber-600" />
+          <div className="flex items-center justify-between mb-1">
+            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-600 mb-1">{t('pendingPayments')}</p>
-          <p className="text-2xl text-gray-800 font-semibold">₹{totalReceivable.toLocaleString()}</p>
+          <p className="text-sm text-gray-600">{t('pendingPayments')}</p>
+          <p className="text-xl text-gray-800 font-semibold">₹{totalReceivable.toLocaleString()}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm"
+          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-              <AlertCircle className="w-5 h-5 text-red-600" />
+          <div className="flex items-center justify-between mb-1">
+            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
+              <AlertCircle className="w-4 h-4 text-red-600" />
             </div>
           </div>
-          <p className="text-sm text-gray-600 mb-1">{t('overdue')}</p>
-          <p className="text-2xl text-gray-800 font-semibold">₹{overdueAmount.toLocaleString()}</p>
+          <p className="text-sm text-gray-600">{t('overdue')}</p>
+          <p className="text-xl text-gray-800 font-semibold">₹{overdueAmount.toLocaleString()}</p>
         </motion.div>
       </div>
 
       {/* Tabs for Transactions, Follow-ups, and Outstandings */}
       
-      <Tabs defaultValue="transactions" className="w-full" onValueChange={(value) => setActiveTab(value)}>
-        <div className='flex justify-between items-center mb-4'>
+      <Tabs defaultValue="transactions" className="w-full flex-1 flex flex-col min-h-0" onValueChange={(value) => setActiveTab(value)}>
+        <div className='flex justify-between items-center mb-2 flex-shrink-0'>
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="transactions">{t('transactions')}</TabsTrigger>
           <TabsTrigger value="receipts">{t('receipts')}</TabsTrigger>
@@ -1129,7 +1129,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         </div>
 
         {/* Transactions Tab */}
-        <TabsContent value="transactions" className="space-y-4">
+        <TabsContent value="transactions" className="space-y-4 flex-1 min-h-0 overflow-auto data-[state=active]:block mt-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1330,7 +1330,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         </TabsContent>
 
         {/* Receipts Tab (Cash Receipts) */}
-        <TabsContent value="receipts" className="space-y-4">
+        <TabsContent value="receipts" className="space-y-4 flex-1 min-h-0 overflow-auto data-[state=active]:block mt-0">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

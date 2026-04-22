@@ -1059,10 +1059,10 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
   );
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       {showAddDispatch ? (
       /* ─── FULL-PAGE CREATE DISPATCH FORM ─── */
-      <div className="space-y-6">
+      <div className="space-y-6 overflow-auto">
         {/* Header */}
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={() => { setShowAddDispatch(false); resetDispatchForm(); setErrors({}); }} className="gap-2">
@@ -1472,31 +1472,31 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
       ) : (
       <>
       {/* Header */}
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">{t('dispatchManagement')}</h1>
-          <p className="text-muted-foreground">{t('manageDispatch')}</p>
+          <h1 className="text-2xl font-bold leading-tight">{t('dispatchManagement')}</h1>
+          <p className="text-muted-foreground text-sm">{t('manageDispatch')}</p>
         </div>
       </div>
 
       {/* Dispatch Content */}
-      <div className="w-full">
+      <div className="w-full flex-1 min-h-0 flex flex-col">
         {/* Stock Dispatch Stats */}
-        <div className="space-y-6">
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
           {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-sm text-slate-600 font-medium">{t('readyToDispatch')}</span>
-                <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <Package className="w-5 h-5 text-amber-600" />
+                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+                  <Package className="w-4 h-4 text-amber-600" />
                 </div>
               </div>
-              <p className="text-3xl text-slate-900 font-bold">
+              <p className="text-2xl text-slate-900 font-bold">
                 {stockDispatches.filter(d => d.status === 'Ready to Dispatch').length}
               </p>
             </motion.div>
@@ -1505,15 +1505,15 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-sm text-slate-600 font-medium">{t('inTransit')}</span>
-                <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Truck className="w-5 h-5 text-blue-600" />
+                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                  <Truck className="w-4 h-4 text-blue-600" />
                 </div>
               </div>
-              <p className="text-3xl text-slate-900 font-bold">
+              <p className="text-2xl text-slate-900 font-bold">
                 {stockDispatches.filter(d => d.status === 'In Transit').length}
               </p>
             </motion.div>
@@ -1522,15 +1522,15 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-sm text-slate-600 font-medium">{t('delivered')}</span>
-                <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                 </div>
               </div>
-              <p className="text-3xl text-slate-900 font-bold">
+              <p className="text-2xl text-slate-900 font-bold">
                 {stockDispatches.filter(d => d.status === 'Delivered').length}
               </p>
             </motion.div>
@@ -1539,20 +1539,20 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
             >
-              <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center justify-between mb-1">
                 <span className="text-sm text-slate-600 font-medium">Total</span>
-                <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-                  <Box className="w-5 h-5 text-violet-600" />
+                <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+                  <Box className="w-4 h-4 text-violet-600" />
                 </div>
               </div>
-              <p className="text-3xl text-slate-900 font-bold">{stockDispatches.length}</p>
+              <p className="text-2xl text-slate-900 font-bold">{stockDispatches.length}</p>
             </motion.div>
           </div>
 
           {/* Search, Filter and Create Button */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-shrink-0">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input 
@@ -1589,8 +1589,8 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
 
           {/* Dispatch Cards / Grid / List */}
           {stockDispatches.length > 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-                <div className="overflow-x-auto">
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex-1 min-h-0 flex flex-col">
+                <div className="overflow-auto flex-1 min-h-0">
                   <table className="w-full">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">

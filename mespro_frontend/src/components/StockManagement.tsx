@@ -1126,32 +1126,32 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0">
         <div>
-          <h2 className="text-2xl text-slate-900 font-bold">{t('stockManagement')}</h2>
-          <p className="text-sm text-slate-600 mt-1">{t('manageStock')}</p>
+          <h2 className="text-2xl text-slate-900 font-bold leading-tight">{t('stockManagement')}</h2>
+          <p className="text-sm text-slate-600">{t('manageStock')}</p>
         </div>
        
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-shrink-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalStockValue')}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-blue-600" />
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Package className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{formatCurrency(totalValue)}</p>
+          <p className="text-2xl text-slate-900 font-bold">{formatCurrency(totalValue)}</p>
           {totalValue > 0 && (
-            <p className="text-xs text-slate-500 mt-1">{t('totalStockValue')}</p>
+            <p className="text-xs text-slate-500">{t('totalStockValue')}</p>
           )}
         </motion.div>
 
@@ -1159,69 +1159,69 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalItems')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <Boxes className="w-5 h-5 text-emerald-600" />
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Boxes className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{totalItems}</p>
-          <p className="text-xs text-slate-600 mt-1">{stockListItems.length} SKUs</p>
+          <p className="text-2xl text-slate-900 font-bold">{totalItems}</p>
+          <p className="text-xs text-slate-600">{stockListItems.length} SKUs</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('lowStockAlerts')}</span>
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-amber-600" />
+            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{lowStockCount}</p>
-          <p className="text-xs text-amber-600 mt-1">{t('needReordering')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{lowStockCount}</p>
+          <p className="text-xs text-amber-600">{t('needReordering')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('category')}</span>
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-violet-600" />
+            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+              <Package className="w-4 h-4 text-violet-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{categories.length - 1}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('stockCategories')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{categories.length - 1}</p>
+          <p className="text-xs text-slate-600">{t('stockCategories')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalProducts')}</span>
-            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-indigo-600" />
+            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
+              <Package className="w-4 h-4 text-indigo-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{stockListItems.length}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('productsInStock')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{stockListItems.length}</p>
+          <p className="text-xs text-slate-600">{t('productsInStock')}</p>
         </motion.div>
       </div>
 
       {/* Search and Filter */}
-      <div className='flex items-center justify-between'>
+      <div className='flex items-center justify-between flex-shrink-0'>
       <div className="flex items-center gap-4">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -1266,6 +1266,8 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
       </div>
       </div>
 
+      {/* Scrollable data area */}
+      <div className="flex-1 min-h-0 overflow-auto space-y-6 pr-1">
       {/* Stock Table */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
@@ -1398,6 +1400,8 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
           <Button variant="outline" size="sm">Previous</Button>
           <Button variant="outline" size="sm">Next</Button>
         </div>
+      </div>
+
       </div>
 
       {/* Delete Confirmation Modal */}

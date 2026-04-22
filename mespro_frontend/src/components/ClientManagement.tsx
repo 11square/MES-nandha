@@ -639,83 +639,83 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">{t('clientManagement')}</h1>
-          <p className="text-muted-foreground">{t('manageClients')}</p>
+          <h1 className="text-2xl font-bold leading-tight">{t('clientManagement')}</h1>
+          <p className="text-muted-foreground text-sm">{t('manageClients')}</p>
         </div>
        
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalClients')}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-blue-600" />
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <Building2 className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{clientsData.length}</p>
-          <p className="text-xs text-emerald-600 mt-1">{activeClientsCount} {t('active')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{clientsData.length}</p>
+          <p className="text-xs text-emerald-600">{activeClientsCount} {t('active')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalSales')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <IndianRupee className="w-5 h-5 text-emerald-600" />
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <IndianRupee className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{formatLargeCurrency(totalSalesAmount)}</p>
-          <p className="text-xs text-emerald-600 mt-1">{allClientSales.length} {t('totalOrders')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{formatLargeCurrency(totalSalesAmount)}</p>
+          <p className="text-xs text-emerald-600">{allClientSales.length} {t('totalOrders')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('activeOrders')}</span>
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-amber-600" />
+            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+              <ShoppingCart className="w-4 h-4 text-amber-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{activeOrdersCount}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('inProgressOrders')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{activeOrdersCount}</p>
+          <p className="text-xs text-slate-600">{t('inProgressOrders')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('followups')}</span>
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <MessageSquare className="w-5 h-5 text-violet-600" />
+            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-violet-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{pendingFollowupsCount}</p>
-          <p className="text-xs text-amber-600 mt-1">{t('pendingThisWeek')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{pendingFollowupsCount}</p>
+          <p className="text-xs text-amber-600">{t('pendingThisWeek')}</p>
         </motion.div>
       </div>
 
-      <div className="flex items-center gap-4 justify-between ">
+      <div className="flex items-center gap-4 justify-between flex-shrink-0">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input
@@ -751,8 +751,8 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
           </div>
 
       {/* Main Tabs */}
-      <Tabs defaultValue="clients" className="w-full">
-        <div className="flex justify-between items-center mb-4">
+      <Tabs defaultValue="clients" className="w-full flex-1 flex flex-col min-h-0">
+        <div className="flex justify-between items-center mb-2 flex-shrink-0">
           <TabsList className="grid w-full max-w-lg grid-cols-2">
             <TabsTrigger value="clients">{t('clients')}</TabsTrigger>
             <TabsTrigger value="outstandings">{t('outstandings')}</TabsTrigger>
@@ -790,7 +790,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
           </div>
         </div>
 
-        <TabsContent value="clients" className="space-y-6">
+        <TabsContent value="clients" className="space-y-6 flex-1 min-h-0 overflow-auto data-[state=active]:block mt-0">
           {/* Search and Filter */}
           
 
@@ -1370,7 +1370,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
       </Dialog>
 
         {/* Outstandings Tab */}
-        <TabsContent value="outstandings" className="space-y-6">
+        <TabsContent value="outstandings" className="space-y-6 flex-1 min-h-0 overflow-auto data-[state=active]:block mt-0">
           {/* Outstanding Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.div

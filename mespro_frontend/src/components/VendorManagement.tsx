@@ -188,55 +188,55 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
+      <div className="flex justify-between items-center flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">{t('vendorManagement')}</h1>
-          <p className="text-muted-foreground">{t('manageYourVendorsAndSuppliers')}</p>
+          <h1 className="text-2xl font-bold leading-tight">{t('vendorManagement')}</h1>
+          <p className="text-muted-foreground text-sm">{t('manageYourVendorsAndSuppliers')}</p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalVendors') || 'Total Vendors'}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><Building2 className="w-5 h-5 text-blue-600" /></div>
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center"><Building2 className="w-4 h-4 text-blue-600" /></div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{vendors.length}</p>
-          <p className="text-xs text-emerald-600 mt-1">{vendors.filter(v => v.status === 'Active').length} {t('active')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{vendors.length}</p>
+          <p className="text-xs text-emerald-600">{vendors.filter(v => v.status === 'Active').length} {t('active')}</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalPurchases')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5 text-emerald-600" /></div>
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-4 h-4 text-emerald-600" /></div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{formatCurrency(vendors.reduce((s, v) => s + (Number(v.total_amount) || 0), 0))}</p>
-          <p className="text-xs text-emerald-600 mt-1">{vendors.reduce((s, v) => s + (Number(v.total_purchases) || 0), 0)} orders</p>
+          <p className="text-2xl text-slate-900 font-bold">{formatCurrency(vendors.reduce((s, v) => s + (Number(v.total_amount) || 0), 0))}</p>
+          <p className="text-xs text-emerald-600">{vendors.reduce((s, v) => s + (Number(v.total_purchases) || 0), 0)} orders</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('outstanding')}</span>
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-5 h-5 text-red-600" /></div>
+            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center"><IndianRupee className="w-4 h-4 text-red-600" /></div>
           </div>
-          <p className="text-3xl text-red-600 font-bold">{formatCurrency(vendors.reduce((s, v) => s + (Number(v.outstanding_amount) || 0), 0))}</p>
-          <p className="text-xs text-red-500 mt-1">{vendors.filter(v => Number(v.outstanding_amount) > 0).length} vendors</p>
+          <p className="text-2xl text-red-600 font-bold">{formatCurrency(vendors.reduce((s, v) => s + (Number(v.outstanding_amount) || 0), 0))}</p>
+          <p className="text-xs text-red-500">{vendors.filter(v => Number(v.outstanding_amount) > 0).length} vendors</p>
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-2">
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('category') || 'Categories'}</span>
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center"><Package className="w-5 h-5 text-violet-600" /></div>
+            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center"><Package className="w-4 h-4 text-violet-600" /></div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{new Set(vendors.map(v => v.category).filter(Boolean)).size}</p>
-          <p className="text-xs text-slate-500 mt-1">vendor categories</p>
+          <p className="text-2xl text-slate-900 font-bold">{new Set(vendors.map(v => v.category).filter(Boolean)).size}</p>
+          <p className="text-xs text-slate-500">vendor categories</p>
         </motion.div>
       </div>
 
       {/* Search + View Toggle + Add Vendor */}
-      <div className="flex items-center gap-4 justify-between">
+      <div className="flex items-center gap-4 justify-between flex-shrink-0">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input
@@ -432,7 +432,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
 
       {/* Vendor Cards Grid */}
       {viewMode === 'grid' && (
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 flex-1 min-h-0 overflow-auto pr-1 auto-rows-max">
         {filteredVendors.map((vendor, index) => (
           <motion.div
             key={vendor.id}
@@ -513,8 +513,8 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
 
       {/* Vendor Table View */}
       {viewMode === 'table' && filteredVendors.length > 0 && (
-        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex-1 min-h-0 flex flex-col">
+          <div className="overflow-auto flex-1 min-h-0">
             <Table>
               <TableHeader>
                 <TableRow className="bg-slate-50 hover:bg-slate-50">
