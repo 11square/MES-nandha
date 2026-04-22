@@ -463,7 +463,7 @@ export default function App() {
 
         {/* Content Area — child routes render here */}
         <main className="flex-1 overflow-auto relative">
-          <div className="max-w-[1600px] pt-4 px-4 mx-auto">
+          <div className="max-w-[1600px] pt-2 px-4 mx-auto">
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPath}

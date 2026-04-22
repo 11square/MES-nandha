@@ -312,11 +312,11 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6 overflow-hidden" style={{ height: 'calc(100dvh - 96px)' }}>
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       <div className="flex justify-between items-start flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">{t('purchaseOrderManagement')}</h1>
-          <p className="text-muted-foreground">{t('managePurchaseOrders')}</p>
+          <h1 className="text-2xl font-bold leading-tight">{t('purchaseOrderManagement')}</h1>
+          <p className="text-muted-foreground text-sm">{t('managePurchaseOrders')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
@@ -347,64 +347,64 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('totalPOValue')}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-blue-600" />
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <ShoppingCart className="w-4 h-4 text-blue-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">₹{totalPOValue.toLocaleString()}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('allPurchaseOrders')}</p>
+          <p className="text-2xl text-slate-900 font-bold">₹{totalPOValue.toLocaleString()}</p>
+          <p className="text-xs text-slate-600">{t('allPurchaseOrders')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('pendingApproval')}</span>
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5 text-amber-600" />
+            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
+              <Clock className="w-4 h-4 text-amber-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{pendingPOs}</p>
-          <p className="text-xs text-amber-600 mt-1">{t('awaitingApproval')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{pendingPOs}</p>
+          <p className="text-xs text-amber-600">{t('awaitingApproval')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('inProgress')}</span>
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Truck className="w-5 h-5 text-violet-600" />
+            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
+              <Truck className="w-4 h-4 text-violet-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{orderedPOs}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('approvedordered')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{orderedPOs}</p>
+          <p className="text-xs text-slate-600">{t('approvedordered')}</p>
         </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
+          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-1">
             <span className="text-sm text-slate-600 font-medium">{t('received')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-emerald-600" />
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <Package className="w-4 h-4 text-emerald-600" />
             </div>
           </div>
-          <p className="text-3xl text-slate-900 font-bold">{receivedPOs}</p>
-          <p className="text-xs text-emerald-600 mt-1">{t('completedOrders')}</p>
+          <p className="text-2xl text-slate-900 font-bold">{receivedPOs}</p>
+          <p className="text-xs text-emerald-600">{t('completedOrders')}</p>
         </motion.div>
       </div>
 

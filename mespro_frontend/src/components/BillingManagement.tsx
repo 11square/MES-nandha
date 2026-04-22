@@ -2939,11 +2939,11 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   }
 
   return (
-    <div className="p-6 flex flex-col gap-6 overflow-hidden" style={{ height: 'calc(100dvh - 96px)' }}>
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       <div className="flex justify-between items-center flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-bold">{t('billing')}</h1>
-          <p className="text-muted-foreground">{t('createInvoicesAndManagePayments')}</p>
+          <h1 className="text-2xl font-bold leading-tight">{t('billing')}</h1>
+          <p className="text-muted-foreground text-sm">{t('createInvoicesAndManagePayments')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
@@ -2972,44 +2972,44 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('totalBilled')}</CardTitle>
             <Receipt className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-blue-700">₹{totalBillValue.toLocaleString()}</div>
             <p className="text-xs text-blue-600">{dateFilteredBills.length} {t('invoices')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('amountReceived')}</CardTitle>
             <CheckCircle className="h-4 w-4 text-emerald-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-emerald-700">₹{totalReceived.toLocaleString()}</div>
             <p className="text-xs text-emerald-600">{dateFilteredPayments.length} {t('payments')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('pendingAmount')}</CardTitle>
             <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-amber-700">₹{totalPending.toLocaleString()}</div>
             <p className="text-xs text-amber-600">{pendingBills.length} {t('pending')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-red-500/10 backdrop-blur-sm border-red-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('overdue')}</CardTitle>
             <AlertCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-red-700">{overdueCount}</div>
             <p className="text-xs text-red-600">{t('needAttention')}</p>
           </CardContent>
@@ -3018,7 +3018,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full flex-1 flex flex-col min-h-0">
-        <div className="flex justify-between items-center mb-4 flex-shrink-0">
+        <div className="flex justify-between items-center mb-2 flex-shrink-0">
           <TabsList className="grid w-full max-w-lg grid-cols-2">
             <TabsTrigger value="gst-bills">{t('invoice')}</TabsTrigger>
             <TabsTrigger value="non-gst-bills">{t('quotationBill')}</TabsTrigger>
