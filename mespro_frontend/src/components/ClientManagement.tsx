@@ -753,9 +753,9 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
       {/* Main Tabs */}
       <Tabs defaultValue="clients" className="w-full flex-1 flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-2 flex-shrink-0">
-          <TabsList className="grid w-full max-w-lg grid-cols-2">
-            <TabsTrigger value="clients">{t('clients')}</TabsTrigger>
-            <TabsTrigger value="outstandings">{t('outstandings')}</TabsTrigger>
+          <TabsList className="inline-grid grid-cols-2 h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm w-[320px]">
+            <TabsTrigger value="clients" className="h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors">{t('clients')}</TabsTrigger>
+            <TabsTrigger value="outstandings" className="h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors">{t('outstandings')}</TabsTrigger>
           </TabsList>
           <div className="flex items-center gap-2">
             <div className="inline-flex items-center rounded-md border border-slate-200 bg-white p-0.5 shadow-sm">
