@@ -1136,19 +1136,13 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
             transition={{ delay: 0.5 }}
             className="bg-white rounded-lg border border-gray-200 shadow-sm"
           >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg text-gray-800 font-semibold flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-gray-600" />
-                    Transactions
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-1">All income and expense transactions</p>
-                </div>
-                
-              </div>
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-4 flex-wrap">
+              <h2 className="text-base text-gray-800 font-semibold flex items-center gap-2 shrink-0">
+                <Receipt className="w-4 h-4 text-gray-600" />
+                Transactions
+              </h2>
               {/* Type & Source filters */}
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {[
                   { key: 'all' as const, label: 'All Types' },
                   { key: 'income' as const, label: 'Income' },
@@ -1157,7 +1151,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   <button
                     key={f.key}
                     onClick={() => setTypeFilter(f.key)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
                       typeFilter === f.key
                         ? f.key === 'income' ? 'bg-emerald-600 text-white border-emerald-600'
                           : f.key === 'expense' ? 'bg-red-600 text-white border-red-600'
@@ -1179,7 +1173,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   <button
                     key={f.key}
                     onClick={() => setSourceFilter(f.key)}
-                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors border ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
                       sourceFilter === f.key
                         ? 'bg-blue-600 text-white border-blue-600'
                         : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
@@ -1187,7 +1181,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   >
                     {f.label}
                     {f.key !== 'all' && (
-                      <span className="ml-1.5 text-[10px] opacity-80">
+                      <span className="ml-1 text-[10px] opacity-80">
                         ({transactionsData.filter(tx => (tx._source || 'transaction') === f.key).length})
                       </span>
                     )}
