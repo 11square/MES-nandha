@@ -1185,6 +1185,20 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       const gstAmt = taxableTotal * ((item.tax || 0) / 100);
       const finalRate = taxablePrice * (1 + (item.tax || 0) / 100);
       totalQty += item.quantity;
+      if (isQuotation) {
+        return `
+        <tr>
+          <td class="tc">${idx + 1}</td>
+          <td>
+            <div class="item-name">${item.name}</div>
+            ${item.category ? `<div class="item-cat">${item.category}</div>` : ''}
+          </td>
+          <td class="tc">${item.quantity}</td>
+          <td class="tc">${item.unit || 'Pcs'}</td>
+          <td class="tr">${fmtCur(item.unit_price)}</td>
+          <td class="tr bold">${fmtCur(item.total)}</td>
+        </tr>`;
+      }
       return `
         <tr>
           <td class="tc">${idx + 1}</td>
@@ -1531,7 +1545,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       <div class="brand">
         <div class="company-name">MES Pro</div>
         <div class="company-tag">Manufacturing Execution System</div>
-        <div class="company-meta">State: ${placeOfSupply}</div>
+        ${isQuotation ? '' : `<div class="company-meta">State: ${placeOfSupply}</div>`}
       </div>
       <div class="doc-meta">
         <div class="doc-title">${docTitle}</div>
@@ -1541,8 +1555,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <div class="v">${bill.bill_no}</div>
           <div class="k">Date</div>
           <div class="v">${new Date(bill.date).toLocaleDateString('en-GB')}</div>
-          <div class="k">Place of Supply</div>
-          <div class="v">${placeOfSupply}</div>
+          ${isQuotation ? '' : `<div class="k">Place of Supply</div>
+          <div class="v">${placeOfSupply}</div>`}
         </div>
       </div>
     </div>
@@ -1553,8 +1567,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         <div class="label">Bill To</div>
         <div class="name">${bill.client_name}</div>
         <div class="addr">${clientAddress}</div>
-        ${bill.client_gst ? `<div class="kv"><span>GSTIN:</span> ${bill.client_gst}</div>` : ''}
-        <div class="kv"><span>State:</span> ${placeOfSupply}</div>
+        ${!isQuotation && bill.client_gst ? `<div class="kv"><span>GSTIN:</span> ${bill.client_gst}</div>` : ''}
+        ${isQuotation ? '' : `<div class="kv"><span>State:</span> ${placeOfSupply}</div>`}
       </div>
       <div class="party">
         <div class="label">${isQuotation ? 'Quotation Summary' : 'Payment Summary'}</div>
@@ -1572,13 +1586,11 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <tr>
             <th style="width:32px;">#</th>
             <th style="text-align:left;">Item Name</th>
-            <th>HSN/SAC</th>
+            ${isQuotation ? '' : '<th>HSN/SAC</th>'}
             <th>Qty</th>
             <th>Unit</th>
             <th>Price/Unit</th>
-            <th>Taxable</th>
-            <th>GST</th>
-            <th>Final Rate</th>
+            ${isQuotation ? '' : '<th>Taxable</th><th>GST</th><th>Final Rate</th>'}
             <th>Amount</th>
           </tr>
         </thead>
@@ -1586,14 +1598,19 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           ${itemsRows}
         </tbody>
         <tfoot>
-          <tr>
+          ${isQuotation ? `<tr>
+            <td class="tc" colspan="2">Total</td>
+            <td class="tr">${totalQty}</td>
+            <td colspan="2"></td>
+            <td class="tr">${fmtCur(bill.grand_total)}</td>
+          </tr>` : `<tr>
             <td class="tc" colspan="3">Total</td>
             <td class="tr">${totalQty}</td>
             <td colspan="3"></td>
             <td class="tr">${fmtCur(bill.total_tax)}</td>
             <td></td>
             <td class="tr">${fmtCur(bill.grand_total)}</td>
-          </tr>
+          </tr>`}
         </tfoot>
       </table>
     </div>
@@ -1608,7 +1625,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         <table>
           <tr><td>Sub Total</td><td>${fmtCur(bill.subtotal)}</td></tr>
           ${bill.total_discount > 0 ? `<tr><td>Discount</td><td>- ${fmtCur(bill.total_discount)}</td></tr>` : ''}
-          ${bill.total_tax > 0 ? (pdfIsIntraState
+          ${!isQuotation && bill.total_tax > 0 ? (pdfIsIntraState
             ? `<tr><td>CGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr><tr><td>SGST</td><td>${fmtCur(bill.total_tax / 2)}</td></tr>`
             : `<tr><td>IGST</td><td>${fmtCur(bill.total_tax)}</td></tr>`) : ''}
           <tr class="grand-total"><td>Grand Total</td><td>${fmtCur(bill.grand_total)}</td></tr>
@@ -1619,7 +1636,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     </div>
 
     <!-- HSN Breakdown -->
-    ${bill.total_tax > 0 ? `
+    ${!isQuotation && bill.total_tax > 0 ? `
     <div class="hsn-section">
       <div class="label">Tax Breakdown</div>
       <table class="hsn-table">
