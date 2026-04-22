@@ -40,6 +40,9 @@ export default function ProductManagement({ productCategories = [], onCategories
 
   useEffect(() => { if (productCategories.length > 0) setCategories(productCategories); }, [productCategories]);
 
+  // Expand all categories by default whenever the list changes
+  useEffect(() => { setExpanded(new Set(categories.map(c => c.id))); }, [categories]);
+
   const updateLocal = (cats: Category[]) => { setCategories(cats); onCategoriesChange?.(cats); };
 
   const toggle = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
