@@ -7,7 +7,7 @@ import { apiService } from './api.service';
 
 class StockService {
   async getStockItems(): Promise<any[]> {
-    return apiService.get<any[]>('/stock');
+    return apiService.get<any[]>('/stock?limit=10000');
   }
 
   async getAllStockItems(): Promise<any[]> {
