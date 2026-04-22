@@ -1,11 +1,10 @@
 ﻿import { toast } from 'sonner';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Trash2, FolderOpen, ChevronRight, ChevronDown, Boxes, Tag, Edit } from 'lucide-react';
+import { Plus, Trash2, FolderOpen, Boxes, Tag, Edit } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Badge } from './ui/badge';
 import { Label } from './ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { useI18n } from '../contexts/I18nContext';
@@ -33,19 +32,13 @@ export default function ProductManagement({ productCategories = [], onCategories
   const [addSubTarget, setAddSubTarget] = useState<string | null>(null);
   const [newCatName, setNewCatName] = useState('');
   const [newSubName, setNewSubName] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; type: 'category' | 'subcategory'; id: string; parentId?: string; dbId?: number }>({ open: false, type: 'category', id: '', dbId: undefined });
   const [editingCat, setEditingCat] = useState<{ id: string; name: string; dbId?: number } | null>(null);
   const [editingSub, setEditingSub] = useState<{ parentId: string; oldName: string; newName: string; dbId?: number } | null>(null);
 
   useEffect(() => { if (productCategories.length > 0) setCategories(productCategories); }, [productCategories]);
 
-  // Expand all categories by default whenever the list changes
-  useEffect(() => { setExpanded(new Set(categories.map(c => c.id))); }, [categories]);
-
   const updateLocal = (cats: Category[]) => { setCategories(cats); onCategoriesChange?.(cats); };
-
-  const toggle = (id: string) => setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const handleAddCategory = async () => {
     const name = newCatName.trim();
@@ -112,63 +105,102 @@ export default function ProductManagement({ productCategories = [], onCategories
   const totalSub = categories.reduce((s, c) => s + c.subcategories.length, 0);
 
   return (
-    <div className="p-4 space-y-4 max-w-[1000px] mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
+      <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" onClick={() => navigate('/stock')}>← Back to Stock</Button>
-          <h1 className="text-xl font-bold">Categories & Subcategories</h1>
+          <div>
+            <h1 className="text-2xl font-bold leading-tight">Categories & Subcategories</h1>
+            <p className="text-muted-foreground text-sm">Organize products into categories and subcategories</p>
+          </div>
         </div>
         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowAddCategory(true)}><Plus className="w-4 h-4 mr-1" /> Add Category</Button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Card className="shadow-sm"><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><FolderOpen className="w-5 h-5 text-blue-600" /></div><div><p className="text-2xl font-bold">{categories.length}</p><p className="text-xs text-gray-500">Categories</p></div></CardContent></Card>
-        <Card className="shadow-sm"><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center"><Tag className="w-5 h-5 text-violet-600" /></div><div><p className="text-2xl font-bold">{totalSub}</p><p className="text-xs text-gray-500">Subcategories</p></div></CardContent></Card>
-        <Card className="shadow-sm"><CardContent className="p-4 flex items-center gap-3"><div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><Boxes className="w-5 h-5 text-emerald-600" /></div><div><p className="text-2xl font-bold">{categories.length + totalSub}</p><p className="text-xs text-gray-500">Total</p></div></CardContent></Card>
+      <div className="grid grid-cols-3 gap-4 flex-shrink-0">
+        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><FolderOpen className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-2xl font-bold leading-tight">{categories.length}</p><p className="text-xs text-gray-500">Categories</p></div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center"><Tag className="w-5 h-5 text-violet-600" /></div>
+          <div><p className="text-2xl font-bold leading-tight">{totalSub}</p><p className="text-xs text-gray-500">Subcategories</p></div>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><Boxes className="w-5 h-5 text-emerald-600" /></div>
+          <div><p className="text-2xl font-bold leading-tight">{categories.length + totalSub}</p><p className="text-xs text-gray-500">Total</p></div>
+        </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex-1 min-h-0 overflow-auto pr-1">
         {categories.length === 0 ? (
-          <Card className="shadow-sm"><CardContent className="py-12 text-center"><FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">No categories yet</p><p className="text-xs text-gray-400 mt-1">Click "Add Category" to get started</p></CardContent></Card>
-        ) : categories.map(cat => {
-          const isOpen = expanded.has(cat.id);
-          return (
-            <Card key={cat.id} className="shadow-sm overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors" onClick={() => toggle(cat.id)}>
-                <div className="flex items-center gap-3">
-                  {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                  <FolderOpen className="w-5 h-5 text-blue-500" />
-                  <span className="font-semibold text-sm">{cat.name}</span>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0">{cat.subcategories.length} sub</Badge>
+          <Card className="shadow-sm"><CardContent className="py-16 text-center"><FolderOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" /><p className="text-gray-500 font-medium">No categories yet</p><p className="text-xs text-gray-400 mt-1">Click "Add Category" to get started</p></CardContent></Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-max">
+            {categories.map(cat => (
+              <div key={cat.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-blue-200 transition-all flex flex-col overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-slate-100 bg-gradient-to-r from-blue-50/50 to-transparent">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-9 h-9 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <FolderOpen className="w-4.5 h-4.5 text-blue-600" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-sm text-slate-900 truncate">{cat.name}</h3>
+                      <p className="text-[11px] text-slate-500">{cat.subcategories.length} subcategories</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50" title="Rename" onClick={() => setEditingCat({ id: cat.id, name: cat.name, dbId: (cat as any).dbId })}><Edit className="w-3.5 h-3.5" /></Button>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" title="Delete" onClick={() => setDeleteConfirm({ open: true, type: 'category', id: cat.id, dbId: (cat as any).dbId })}><Trash2 className="w-3.5 h-3.5" /></Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-blue-600 hover:bg-blue-50" onClick={() => { setAddSubTarget(cat.id); setNewSubName(''); setShowAddSubcategory(true); }}><Plus className="w-3 h-3 mr-1" /> Sub</Button>
-                  <Button variant="ghost" size="sm" className="h-7 px-2 text-xs text-gray-500 hover:bg-gray-100" onClick={() => setEditingCat({ id: cat.id, name: cat.name, dbId: (cat as any).dbId })}>Rename</Button>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" onClick={() => setDeleteConfirm({ open: true, type: 'category', id: cat.id, dbId: (cat as any).dbId })}><Trash2 className="w-3.5 h-3.5" /></Button>
-                </div>
-              </div>
-              {isOpen && (
-                <div className="border-t bg-gray-50/50">
+
+                {/* Subcategory chips */}
+                <div className="flex-1 px-4 py-3">
                   {cat.subcategories.length === 0 ? (
-                    <div className="px-4 py-3 text-xs text-gray-400 text-center italic">No subcategories — click "+ Sub" to add</div>
+                    <p className="text-xs text-slate-400 italic text-center py-4">No subcategories yet</p>
                   ) : (
-                    <div className="divide-y divide-gray-100">
+                    <div className="flex flex-wrap gap-1.5">
                       {cat.subcategories.map(sub => (
-                        <div key={sub} className="flex items-center justify-between px-4 py-2 pl-12 hover:bg-gray-100/50 transition-colors">
-                          <div className="flex items-center gap-2"><Tag className="w-3.5 h-3.5 text-violet-400" /><span className="text-sm text-gray-700">{sub}</span></div>
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="h-6 px-1.5 text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-100" onClick={() => setEditingSub({ parentId: cat.id, oldName: sub, newName: sub, dbId: (cat as any).subDbIds?.[sub] })}><Edit className="w-3 h-3" /></Button>
-                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-400 hover:text-red-600 hover:bg-red-50" onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: cat.id, dbId: (cat as any).subDbIds?.[sub] })}><Trash2 className="w-3 h-3" /></Button>
-                          </div>
+                        <div key={sub} className="group inline-flex items-center gap-1 bg-violet-50 hover:bg-violet-100 border border-violet-200 text-violet-800 rounded-full pl-2.5 pr-1 py-0.5 text-xs font-medium transition-colors">
+                          <Tag className="w-3 h-3 text-violet-500" />
+                          <span>{sub}</span>
+                          <button
+                            className="ml-0.5 w-4 h-4 rounded-full flex items-center justify-center opacity-60 hover:opacity-100 hover:bg-violet-200"
+                            title="Rename"
+                            onClick={() => setEditingSub({ parentId: cat.id, oldName: sub, newName: sub, dbId: (cat as any).subDbIds?.[sub] })}
+                          >
+                            <Edit className="w-2.5 h-2.5" />
+                          </button>
+                          <button
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-red-500 opacity-60 hover:opacity-100 hover:bg-red-100"
+                            title="Delete"
+                            onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: cat.id, dbId: (cat as any).subDbIds?.[sub] })}
+                          >
+                            <Trash2 className="w-2.5 h-2.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   )}
                 </div>
-              )}
-            </Card>
-          );
-        })}
+
+                {/* Footer add button */}
+                <div className="px-4 py-2 border-t border-slate-100 bg-slate-50/50">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-full text-xs text-blue-600 hover:bg-blue-50 justify-center"
+                    onClick={() => { setAddSubTarget(cat.id); setNewSubName(''); setShowAddSubcategory(true); }}
+                  >
+                    <Plus className="w-3.5 h-3.5 mr-1" /> Add Subcategory
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Dialog open={showAddCategory} onOpenChange={setShowAddCategory}>
