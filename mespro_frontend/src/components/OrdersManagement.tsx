@@ -80,7 +80,7 @@ const getEffectiveProductRate = (productInfo: any, fallback = 0): number => {
 
 interface OrdersManagementProps {
   onNavigate: (view: string) => void;
-  onSendToBill?: (orderData: OrderForBilling) => void;
+  onSendToBill?: (orderData: OrderForBilling, billType?: 'invoice' | 'quotation') => void;
   onSendToProduction?: (orderData: OrderForBilling) => void;
   productCategories?: ProductCategory[];
   products?: Product[];
@@ -104,6 +104,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   const [editingOrder, setEditingOrder] = useState<any>(null);
   const [sentToProduction, setSentToProduction] = useState<string[]>([]);
   const [sentToBilling, setSentToBilling] = useState<string[]>([]);
+  const [billingChoiceDialog, setBillingChoiceDialog] = useState<{ open: boolean; order: any | null }>({ open: false, order: null });
   const [orders, setOrders] = useState<any[]>([]);
 
   const refreshOrders = () => {
@@ -419,6 +420,59 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   // Once billed (or any other status), disable until status returns to Pending
   const isAlreadySentToBilling = (order: any) => {
     return order.status !== 'Pending';
+  };
+
+  const buildOrderForBillingPayload = (order: any): OrderForBilling => {
+    const orderProducts = (order.products && order.products.length > 0)
+      ? order.products.map((p: any, idx: number) => {
+          const name = resolveProductName(p.product);
+          return {
+            id: idx + 1,
+            product: p.size ? `${name} (${p.size})` : name,
+            quantity: p.quantity || 0,
+            unit: p.unit || 'pcs',
+            rate: Number(p.rate) || 0,
+            amount: Number(p.amount) || 0,
+          };
+        })
+      : [{
+          id: 1,
+          product: order.product ? (order.size ? `${resolveProductName(order.product)} (${order.size})` : resolveProductName(order.product)) : 'Unknown',
+          quantity: order.quantity || 0,
+          unit: order.unit || 'pcs',
+          rate: Number(order.unit_price) || 0,
+          amount: Number(order.total_amount) || 0,
+        }];
+
+    return {
+      order_id: String(order.id),
+      order_number: order.order_number,
+      customer: order.customer,
+      contact: order.contact,
+      mobile: order.mobile,
+      email: order.email,
+      address: order.address,
+      products: orderProducts,
+      subtotal: Number(order.total_amount) || 0,
+      discount: Number(order.discount) || 0,
+      tax_rate: Number(order.tax_rate) || 18,
+      gst_amount: Number(order.gst_amount) || 0,
+      grand_total: Number(order.grand_total) || 0,
+    };
+  };
+
+  const sendOrderToBilling = (order: any, billType: 'invoice' | 'quotation') => {
+    if (isAlreadySentToBilling(order)) return;
+
+    if (onSendToBill) {
+      onSendToBill(buildOrderForBillingPayload(order), billType);
+    }
+
+    // Update order status to 'Bill' in the database
+    ordersService.updateOrderStatus(String(order.id), 'Bill').then(() => {
+      refreshOrders();
+    }).catch(() => {});
+    setSentToBilling((prev) => [...prev, order.id]);
   };
 
   const handleUpdateStatus = async (order: any, newStatus: string) => {
@@ -748,48 +802,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
                           className={isAlreadySentToBilling(order) ? "text-gray-400 cursor-not-allowed" : "text-green-600 hover:text-green-700"}
                           onClick={() => {
                             if (!isAlreadySentToBilling(order)) {
-                              if (onSendToBill) {
-                                const orderProducts = (order.products && order.products.length > 0)
-                                  ? order.products.map((p: any, idx: number) => {
-                                      const name = resolveProductName(p.product);
-                                      return {
-                                        id: idx + 1,
-                                        product: p.size ? `${name} (${p.size})` : name,
-                                        quantity: p.quantity || 0,
-                                        unit: p.unit || 'pcs',
-                                        rate: Number(p.rate) || 0,
-                                        amount: Number(p.amount) || 0
-                                      };
-                                    })
-                                  : [{
-                                      id: 1,
-                                      product: order.product ? (order.size ? `${resolveProductName(order.product)} (${order.size})` : resolveProductName(order.product)) : 'Unknown',
-                                      quantity: order.quantity || 0,
-                                      unit: order.unit || 'pcs',
-                                      rate: Number(order.unit_price) || 0,
-                                      amount: Number(order.total_amount) || 0
-                                    }];
-                                onSendToBill({
-                                  order_id: String(order.id),
-                                  order_number: order.order_number,
-                                  customer: order.customer,
-                                  contact: order.contact,
-                                  mobile: order.mobile,
-                                  email: order.email,
-                                  address: order.address,
-                                  products: orderProducts,
-                                  subtotal: Number(order.total_amount) || 0,
-                                  discount: Number(order.discount) || 0,
-                                  tax_rate: Number(order.tax_rate) || 18,
-                                  gst_amount: Number(order.gst_amount) || 0,
-                                  grand_total: Number(order.grand_total) || 0
-                                });
-                              }
-                              // Update order status to 'Bill' in the database
-                              ordersService.updateOrderStatus(String(order.id), 'Bill').then(() => {
-                                refreshOrders();
-                              }).catch(() => {});
-                              setSentToBilling([...sentToBilling, order.id]);
+                              setBillingChoiceDialog({ open: true, order });
                             }
                           }}
                           disabled={isAlreadySentToBilling(order)}
@@ -840,6 +853,46 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
           </Card>
         </TabsContent>
       </Tabs>
+
+      <Dialog
+        open={billingChoiceDialog.open}
+        onOpenChange={(open) => {
+          if (!open) setBillingChoiceDialog({ open: false, order: null });
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Select Billing Type</DialogTitle>
+            <DialogDescription>
+              Choose whether to create a quotation bill or invoice for this order.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (billingChoiceDialog.order) {
+                  sendOrderToBilling(billingChoiceDialog.order, 'quotation');
+                }
+                setBillingChoiceDialog({ open: false, order: null });
+              }}
+            >
+              Quotation Bill
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={() => {
+                if (billingChoiceDialog.order) {
+                  sendOrderToBilling(billingChoiceDialog.order, 'invoice');
+                }
+                setBillingChoiceDialog({ open: false, order: null });
+              }}
+            >
+              Invoice
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Order Detail Dialog */}
       {selectedOrder && (

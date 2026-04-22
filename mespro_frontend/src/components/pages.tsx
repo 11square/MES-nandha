@@ -74,7 +74,16 @@ export function OrdersPage() {
   return (
     <OrdersManagement
       onNavigate={useAppNav()}
-      onSendToBill={(data) => { setOrderForBilling(data); navigate('/billing', { state: { openBillForm: true } }); }}
+      onSendToBill={(data, billType) => {
+        let resolvedBillType = billType;
+        if (!resolvedBillType) {
+          const choice = window.prompt('Select bill type: 1 for Invoice, 2 for Quotation Bill', '1');
+          if (choice === null) return;
+          resolvedBillType = choice.trim() === '2' ? 'quotation' : 'invoice';
+        }
+        setOrderForBilling(data);
+        navigate('/billing', { state: { openBillForm: true, billType: resolvedBillType } });
+      }}
       onSendToProduction={(data: any) => { setOrderForProduction(data); navigate('/production'); }}
       productCategories={productCategories}
       products={products}
@@ -193,11 +202,13 @@ export function BillingPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const openBillForm = !!(location.state as any)?.openBillForm;
+  const preferredBillType = (location.state as any)?.billType as 'invoice' | 'quotation' | undefined;
   return (
     <BillingManagement
       orderForBilling={orderForBilling}
       onClearOrderForBilling={() => setOrderForBilling(null)}
       openBillForm={openBillForm}
+      preferredBillType={preferredBillType}
       onSendToDispatch={(data) => {
         setBillForDispatch(data);
         navigate('/dispatch');

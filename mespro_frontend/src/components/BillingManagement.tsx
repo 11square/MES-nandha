@@ -50,6 +50,7 @@ interface BillingManagementProps {
   orderForBilling?: OrderForBilling | null;
   onClearOrderForBilling?: () => void;
   openBillForm?: boolean;
+  preferredBillType?: 'invoice' | 'quotation';
   onSendToDispatch?: (billData: { bill_no: string; order_id?: string | number; order_number: string; client_name: string; client_address: string; items: { name: string; quantity: number }[]; grand_total: number }) => void;
 }
 
@@ -131,7 +132,7 @@ interface Payment {
   notes?: string;
 }
 
-const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, onClearOrderForBilling, openBillForm, onSendToDispatch }) => {
+const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, onClearOrderForBilling, openBillForm, preferredBillType, onSendToDispatch }) => {
   // Translation helper
   const { t } = useI18n();
 
@@ -446,10 +447,18 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   // Track whether we've already processed the incoming order
   const orderProcessedRef = useRef(false);
 
+  useEffect(() => {
+    if (openBillForm && preferredBillType) {
+      setActiveTab(preferredBillType === 'quotation' ? 'non-gst-bills' : 'gst-bills');
+    }
+  }, [openBillForm, preferredBillType]);
+
   // Handle order sent from OrdersManagement
   useEffect(() => {
     if (orderForBilling && !orderProcessedRef.current) {
       orderProcessedRef.current = true;
+      const targetTab: 'gst-bills' | 'non-gst-bills' = preferredBillType === 'quotation' ? 'non-gst-bills' : 'gst-bills';
+      setActiveTab(targetTab);
       const orderData = orderForBilling as any;
       const orderRef = String(orderData.order_id || orderData.id || '');
       const orderNum = orderData.orderNumber || orderData.order_number || '';
@@ -460,7 +469,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       billingService.getBills().then(data => {
         const items = Array.isArray(data) ? data : (data as any)?.items || [];
         const freshBills = items.map((b: any) => ({ ...b, id: String(b.id), bill_no: b.bill_no }));
-        const freshBillNo = generateNextBillNumber(freshBills);
+        const freshBillNo = targetTab === 'non-gst-bills'
+          ? generateNextQuotationNumber(freshBills)
+          : generateNextBillNumber(freshBills);
         setBillForm(prev => ({ ...prev, bill_number: freshBillNo }));
       }).catch(() => {});
 
@@ -511,7 +522,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         gst_number: matchedClient?.gstNo || orderData.gst_number || '',
         items: orderItems,
         notes: `Order: ${orderNum} - ${customerName}`,
-        gst: orderData.tax_rate || orderData.taxRate || 18,
+        gst: targetTab === 'non-gst-bills' ? 0 : (orderData.tax_rate || orderData.taxRate || 18),
       }));
 
       setShowCreateBill(true);
@@ -523,7 +534,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         }
       }, 500);
     }
-  }, [orderForBilling]);
+  }, [orderForBilling, preferredBillType]);
 
   // When clients load later, try to match the customer if we have order data
   useEffect(() => {
