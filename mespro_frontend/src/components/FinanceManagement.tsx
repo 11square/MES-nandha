@@ -1139,14 +1139,14 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         </div>
 
         {/* Transactions Tab */}
-        <TabsContent value="transactions" className="space-y-4 flex-1 min-h-0 overflow-auto data-[state=active]:block mt-0">
+        <TabsContent value="transactions" className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-white rounded-lg border border-gray-200 shadow-sm"
+            className="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden"
           >
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-4 flex-wrap">
+            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between gap-4 flex-wrap flex-shrink-0">
               <h2 className="text-base text-gray-800 font-semibold flex items-center gap-2 shrink-0">
                 <Receipt className="w-4 h-4 text-gray-600" />
                 Transactions
@@ -1200,9 +1200,9 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-auto flex-1 min-h-0">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Date</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">Type</th>
@@ -1334,28 +1334,27 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         </TabsContent>
 
         {/* Receipts Tab (Cash Receipts) */}
-        <TabsContent value="receipts" className="space-y-4 flex-1 min-h-0 overflow-auto data-[state=active]:block mt-0">
+        <TabsContent value="receipts" className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-white rounded-lg border border-gray-200 shadow-sm"
+            className="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden"
           >
-            <div className="p-6 border-b border-gray-200">
+            <div className="px-4 py-3 border-b border-gray-200 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg text-gray-800 font-semibold flex items-center gap-2">
-                    <Receipt className="w-5 h-5 text-green-600" />
+                  <h2 className="text-base text-gray-800 font-semibold flex items-center gap-2">
+                    <Receipt className="w-4 h-4 text-green-600" />
                     {t('cashReceipts')}
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">{t('allReceivedPayments')}</p>
                 </div>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-auto flex-1 min-h-0">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">{t('receiptNo')}</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">{t('invoiceNo')}</th>
