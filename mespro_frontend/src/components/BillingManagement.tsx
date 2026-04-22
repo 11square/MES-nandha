@@ -2142,6 +2142,39 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <Input type="date" value={billForm.due_date} onChange={(e) => setBillForm(prev => ({ ...prev, due_date: e.target.value }))} className="h-8 text-sm" />
                     </div>
                   )}
+                  {isQuotation && (
+                    <>
+                      <div>
+                        <Label className="text-xs text-gray-500">Valid Until</Label>
+                        <Input
+                          type="date"
+                          value={billForm.due_date || (() => { const d = new Date(billForm.date || new Date()); d.setDate(d.getDate() + 7); return d.toISOString().split('T')[0]; })()}
+                          onChange={(e) => setBillForm(prev => ({ ...prev, due_date: e.target.value }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs text-gray-500">Reference</Label>
+                        <Input
+                          type="text"
+                          placeholder="Enquiry / Order ref."
+                          value={billForm.reference || ''}
+                          onChange={(e) => setBillForm(prev => ({ ...prev, reference: e.target.value }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <Label className="text-xs text-gray-500">Prepared By</Label>
+                        <Input
+                          type="text"
+                          placeholder="Sales person name"
+                          value={billForm.prepared_by || ''}
+                          onChange={(e) => setBillForm(prev => ({ ...prev, prepared_by: e.target.value }))}
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
