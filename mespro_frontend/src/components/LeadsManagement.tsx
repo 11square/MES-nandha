@@ -527,12 +527,12 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   const canApprove = true; // Assuming the user has the necessary permissions
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       {/* Page Heading with Date Filter */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{t('leadsTitle')}</h1>
-          <p className="text-gray-600 mt-1">{t('trackAndManageSalesLeads')}</p>
+          <h1 className="text-2xl font-bold text-gray-900 leading-tight">{t('leadsTitle')}</h1>
+          <p className="text-gray-600 text-sm">{t('trackAndManageSalesLeads')}</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
@@ -569,57 +569,57 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-shrink-0">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200 cursor-pointer hover:shadow-md" onClick={() => setFilterStatus('new')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('new')}</CardTitle>
             <Clock className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-blue-700">{dateFilteredLeads.filter(l => l.status === 'New').length}</div>
             <p className="text-xs text-blue-600">{t('newLeads')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200 cursor-pointer hover:shadow-md" onClick={() => setFilterStatus('contacted')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('contacted')}</CardTitle>
             <Phone className="h-4 w-4 text-amber-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-amber-700">{dateFilteredLeads.filter(l => l.status === 'Contacted').length}</div>
             <p className="text-xs text-amber-600">{t('followupPending')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200 cursor-pointer hover:shadow-md" onClick={() => setFilterStatus('qualified')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('qualified')}</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-purple-700">{dateFilteredLeads.filter(l => l.status === 'Qualified').length}</div>
             <p className="text-xs text-purple-600">{t('readyToConvert')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200 cursor-pointer hover:shadow-md" onClick={() => setFilterStatus('converted')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('converted')}</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-emerald-700">{dateFilteredLeads.filter(l => l.conversion_status === 'Converted').length}</div>
             <p className="text-xs text-emerald-600">{t('convertedToOrders')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-red-500/10 backdrop-blur-sm border-red-200 cursor-pointer hover:shadow-md" onClick={() => setFilterStatus('rejected')}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('rejected')}</CardTitle>
             <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-red-700">{dateFilteredLeads.filter(l => l.status === 'Rejected').length}</div>
             <p className="text-xs text-red-600">{t('rejectedLeads')}</p>
           </CardContent>
@@ -627,7 +627,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-shrink-0">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input 
@@ -655,9 +655,9 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
       </div>
 
       {/* Main Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
 
-      <div className="flex justify-between items-start">
+      <div className="flex justify-between items-start flex-shrink-0">
         <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-gray-100 rounded-lg w-fit">
           <TabsTrigger value="leads" className="px-4 py-2">
             {t('leads')} ({filteredLeads.length})
@@ -690,13 +690,13 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
         </div>
       </div>
 
-        <TabsContent value="leads" className="mt-4">
+        <TabsContent value="leads" className="mt-2 flex-1 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
       {/* Leads Table */}
-      <Card>
-        <CardHeader>
+      <Card className="h-full flex flex-col overflow-hidden">
+        <CardHeader className="flex-shrink-0 py-3">
           <CardTitle>{t('allLeads')} ({filteredLeads.length})</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-1 min-h-0 overflow-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -812,7 +812,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
         </TabsContent>
 
         {/* Follow-ups Tab Content */}
-        <TabsContent value="followups" className="space-y-6">
+        <TabsContent value="followups" className="space-y-6 mt-2 flex-1 min-h-0 overflow-auto data-[state=active]:block">
           {/* Follow-ups Header */}
           <h2 className="text-xl font-semibold text-gray-800">
             {t('allFollowups')} 

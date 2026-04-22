@@ -606,14 +606,14 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   }
 
   return (
-    <div className="space-y-6">
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 leading-tight">
             {t('ordersTitle')}
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-gray-600 text-sm">
             {t('manageConvertedLeadsAsOrders')}
           </p>
         </div>
@@ -642,46 +642,46 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('totalOrdersCount')}</CardTitle>
             <FileText className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-blue-700">{stats.total}</div>
             <p className="text-xs text-blue-600">{t('allOrders')}</p>
           </CardContent>
         </Card>
 
         <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">B2B</CardTitle>
             <Building className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-purple-700">{stats.b2b}</div>
             <p className="text-xs text-purple-600">Business orders</p>
           </CardContent>
         </Card>
 
         <Card className="bg-cyan-500/10 backdrop-blur-sm border-cyan-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">B2C</CardTitle>
             <Users className="h-4 w-4 text-cyan-600" />
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-cyan-700">{stats.b2c}</div>
             <p className="text-xs text-cyan-600">Consumer orders</p>
           </CardContent>
         </Card>
 
         <Card className="bg-green-500/10 backdrop-blur-sm border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('totalValue')}</CardTitle>
             <span className="text-green-600 font-bold text-sm">₹</span>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0 pb-3 px-4">
             <div className="text-2xl font-bold text-green-700">₹{stats.totalValue.toLocaleString()}</div>
             <p className="text-xs text-green-600">{stats.total} {t('orders')}</p>
           </CardContent>
@@ -689,7 +689,7 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4 flex-shrink-0">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input 
@@ -721,9 +721,9 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
         </Select>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
 
-      <div className="flex justify-between items-start">    
+      <div className="flex justify-between items-start flex-shrink-0">    
         <TabsList className="flex flex-wrap gap-1 h-auto p-1 bg-gray-100 rounded-lg w-fit">
           <TabsTrigger value="all" className="px-4 py-2">
             {t('all')} ({orders.length})
@@ -744,13 +744,13 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
           </Button>
         </div>
     </div>
-        <TabsContent value={activeTab} className="mt-4">
+        <TabsContent value={activeTab} className="mt-2 flex-1 min-h-0 data-[state=active]:flex data-[state=active]:flex-col">
           {/* Orders Table */}
-          <Card>
-            <CardHeader>
+          <Card className="h-full flex flex-col overflow-hidden">
+            <CardHeader className="flex-shrink-0 py-3">
               <CardTitle>{t('ordersLabel')} ({filteredOrders.length})</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 min-h-0 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
