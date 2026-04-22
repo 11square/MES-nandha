@@ -493,6 +493,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       });
 
       // Map order products to BillingManagement's BillItem format
+      const quotationMode = targetTab === 'non-gst-bills';
       const orderItems: BillItem[] = orderProducts.map((product: any, idx: number) => ({
         item_id: `${orderNum}-${idx + 1}`,
         name: product.product,
@@ -503,7 +504,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         unit: product.unit || '',
         unit_price: product.rate,
         discount: 0,
-        tax: orderData.tax_rate || orderData.taxRate || 18,
+        tax: quotationMode ? 0 : (orderData.tax_rate || orderData.taxRate || 18),
         total: product.amount,
       }));
 
@@ -2036,7 +2037,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   if (showCreateBill) {
     const totals = calculateBillTotals();
     const taxBreakdown = calculateTaxBreakdown();
-    const hasAnyTax = billForm.items.some(item => item.tax > 0);
+    const isQuotation = activeTab === 'non-gst-bills' || (billForm.bill_number || '').startsWith('QTN');
+    const hasAnyTax = !isQuotation && billForm.items.some(item => item.tax > 0);
     const isIntraState = billForm.place_of_supply.startsWith('33-');
     const taxableAmount = totals.subtotal - totals.totalDiscount;
 
@@ -2071,13 +2073,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
             <Card className="shadow-sm">
               <CardHeader className="py-3 px-4">
                 <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
-                  <FileText className="w-4 h-4" /> Invoice Details
+                  <FileText className="w-4 h-4" /> {isQuotation ? 'Quotation Details' : 'Invoice Details'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-4 pb-4 pt-0">
                 <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                   <div>
-                    <Label className="text-xs text-gray-500">Invoice No.</Label>
+                    <Label className="text-xs text-gray-500">{isQuotation ? 'Quotation No.' : 'Invoice No.'}</Label>
                     <Input type="text" value={billForm.bill_number} readOnly className="h-8 text-sm bg-gray-50 font-mono" />
                   </div>
                   <div>
@@ -2085,7 +2087,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     <Input type="date" value={billForm.date} onChange={(e) => { setBillForm(prev => ({ ...prev, date: e.target.value })); setErrors(prev => ({ ...prev, date: '' })); }} className="h-8 text-sm" />
                     <FieldError message={errors.date} />
                   </div>
-                  <div className="relative">
+                  <div className="relative" style={{ display: isQuotation ? 'none' : undefined }}>
                     <Label className="text-xs text-gray-500">Place of Supply</Label>
                     <div className="relative">
                       <input
@@ -2111,7 +2113,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       </div>
                     )}
                   </div>
-                  <div>
+                  <div style={{ display: isQuotation ? 'none' : undefined }}>
                     <Label className="text-xs text-gray-500">Invoice Type</Label>
                     <div className={`w-full h-8 px-2 flex items-center border rounded-md text-xs font-medium ${billForm.gst_number.trim() ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600'}`}>
                       {billForm.gst_number.trim() ? 'B2B (Business to Business)' : 'B2C (Business to Consumer)'}
@@ -2199,7 +2201,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <Label className="text-xs text-gray-500">Mobile</Label>
                       <Input type="text" placeholder="e.g. 9876543210" value={clientMobile} onChange={(e) => setClientMobile(e.target.value.replace(/[^0-9+\s]/g, ''))} className="h-8 text-sm" maxLength={15} />
                     </div>
-                    <div>
+                    <div style={{ display: isQuotation ? 'none' : undefined }}>
                       <Label className="text-xs text-gray-500">GSTIN</Label>
                       <Input type="text" placeholder="e.g. 33AUJPM8458P1ZR" value={billForm.gst_number} onChange={(e) => { const val = e.target.value.toUpperCase(); setBillForm(prev => ({ ...prev, gst_number: val, invoiceType: val.trim() ? 'b2b' : 'b2c' })); }} className="h-8 text-sm font-mono" maxLength={15} />
                     </div>
@@ -2279,12 +2281,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[24%]">Item *</th>
-                      <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">HSN/SAC</th>
+                      {!isQuotation && <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[12%]">HSN/SAC</th>}
                       <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">Qty *</th>
                       <th className="text-left text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">Unit</th>
                       <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[11%]">Price/Unit</th>
                       <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">Disc %</th>
-                      <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">GST %</th>
+                      {!isQuotation && <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[7%]">GST %</th>}
                       <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">Amount</th>
                       <th className="w-[8%]"></th>
                     </tr>
@@ -2330,7 +2332,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               )}
                             </div>
                           </td>
-                          <td className="py-1 pr-2">
+                          <td className="py-1 pr-2" style={{ display: isQuotation ? 'none' : undefined }}>
                             <Input type="text" placeholder="HSN" value={row.hsnSac} onChange={(e) => updateItemRow(row.id, 'hsnSac', e.target.value)} className="h-7 text-xs font-mono" maxLength={10} />
                           </td>
                           <td className="py-1 pr-2">
@@ -2376,7 +2378,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               }}
                             />
                           </td>
-                          <td className="py-1 pr-2">
+                          <td className="py-1 pr-2" style={{ display: isQuotation ? 'none' : undefined }}>
                             <select value={row.gstRate} onChange={(e) => updateItemRow(row.id, 'gstRate', Number(e.target.value))} className="w-full h-7 px-1 border border-gray-300 rounded-md text-xs text-center">
                               <option value={0}>0%</option>
                               <option value={5}>5%</option>
@@ -2424,13 +2426,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <tr className="border-b">
                         <th className="text-left py-2 px-2 font-semibold text-gray-600 w-8">#</th>
                         <th className="text-left py-2 px-2 font-semibold text-gray-600">Item Name</th>
-                        <th className="text-left py-2 px-2 font-semibold text-gray-600 w-20">HSN/SAC</th>
+                        {!isQuotation && <th className="text-left py-2 px-2 font-semibold text-gray-600 w-20">HSN/SAC</th>}
                         <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
                         <th className="text-center py-2 px-2 font-semibold text-gray-600 w-12">Unit</th>
                         <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Price/Unit</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Taxable</th>
-                        <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>
-                        <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Final Rate</th>
+                        {!isQuotation && <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Taxable</th>}
+                        {!isQuotation && <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>}
+                        {!isQuotation && <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Final Rate</th>}
                         <th className="text-right py-2 px-2 font-semibold text-gray-600 w-20">Amount</th>
                         <th className="w-16"></th>
                       </tr>
@@ -2446,7 +2448,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
                             <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
                             <td className="py-1.5 px-2 font-medium">{item.name}</td>
-                            <td className="py-1.5 px-2 text-gray-500 font-mono">{item.hsn_sac || '-'}</td>
+                            {!isQuotation && <td className="py-1.5 px-2 text-gray-500 font-mono">{item.hsn_sac || '-'}</td>}
                             <td className="py-1.5 px-2 text-center">
                               {editingItemIndex === index ? (
                                 <Input type="number" value={editingItem?.quantity || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, quantity: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-14 h-6 text-xs text-center" />
@@ -2458,9 +2460,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                                 <Input type="number" value={editingItem?.unit_price || 0} onChange={(e) => setEditingItem(prev => prev ? {...prev, unit_price: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-16 h-6 text-xs text-right" />
                               ) : `₹${item.unit_price.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                             </td>
-                            <td className="py-1.5 px-2 text-right text-gray-600">₹{itemTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                            <td className="py-1.5 px-2 text-center text-gray-600">{item.tax}%</td>
-                            <td className="py-1.5 px-2 text-right font-medium">₹{finalRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            {!isQuotation && <td className="py-1.5 px-2 text-right text-gray-600">₹{itemTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>}
+                            {!isQuotation && <td className="py-1.5 px-2 text-center text-gray-600">{item.tax}%</td>}
+                            {!isQuotation && <td className="py-1.5 px-2 text-right font-medium">₹{finalRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>}
                             <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                             <td className="py-1.5 px-2">
                               {editingItemIndex === index ? (
@@ -2496,7 +2498,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               </div>
                             )}
                           </td>
-                          <td className="py-1.5 px-2">-</td>
+                          {!isQuotation && <td className="py-1.5 px-2">-</td>}
                           <td className="py-1.5 px-2 text-center">1</td>
                           <td className="py-1.5 px-2 text-center">-</td>
                           <td className="py-1.5 px-2 text-right">
@@ -2504,9 +2506,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               <Input type="number" value={editingAddon?.amount || 0} onChange={(e) => setEditingAddon(prev => prev ? {...prev, amount: Number(e.target.value)} : null)} onKeyDown={blockInvalidNumberKeys} className="w-16 h-6 text-xs text-right" />
                             ) : `₹${addon.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`}
                           </td>
-                          <td className="py-1.5 px-2 text-right">-</td>
-                          <td className="py-1.5 px-2 text-right">-</td>
-                          <td className="py-1.5 px-2 text-right">-</td>
+                          {!isQuotation && <td className="py-1.5 px-2 text-right">-</td>}
+                          {!isQuotation && <td className="py-1.5 px-2 text-right">-</td>}
+                          {!isQuotation && <td className="py-1.5 px-2 text-right">-</td>}
                           <td className="py-1.5 px-2 text-right font-bold text-blue-600">₹{addon.amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                           <td className="py-1.5 px-2">
                             {editingAddonIndex === index ? (
@@ -2527,13 +2529,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
                         <td className="py-2 px-2"></td>
                         <td className="py-2 px-2">Total</td>
-                        <td className="py-2 px-2"></td>
+                        {!isQuotation && <td className="py-2 px-2"></td>}
                         <td className="py-2 px-2 text-center">{billForm.items.reduce((s, i) => s + i.quantity, 0)}</td>
                         <td className="py-2 px-2"></td>
                         <td className="py-2 px-2"></td>
-                        <td className="py-2 px-2"></td>
-                        <td className="py-2 px-2 text-right">₹{Math.round(totals.totalTax).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td className="py-2 px-2"></td>
+                        {!isQuotation && <td className="py-2 px-2"></td>}
+                        {!isQuotation && <td className="py-2 px-2 text-right">₹{Math.round(totals.totalTax).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>}
+                        {!isQuotation && <td className="py-2 px-2"></td>}
                         <td className="py-2 px-2 text-right text-blue-700">₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td></td>
                       </tr>
@@ -2566,10 +2568,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         <span>-₹{Math.round(totals.totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-gray-600">
-                      <span>Taxable Amount</span>
-                      <span>₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
-                    </div>
+                    {!isQuotation && (
+                      <div className="flex justify-between text-gray-600">
+                        <span>Taxable Amount</span>
+                        <span>₹{taxableAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      </div>
+                    )}
                     {hasAnyTax && (
                       isIntraState ? (
                         <>
@@ -2606,7 +2610,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   </div>
                   {/* Amount in Words */}
                   <div className="mt-3 pt-2 border-t border-gray-200">
-                    <p className="text-[10px] text-gray-500 uppercase font-semibold">Invoice Amount in Words</p>
+                    <p className="text-[10px] text-gray-500 uppercase font-semibold">{isQuotation ? 'Amount in Words' : 'Invoice Amount in Words'}</p>
                     <p className="text-xs text-gray-700 font-medium italic">{amountToWords(Math.round(totals.grandTotal))}</p>
                   </div>
                 </CardContent>
