@@ -1105,9 +1105,19 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       
       <Tabs defaultValue="transactions" className="w-full flex-1 flex flex-col min-h-0" onValueChange={(value) => setActiveTab(value)}>
         <div className='flex justify-between items-center mb-2 flex-shrink-0'>
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="transactions">{t('transactions')}</TabsTrigger>
-          <TabsTrigger value="receipts">{t('receipts')}</TabsTrigger>
+        <TabsList className="inline-grid grid-cols-2 h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm w-[320px]">
+          <TabsTrigger
+            value="transactions"
+            className="h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
+          >
+            {t('transactions')}
+          </TabsTrigger>
+          <TabsTrigger
+            value="receipts"
+            className="h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
+          >
+            {t('receipts')}
+          </TabsTrigger>
         </TabsList>
         {activeTab === 'transactions' ? (
           <Button 
