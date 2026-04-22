@@ -2939,7 +2939,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   }
 
   return (
-    <div className="p-6 h-full flex flex-col gap-6 overflow-hidden">
+    <div className="p-6 flex flex-col gap-6 overflow-hidden" style={{ height: 'calc(100dvh - 96px)' }}>
       <div className="flex justify-between items-center flex-shrink-0">
         <div>
           <h1 className="text-3xl font-bold">{t('billing')}</h1>
@@ -3017,7 +3017,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
+      <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full flex-1 flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <TabsList className="grid w-full max-w-lg grid-cols-2">
             <TabsTrigger value="gst-bills">{t('invoice')}</TabsTrigger>
@@ -3038,7 +3038,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </div>
 
         {/* GST Bills Tab (18%) */}
-        <TabsContent value="gst-bills" className="flex-1 min-h-0 overflow-hidden mt-0">
+        <TabsContent value="gst-bills" className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col">
           <Card className="h-full flex flex-col overflow-hidden">
             <CardHeader className="flex-shrink-0">
               <div className="flex gap-3">
@@ -3209,7 +3209,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </TabsContent>
 
         {/* Quotation Bill Tab */}
-        <TabsContent value="non-gst-bills" className="flex-1 min-h-0 overflow-hidden mt-0">
+        <TabsContent value="non-gst-bills" className="flex-1 min-h-0 mt-0 data-[state=active]:flex data-[state=active]:flex-col">
           <Card className="h-full flex flex-col overflow-hidden">
             <CardHeader className="flex-shrink-0">
               <div className="flex gap-3">
