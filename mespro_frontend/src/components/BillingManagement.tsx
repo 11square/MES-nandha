@@ -2728,6 +2728,85 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   </CardContent>
                 </Card>
               )}
+
+              {/* Quotation Summary - fills the gap beside Amounts card */}
+              {isQuotation && (
+                <Card className="shadow-sm">
+                  <CardHeader className="py-3 px-4">
+                    <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                      <FileText className="w-4 h-4" /> Quotation Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="px-4 pb-4 pt-0 space-y-3">
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-blue-50 rounded-md p-2.5 border border-blue-100">
+                        <p className="text-[10px] text-blue-600 uppercase font-semibold">Total Items</p>
+                        <p className="text-lg font-bold text-blue-800">{billForm.items.length}</p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-md p-2.5 border border-emerald-100">
+                        <p className="text-[10px] text-emerald-600 uppercase font-semibold">Total Quantity</p>
+                        <p className="text-lg font-bold text-emerald-800">{billForm.items.reduce((s, i) => s + i.quantity, 0)}</p>
+                      </div>
+                      <div className="bg-amber-50 rounded-md p-2.5 border border-amber-100">
+                        <p className="text-[10px] text-amber-600 uppercase font-semibold">Avg. Price / Unit</p>
+                        <p className="text-lg font-bold text-amber-800">
+                          ₹{(() => {
+                            const qty = billForm.items.reduce((s, i) => s + i.quantity, 0);
+                            return qty > 0 ? Math.round(totals.subtotal / qty).toLocaleString('en-IN') : '0';
+                          })()}
+                        </p>
+                      </div>
+                      <div className="bg-purple-50 rounded-md p-2.5 border border-purple-100">
+                        <p className="text-[10px] text-purple-600 uppercase font-semibold">Valid For</p>
+                        <p className="text-lg font-bold text-purple-800">
+                          {(() => {
+                            const validUntil = billForm.due_date;
+                            if (!validUntil) return '7 days';
+                            const days = Math.ceil((new Date(validUntil).getTime() - new Date(billForm.date || new Date()).getTime()) / (1000 * 60 * 60 * 24));
+                            return days > 0 ? `${days} day${days === 1 ? '' : 's'}` : 'Expired';
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="border-t pt-2 space-y-1.5 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Quotation No.</span>
+                        <span className="font-mono font-medium text-gray-800">{billForm.bill_number}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Date</span>
+                        <span className="font-medium text-gray-800">{billForm.date ? new Date(billForm.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Valid Until</span>
+                        <span className="font-medium text-gray-800">
+                          {billForm.due_date ? new Date(billForm.due_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : <span className="text-gray-400">Not set</span>}
+                        </span>
+                      </div>
+                      {billForm.prepared_by && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Prepared By</span>
+                          <span className="font-medium text-gray-800">{billForm.prepared_by}</span>
+                        </div>
+                      )}
+                      {billForm.reference && (
+                        <div className="flex justify-between">
+                          <span className="text-gray-500">Reference</span>
+                          <span className="font-medium text-gray-800">{billForm.reference}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-md p-2.5 border border-blue-100">
+                      <p className="text-[10px] text-blue-700 uppercase font-semibold mb-0.5">Note</p>
+                      <p className="text-xs text-gray-700 leading-snug">
+                        This quotation is valid until the date shown above. Prices are inclusive and subject to change without prior notice after expiry.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
 

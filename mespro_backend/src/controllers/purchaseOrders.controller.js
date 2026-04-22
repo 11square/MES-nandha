@@ -20,6 +20,24 @@ module.exports = {
     try {
       const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
 
+      // Resolve vendor_id from vendor_name when needed so outstanding can be tracked reliably.
+      let vendorRecord = null;
+      if (poData.vendor_id) {
+        vendorRecord = await Vendor.findOne({
+          where: applyBusinessScope(req, { id: poData.vendor_id }),
+          transaction: t,
+        });
+      }
+      if (!vendorRecord && poData.vendor_name) {
+        vendorRecord = await Vendor.findOne({
+          where: applyBusinessScope(req, { name: poData.vendor_name }),
+          transaction: t,
+        });
+      }
+      if (vendorRecord && !poData.vendor_id) {
+        poData.vendor_id = vendorRecord.id;
+      }
+
       // Sanitize date fields — empty strings default to PO date
       if (!poData.expected_delivery) poData.expected_delivery = poData.date || null;
 
@@ -33,6 +51,13 @@ module.exports = {
       poData.po_number = poData.po_number || `PO-${new Date().getFullYear()}-${String(nextNum).padStart(3, '0')}`;
       poData.business_id = req.currentBusiness;
       const po = await PurchaseOrder.create(poData, { transaction: t });
+
+      // New PO increases payable amount to the vendor, so add to existing outstanding.
+      const poAmount = parseFloat(poData.total_amount || 0);
+      if (vendorRecord && poAmount > 0) {
+        const newOutstanding = parseFloat(vendorRecord.outstanding_amount || 0) + poAmount;
+        await vendorRecord.update({ outstanding_amount: newOutstanding }, { transaction: t });
+      }
 
       if (items && items.length > 0) {
         await PurchaseOrderItem.bulkCreate(
