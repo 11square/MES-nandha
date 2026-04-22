@@ -3019,16 +3019,16 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full flex-1 flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-2 flex-shrink-0">
-          <TabsList className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+          <TabsList className="inline-grid grid-cols-2 h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm w-[320px]">
             <TabsTrigger
               value="gst-bills"
-              className="px-5 h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
+              className="h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
             >
               {t('invoice')}
             </TabsTrigger>
             <TabsTrigger
               value="non-gst-bills"
-              className="px-5 h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
+              className="h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
             >
               {t('quotationBill')}
             </TabsTrigger>
