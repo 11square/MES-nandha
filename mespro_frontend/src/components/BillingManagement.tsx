@@ -3057,7 +3057,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
                     (bill.bill_no || '').startsWith('INV')
                   ).map((bill) => (
-                    <TableRow key={bill.id}>
+                    <TableRow key={bill.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleViewBill(bill)}>
                       <TableCell className="font-medium font-mono">
                         {bill.bill_no}
                         {(bill as any).status === 'draft' && <Badge className="ml-2 bg-gray-100 text-gray-700 text-[10px] px-1.5 py-0.5">Draft</Badge>}
@@ -3085,6 +3085,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <TableCell>
                         <select
                           value={bill.payment_status}
+                          onClick={(e) => e.stopPropagation()}
                           onChange={(e) => handlePaymentStatusChange(bill.id, e.target.value as 'paid' | 'partial' | 'pending' | 'overdue')}
                           className={`text-xs font-medium rounded-full px-3 py-1.5 border cursor-pointer outline-none appearance-none bg-white ${getStatusColor(bill.payment_status)}`}
                         >
@@ -3094,7 +3095,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                           <option value="overdue">Overdue</option>
                         </select>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -3120,13 +3121,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleViewBill(bill)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
+                          title="Download PDF"
                           className={!printedBills.has(bill.id) ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" : ""}
                           onClick={() => {
                             if (!printedBills.has(bill.id)) {
@@ -3135,7 +3130,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             generateBillPDF(bill);
                           }}
                         >
-                          <Printer className="h-4 w-4" />
+                          <Download className="h-4 w-4" />
                         </Button>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -3235,7 +3230,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       (bill.client_name || '').toLowerCase().includes(searchTerm.toLowerCase())) &&
                       (bill.bill_no || '').startsWith('QTN')
                     ).map((bill) => (
-                      <TableRow key={bill.id}>
+                      <TableRow key={bill.id} className="cursor-pointer hover:bg-gray-50" onClick={() => handleViewBill(bill)}>
                         <TableCell className="font-medium font-mono">
                           {bill.bill_no}
                           {(bill as any).status === 'draft' && <Badge className="ml-2 bg-gray-100 text-gray-700 text-[10px] px-1.5 py-0.5">Draft</Badge>}
@@ -3262,6 +3257,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         <TableCell>
                           <select
                             value={bill.payment_status}
+                            onClick={(e) => e.stopPropagation()}
                             onChange={(e) => handlePaymentStatusChange(bill.id, e.target.value as 'paid' | 'partial' | 'pending' | 'overdue')}
                             className={`text-xs font-medium rounded-full px-3 py-1.5 border cursor-pointer outline-none appearance-none bg-white ${getStatusColor(bill.payment_status)}`}
                           >
@@ -3271,7 +3267,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             <option value="overdue">Overdue</option>
                           </select>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -3297,13 +3293,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleViewBill(bill)}
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
+                            title="Download PDF"
                             className={!printedBills.has(bill.id) ? "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" : ""}
                             onClick={() => {
                               if (!printedBills.has(bill.id)) {
@@ -3312,7 +3302,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               generateBillPDF(bill);
                             }}
                           >
-                            <Printer className="h-4 w-4" />
+                            <Download className="h-4 w-4" />
                           </Button>
                           <Popover>
                             <PopoverTrigger asChild>
