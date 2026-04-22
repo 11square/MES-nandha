@@ -199,18 +199,18 @@ export default function App() {
       {/* Professional sidebar with subtle glassmorphism */}
       <motion.aside 
         initial={false}
-        animate={{ width: sidebarOpen ? 240 : 72 }}
+        animate={{ width: sidebarOpen ? 248 : 72 }}
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-        className={`backdrop-blur-xl bg-white border-r border-gray-200 shadow-sm flex-col fixed h-full z-50 ${
+        className={`bg-gradient-to-b from-white to-slate-50 border-r border-slate-200/80 shadow-[1px_0_3px_0_rgba(0,0,0,0.02)] flex-col fixed h-full z-50 ${
           mobileMenuOpen ? 'flex' : 'hidden md:flex'
         }`}
       >
-        <div className="h-16 flex items-center px-4 border-b border-gray-200">
+        <div className="h-16 flex items-center px-3 border-b border-slate-200/80">
           <button 
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="w-10 h-10 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+            className="w-10 h-10 rounded-lg hover:bg-slate-100 text-slate-600 flex items-center justify-center transition-colors flex-shrink-0"
           >
-            <Menu className="w-5 h-5 text-gray-600" />
+            <Menu className="w-5 h-5" />
           </button>
           <AnimatePresence>
             {sidebarOpen && (
@@ -219,21 +219,24 @@ export default function App() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="ml-3 flex items-center gap-2.5"
+                className="ml-2.5 flex items-center gap-2.5"
               >
-                <div className="w-9 h-9 bg-gradient-to-br from-gray-500 to-gray-600 rounded-lg flex items-center justify-center shadow-sm">
+                <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm shadow-blue-500/20">
                   <Zap className="w-4.5 h-4.5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-gray-700 font-semibold text-sm">MES Pro</h1>
-                  <p className="text-xs text-gray-500">Production</p>
+                <div className="leading-tight">
+                  <h1 className="text-slate-800 font-semibold text-sm tracking-tight">MES Pro</h1>
+                  <p className="text-[11px] text-slate-500">Production</p>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
         
-        <nav className="flex-1 p-2.5 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 px-2.5 py-3 overflow-y-auto custom-scrollbar">
+          {sidebarOpen && (
+            <p className="px-2 pb-1.5 text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Menu</p>
+          )}
           <div className="space-y-0.5">
             {navigationItems.map(item => {
               const Icon = item.icon;
@@ -242,23 +245,25 @@ export default function App() {
                 <motion.button
                   key={item.id}
                   onClick={() => { navigate(item.url); setMobileMenuOpen(false); }}
-                  whileHover={{ x: 3 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                     isActive 
-                      ? 'bg-gray-500 text-white shadow-sm' 
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-50 text-blue-700' 
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                   title={!sidebarOpen ? t(item.labelKey as keyof typeof translations.en) : ''}
                 >
-                  <Icon className={`w-4.5 h-4.5 flex-shrink-0 ${isActive ? 'text-white' : ''}`} />
+                  {isActive && (
+                    <motion.span layoutId="sidebar-active-indicator" className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-blue-600" />
+                  )}
+                  <Icon className={`w-4.5 h-4.5 flex-shrink-0 transition-colors ${isActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-slate-700'}`} />
                   <AnimatePresence>
                     {sidebarOpen && (
                       <motion.span 
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
-                        className={`text-sm font-medium ${isActive ? 'text-white' : ''}`}
+                        className={`text-sm font-medium ${isActive ? 'text-blue-700' : ''}`}
                       >
                         {t(item.labelKey as keyof typeof translations.en)}
                       </motion.span>
@@ -271,32 +276,37 @@ export default function App() {
             {/* HR Group */}
             {hrItems.length > 0 && (
               <>
+                {sidebarOpen && (
+                  <p className="px-2 pt-4 pb-1.5 text-[10px] font-semibold tracking-widest text-slate-400 uppercase">Modules</p>
+                )}
                 <motion.button
                   onClick={() => setHrOpen(!hrOpen)}
-                  whileHover={{ x: 3 }}
                   whileTap={{ scale: 0.98 }}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                  className={`group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
                     isHrActive && !hrOpen
-                      ? 'bg-gray-500 text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-100'
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                   title={!sidebarOpen ? 'HR' : ''}
                 >
-                  <UsersRound className={`w-4.5 h-4.5 flex-shrink-0 ${isHrActive && !hrOpen ? 'text-white' : ''}`} />
+                  {isHrActive && !hrOpen && (
+                    <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full bg-blue-600" />
+                  )}
+                  <UsersRound className={`w-4.5 h-4.5 flex-shrink-0 ${isHrActive && !hrOpen ? 'text-blue-600' : 'text-slate-500 group-hover:text-slate-700'}`} />
                   <AnimatePresence>
                     {sidebarOpen && (
                       <motion.span
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: -10 }}
-                        className={`text-sm font-medium flex-1 text-left ${isHrActive && !hrOpen ? 'text-white' : ''}`}
+                        className={`text-sm font-medium flex-1 text-left flex items-center gap-2 ${isHrActive && !hrOpen ? 'text-blue-700' : ''}`}
                       >
-                        HR <span className={`ml-auto text-[9px] tracking-wider px-1.5 py-px rounded border font-medium uppercase ${isHrActive && !hrOpen ? 'border-white/30 text-white/80' : 'border-gray-300 text-gray-400'}`}>Beta</span>
+                        HR <span className={`text-[9px] tracking-wider px-1.5 py-px rounded font-semibold uppercase ${isHrActive && !hrOpen ? 'bg-blue-100 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>Beta</span>
                       </motion.span>
                     )}
                   </AnimatePresence>
                   {sidebarOpen && (
-                    <ChevronDown className={`w-4 h-4 transition-transform ${hrOpen ? 'rotate-180' : ''} ${isHrActive && !hrOpen ? 'text-white' : 'text-gray-400'}`} />
+                    <ChevronDown className={`w-4 h-4 transition-transform ${hrOpen ? 'rotate-180' : ''} ${isHrActive && !hrOpen ? 'text-blue-600' : 'text-slate-400'}`} />
                   )}
                 </motion.button>
                 <AnimatePresence>
@@ -308,38 +318,39 @@ export default function App() {
                       transition={{ duration: 0.2 }}
                       className="overflow-hidden"
                     >
-                      {hrItems.map(item => {
-                        const Icon = item.icon;
-                        const isActive = currentPath === item.id;
-                        return (
-                          <motion.button
-                            key={item.id}
-                            onClick={() => { navigate(item.url); setMobileMenuOpen(false); }}
-                            whileHover={{ x: 3 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`w-full flex items-center gap-3 ${sidebarOpen ? 'pl-8' : 'pl-3'} pr-3 py-2 rounded-lg transition-all ${
-                              isActive
-                                ? 'bg-gray-500 text-white shadow-sm'
-                                : 'text-gray-600 hover:bg-gray-100'
-                            }`}
-                            title={!sidebarOpen ? t(item.labelKey as keyof typeof translations.en) : ''}
-                          >
-                            <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-white' : ''}`} />
-                            <AnimatePresence>
-                              {sidebarOpen && (
-                                <motion.span
-                                  initial={{ opacity: 0, x: -10 }}
-                                  animate={{ opacity: 1, x: 0 }}
-                                  exit={{ opacity: 0, x: -10 }}
-                                  className={`text-sm font-medium ${isActive ? 'text-white' : ''}`}
-                                >
-                                  {t(item.labelKey as keyof typeof translations.en)}
-                                </motion.span>
-                              )}
-                            </AnimatePresence>
-                          </motion.button>
-                        );
-                      })}
+                      <div className={`${sidebarOpen ? 'ml-5 pl-3 border-l border-slate-200' : ''} mt-0.5 space-y-0.5`}>
+                        {hrItems.map(item => {
+                          const Icon = item.icon;
+                          const isActive = currentPath === item.id;
+                          return (
+                            <motion.button
+                              key={item.id}
+                              onClick={() => { navigate(item.url); setMobileMenuOpen(false); }}
+                              whileTap={{ scale: 0.98 }}
+                              className={`group relative w-full flex items-center gap-3 ${sidebarOpen ? 'px-3' : 'pl-3 pr-3'} py-2 rounded-lg transition-all ${
+                                isActive
+                                  ? 'bg-blue-50 text-blue-700'
+                                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                              }`}
+                              title={!sidebarOpen ? t(item.labelKey as keyof typeof translations.en) : ''}
+                            >
+                              <Icon className={`w-4 h-4 flex-shrink-0 ${isActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-slate-700'}`} />
+                              <AnimatePresence>
+                                {sidebarOpen && (
+                                  <motion.span
+                                    initial={{ opacity: 0, x: -10 }}
+                                    animate={{ opacity: 1, x: 0 }}
+                                    exit={{ opacity: 0, x: -10 }}
+                                    className={`text-sm font-medium ${isActive ? 'text-blue-700' : ''}`}
+                                  >
+                                    {t(item.labelKey as keyof typeof translations.en)}
+                                  </motion.span>
+                                )}
+                              </AnimatePresence>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -349,15 +360,14 @@ export default function App() {
         </nav>
 
         {/* Bottom Actions */}
-        <div className="p-2.5 border-t border-gray-200 space-y-0.5">
+        <div className="p-2.5 border-t border-slate-200/80 bg-white/60 space-y-0.5">
           <motion.button
-            whileHover={{ x: 3 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => toast.info(t('changePassword'))}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-100 transition-all"
+            className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all"
             title={!sidebarOpen ? t('changePassword') : ''}
           >
-            <KeyRound className="w-4.5 h-4.5 flex-shrink-0" />
+            <KeyRound className="w-4.5 h-4.5 flex-shrink-0 text-slate-500 group-hover:text-slate-700" />
             <AnimatePresence>
               {sidebarOpen && (
                 <motion.span 
@@ -373,10 +383,9 @@ export default function App() {
           </motion.button>
 
           <motion.button
-            whileHover={{ x: 3 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 transition-all"
+            className="group w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-600 hover:bg-red-50 transition-all"
             title={!sidebarOpen ? t('logout') : ''}
           >
             <LogOut className="w-4.5 h-4.5 flex-shrink-0" />
@@ -399,13 +408,13 @@ export default function App() {
       {/* Main Content */}
       <motion.div 
         initial={false}
-        animate={{ marginLeft: sidebarOpen ? 240 : 72 }}
+        animate={{ marginLeft: sidebarOpen ? 248 : 72 }}
         transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
         className="flex-1 flex flex-col min-w-0 mt-16 mb-7 max-md:!ml-0"
       >
         {/* Professional top bar */}
         <header className="h-16 backdrop-blur-xl bg-white border-b border-gray-200 fixed top-0 z-40 px-4 md:px-8 flex items-center justify-between shadow-sm w-full max-md:!w-full"
-        style={{ width: `calc(100% - ${sidebarOpen ? 240 : 72}px)` }}
+        style={{ width: `calc(100% - ${sidebarOpen ? 248 : 72}px)` }}
         >
           <div className="flex items-center gap-4 md:gap-6 flex-1">
             {/* Mobile hamburger */}
