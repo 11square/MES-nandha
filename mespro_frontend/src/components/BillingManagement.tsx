@@ -2939,8 +2939,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="p-6 h-full flex flex-col gap-6 overflow-hidden">
+      <div className="flex justify-between items-center flex-shrink-0">
         <div>
           <h1 className="text-3xl font-bold">{t('billing')}</h1>
           <p className="text-muted-foreground">{t('createInvoicesAndManagePayments')}</p>
@@ -2970,7 +2970,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{t('totalBilled')}</CardTitle>
@@ -3017,8 +3017,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full">
-        <div className="flex justify-between items-center mb-4">
+      <Tabs value={activeTab} onValueChange={(val: string) => setActiveTab(val as 'gst-bills' | 'non-gst-bills')} className="w-full flex-1 flex flex-col min-h-0 overflow-hidden">
+        <div className="flex justify-between items-center mb-4 flex-shrink-0">
           <TabsList className="grid w-full max-w-lg grid-cols-2">
             <TabsTrigger value="gst-bills">{t('invoice')}</TabsTrigger>
             <TabsTrigger value="non-gst-bills">{t('quotationBill')}</TabsTrigger>
@@ -3038,9 +3038,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </div>
 
         {/* GST Bills Tab (18%) */}
-        <TabsContent value="gst-bills" className="space-y-4">
-          <Card>
-            <CardHeader>
+        <TabsContent value="gst-bills" className="flex-1 min-h-0 overflow-hidden mt-0">
+          <Card className="h-full flex flex-col overflow-hidden">
+            <CardHeader className="flex-shrink-0">
               <div className="flex gap-3">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -3071,7 +3071,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 min-h-0 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -3209,9 +3209,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         </TabsContent>
 
         {/* Quotation Bill Tab */}
-        <TabsContent value="non-gst-bills" className="space-y-4">
-          <Card>
-            <CardHeader>
+        <TabsContent value="non-gst-bills" className="flex-1 min-h-0 overflow-hidden mt-0">
+          <Card className="h-full flex flex-col overflow-hidden">
+            <CardHeader className="flex-shrink-0">
               <div className="flex gap-3">
                 <div className="flex-1 relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -3242,7 +3242,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex-1 min-h-0 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
