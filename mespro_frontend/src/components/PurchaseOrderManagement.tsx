@@ -438,9 +438,19 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
       {/* Tabs */}
       <Tabs value={poTab} onValueChange={(v: string) => setPoTab(v as 'gst' | 'non-gst')} className="w-full flex-1 flex flex-col min-h-0">
         <div className="flex justify-between items-center mb-4 gap-4 flex-shrink-0">
-          <TabsList className="grid w-full max-w-lg grid-cols-2">
-            <TabsTrigger value="gst">{t('invoice')}</TabsTrigger>
-            <TabsTrigger value="non-gst">{t('quotationBill')}</TabsTrigger>
+          <TabsList className="inline-flex h-10 items-center gap-1 rounded-lg border border-slate-200 bg-white p-1 shadow-sm">
+            <TabsTrigger
+              value="gst"
+              className="px-5 h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
+            >
+              {t('invoice')}
+            </TabsTrigger>
+            <TabsTrigger
+              value="non-gst"
+              className="px-5 h-8 rounded-md text-sm font-medium text-slate-600 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-colors"
+            >
+              {t('quotationBill')}
+            </TabsTrigger>
           </TabsList>
           <Button
             className="bg-blue-600 hover:bg-blue-700 text-white whitespace-nowrap"
