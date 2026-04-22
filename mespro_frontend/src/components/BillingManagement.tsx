@@ -24,6 +24,7 @@ import {
   Search, 
   Filter, 
   Download, 
+  FileDown,
   Eye, 
   Edit, 
   Trash2,
@@ -1162,13 +1163,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
   };
 
   // Generate a clean bill PDF in a new window
-  const generateBillPDF = (bill: Bill) => {
-    const printWindow = window.open('', '_blank', 'width=800,height=1100');
-    if (!printWindow) {
-      toast.error('Please allow popups to generate PDF');
-      return;
-    }
-
+  const generateBillPDF = async (bill: Bill, action: 'print' | 'download' = 'print') => {
     const clientAddress = getBillClientAddress(bill);
     const placeOfSupply = (bill as any).place_of_supply || '33-Tamil Nadu';
     const termsConditions = (bill as any).terms_conditions || 'Thanks for doing business with us!';
@@ -1701,12 +1696,52 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 </body>
 </html>`;
 
+    if (action === 'download') {
+      try {
+        const mod: any = await import('html2pdf.js');
+        const html2pdf = mod.default || mod;
+        const container = document.createElement('div');
+        container.style.position = 'fixed';
+        container.style.left = '-10000px';
+        container.style.top = '0';
+        container.style.width = '800px';
+        container.innerHTML = html;
+        document.body.appendChild(container);
+        const target = container.querySelector('.bill-container') || container;
+        const filename = `${bill.bill_no || 'bill'}.pdf`;
+        await html2pdf()
+          .set({
+            margin: 10,
+            filename,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+          })
+          .from(target as HTMLElement)
+          .save();
+        document.body.removeChild(container);
+      } catch (err) {
+        console.error('PDF download failed:', err);
+        toast.error('Failed to download PDF');
+      }
+      return;
+    }
+
+    const printWindow = window.open('', '_blank', 'width=800,height=1100');
+    if (!printWindow) {
+      toast.error('Please allow popups to generate PDF');
+      return;
+    }
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.onload = () => {
       printWindow.print();
     };
   };
+
+  // Download bill directly as PDF (no print dialog)
+  const downloadBillPDF = (bill: Bill) => generateBillPDF(bill, 'download');
 
   // Export filtered bills list as CSV download
   const exportBillsCSV = (billsList: Bill[]) => {
@@ -3127,10 +3162,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             if (!printedBills.has(bill.id)) {
                               setPrintedBills(prev => new Set(prev).add(bill.id));
                             }
-                            generateBillPDF(bill);
+                            downloadBillPDF(bill);
                           }}
                         >
-                          <Download className="h-4 w-4" />
+                          <FileDown className="h-4 w-4" />
                         </Button>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -3299,10 +3334,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                               if (!printedBills.has(bill.id)) {
                                 setPrintedBills(prev => new Set(prev).add(bill.id));
                               }
-                              generateBillPDF(bill);
+                              downloadBillPDF(bill);
                             }}
                           >
-                            <Download className="h-4 w-4" />
+                            <FileDown className="h-4 w-4" />
                           </Button>
                           <Popover>
                             <PopoverTrigger asChild>
