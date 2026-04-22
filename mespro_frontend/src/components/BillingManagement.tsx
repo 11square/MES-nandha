@@ -3167,6 +3167,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         >
                           <FileDown className="h-4 w-4" />
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Print"
+                          className="text-slate-600 hover:text-slate-700 hover:bg-slate-100"
+                          onClick={() => generateBillPDF(bill, 'print')}
+                        >
+                          <Printer className="h-4 w-4" />
+                        </Button>
                         <Popover>
                           <PopoverTrigger asChild>
                             <Button variant="ghost" size="icon">
@@ -3338,6 +3347,15 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             }}
                           >
                             <FileDown className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            title="Print"
+                            className="text-slate-600 hover:text-slate-700 hover:bg-slate-100"
+                            onClick={() => generateBillPDF(bill, 'print')}
+                          >
+                            <Printer className="h-4 w-4" />
                           </Button>
                           <Popover>
                             <PopoverTrigger asChild>
