@@ -794,7 +794,16 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     if (stockItem) return;
     const draft = loadDraft('po');
     if (draft) {
-      if (draft.formData) setFormData(prev => ({ ...prev, ...draft.formData }));
+      if (draft.formData) {
+        // Coerce any null values to '' so React inputs stay controlled.
+        const sanitized: any = {};
+        for (const [k, v] of Object.entries(draft.formData)) {
+          sanitized[k] = v === null || v === undefined ? '' : v;
+        }
+        // Restore booleans/numbers we explicitly track
+        if (typeof draft.formData.add_to_stock !== 'boolean') sanitized.add_to_stock = false;
+        setFormData(prev => ({ ...prev, ...sanitized }));
+      }
       if (draft.gstNumber) setGstNumber(draft.gstNumber);
       if (draft.selectedVendorId) setSelectedVendorId(draft.selectedVendorId);
       if (draft.vendorSearchQuery) setVendorSearchQuery(draft.vendorSearchQuery);
@@ -1037,7 +1046,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     onSubmit({
       ...formData,
       expected_delivery: formData.expected_delivery || formData.date || null,
-      status: isDraft ? 'draft' : 'approved',
+      // Both Quotation and Invoice POs are marked as 'received' on submit.
+      status: isDraft ? 'draft' : 'received',
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
       unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,
@@ -1046,6 +1056,8 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       addedItems: addedItems,
       vendor_gst: gstNumber || '',
       is_gst: isInvoice,
+      // Stock rule: only Quotation POs add to stock. Invoice POs never do.
+      add_to_stock: !isInvoice && !isDraft,
     });
     formSubmittedRef.current = true;
     clearDraft('po');
@@ -1070,7 +1082,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                 <Label className="text-xs text-gray-500">Bill Number</Label>
                 <Input
                   type="text"
-                  value={formData.po_number}
+                  value={formData.po_number ?? ''}
                   onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
                   placeholder="Enter bill number"
                   className="h-8 text-sm"
@@ -1080,7 +1092,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                 <Label className="text-xs text-gray-500">{t('date')} *</Label>
                 <Input
                   type="date"
-                  value={formData.date}
+                  value={formData.date ?? ''}
                   onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }}
                   className="h-8 text-sm"
                 />
@@ -1090,7 +1102,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                 <Label className="text-xs text-gray-500">{t('expectedDelivery')}</Label>
                 <Input
                   type="date"
-                  value={formData.expected_delivery}
+                  value={formData.expected_delivery ?? ''}
                   onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }}
                   className="h-8 text-sm"
                 />
@@ -1171,7 +1183,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                 <div>
                   <Label className="text-xs text-gray-500">{t('vendorContact')}</Label>
                   <Input
-                    value={formData.vendor_contact}
+                    value={formData.vendor_contact ?? ''}
                     onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })}
                     placeholder="+91 XXXXX XXXXX"
                     className="h-8 text-sm bg-gray-50"
@@ -1182,7 +1194,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                   <Label className="text-xs text-gray-500">{t('vendorEmail')}</Label>
                   <Input
                     type="email"
-                    value={formData.vendor_email}
+                    value={formData.vendor_email ?? ''}
                     onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })}
                     placeholder="vendor@example.com"
                     className="h-8 text-sm bg-gray-50"
@@ -1228,7 +1240,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
             <div>
               <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
               <textarea
-                value={formData.vendor_address}
+                value={formData.vendor_address ?? ''}
                 onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })}
                 placeholder={t('enterVendorAddress')}
                 className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1237,7 +1249,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
             <div>
               <Label className="text-xs text-gray-500">{t('notes')}</Label>
               <textarea
-                value={formData.notes}
+                value={formData.notes ?? ''}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 placeholder={t('additionalNotesOrComments')}
                 className="w-full h-16 px-3 py-2 border border-gray-300 rounded-md text-xs resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1512,6 +1524,22 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
           </CardContent>
         </Card>
       )}
+
+      {/* Stock rule notice — automatic, not user-toggleable */}
+      <div
+        className="px-4 py-3 border rounded-lg mb-4 text-xs"
+        style={{
+          borderColor: isInvoice ? '#fcd34d' : '#16a34a',
+          backgroundColor: isInvoice ? '#fffbeb' : '#f0fdf4',
+          color: isInvoice ? '#92400e' : '#166534',
+        }}
+      >
+        {isInvoice ? (
+          <span><strong>Invoice PO:</strong> items will NOT be added to stock.</span>
+        ) : (
+          <span><strong>Quotation PO:</strong> items will be added to stock automatically when submitted.</span>
+        )}
+      </div>
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
@@ -1811,7 +1839,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                 <Label className="text-xs text-gray-500">Bill Number</Label>
                 <Input
                   type="text"
-                  value={formData.po_number}
+                  value={formData.po_number ?? ''}
                   onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
                   placeholder="Enter bill number"
                   className="h-8 text-sm"
@@ -1819,12 +1847,12 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
               </div>
               <div>
                 <Label className="text-xs text-gray-500">{t('date')} *</Label>
-                <Input type="date" value={formData.date} onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
+                <Input type="date" value={formData.date ?? ''} onChange={(e) => { setFormData({ ...formData, date: e.target.value }); setErrors(prev => { const {date: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
                 {errors.date && <FieldError message={errors.date} />}
               </div>
               <div>
                 <Label className="text-xs text-gray-500">{t('expectedDelivery')}</Label>
-                <Input type="date" value={formData.expected_delivery} onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
+                <Input type="date" value={formData.expected_delivery ?? ''} onChange={(e) => { setFormData({ ...formData, expected_delivery: e.target.value }); setErrors(prev => { const {expected_delivery: _, ...rest} = prev; return rest; }); }} className="h-8 text-sm" />
               </div>
               <div>
                 <Label className="text-xs text-gray-500">{t('status')} *</Label>
@@ -1909,11 +1937,11 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
                 <div>
                   <Label className="text-xs text-gray-500">{t('vendorContact')}</Label>
-                  <Input value={formData.vendor_contact} onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })} placeholder="+91 XXXXX XXXXX" className="h-8 text-sm bg-gray-50" readOnly />
+                  <Input value={formData.vendor_contact ?? ''} onChange={(e) => setFormData({ ...formData, vendor_contact: e.target.value })} placeholder="+91 XXXXX XXXXX" className="h-8 text-sm bg-gray-50" readOnly />
                 </div>
                 <div>
                   <Label className="text-xs text-gray-500">{t('vendorEmail')}</Label>
-                  <Input type="email" value={formData.vendor_email} onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })} placeholder="vendor@example.com" className="h-8 text-sm bg-gray-50" readOnly />
+                  <Input type="email" value={formData.vendor_email ?? ''} onChange={(e) => setFormData({ ...formData, vendor_email: e.target.value })} placeholder="vendor@example.com" className="h-8 text-sm bg-gray-50" readOnly />
                 </div>
               </div>
               {selectedVendor && (
@@ -1934,13 +1962,13 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
         <Card className="shadow-sm">
           <CardContent className="p-4">
             <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
-            <Textarea value={formData.vendor_address} onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })} placeholder={t('enterVendorAddress')} className="mt-1 h-20 text-sm" />
+            <Textarea value={formData.vendor_address ?? ''} onChange={(e) => setFormData({ ...formData, vendor_address: e.target.value })} placeholder={t('enterVendorAddress')} className="mt-1 h-20 text-sm" />
           </CardContent>
         </Card>
         <Card className="shadow-sm">
           <CardContent className="p-4">
             <Label className="text-xs text-gray-500">{t('notes')}</Label>
-            <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder={t('additionalNotesOrComments')} className="mt-1 h-20 text-sm" />
+            <Textarea value={formData.notes ?? ''} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} placeholder={t('additionalNotesOrComments')} className="mt-1 h-20 text-sm" />
           </CardContent>
         </Card>
       </div>

@@ -46,6 +46,7 @@ Thumbs.db
 coverage/
 test-results/
 playwright-report/
+tests/
 
 # Temporary files
 *.tmp

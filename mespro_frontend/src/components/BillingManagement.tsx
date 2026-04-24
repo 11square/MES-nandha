@@ -1694,33 +1694,110 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 </html>`;
 
     if (action === 'download') {
+      // Render inside a real iframe (so the bill's <style> applies and nothing
+      // leaks into the host app), then snapshot the iframe body with
+      // html2canvas and build a multi-page A4 PDF with jsPDF.
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.left = '0';
+      iframe.style.top = '0';
+      iframe.style.width = '820px';
+      iframe.style.height = '1200px';
+      iframe.style.opacity = '0';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.border = '0';
+      iframe.style.zIndex = '-1';
+      document.body.appendChild(iframe);
+
+      const cleanup = () => {
+        try { document.body.removeChild(iframe); } catch { /* ignore */ }
+      };
+
       try {
-        const mod: any = await import('html2pdf.js');
-        const html2pdf = mod.default || mod;
-        const container = document.createElement('div');
-        container.style.position = 'fixed';
-        container.style.left = '-10000px';
-        container.style.top = '0';
-        container.style.width = '800px';
-        container.innerHTML = html;
-        document.body.appendChild(container);
-        const target = container.querySelector('.bill-container') || container;
-        const filename = `${bill.bill_no || 'bill'}.pdf`;
-        await html2pdf()
-          .set({
-            margin: 10,
-            filename,
-            image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
-          })
-          .from(target as HTMLElement)
-          .save();
-        document.body.removeChild(container);
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) throw new Error('Unable to access iframe document');
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        // Wait for iframe load
+        await new Promise<void>((resolve) => {
+          if (doc.readyState === 'complete') return resolve();
+          const onLoad = () => { iframe.removeEventListener('load', onLoad); resolve(); };
+          iframe.addEventListener('load', onLoad);
+          setTimeout(resolve, 1000);
+        });
+        try { await (doc as any).fonts?.ready; } catch { /* ignore */ }
+        await new Promise((r) => setTimeout(r, 200));
+
+        const target = (doc.querySelector('.page') as HTMLElement | null) || doc.body;
+        if (!target || target.offsetHeight === 0) {
+          throw new Error('Bill content failed to render');
+        }
+        // Resize iframe so the full content is laid out and visible to html2canvas
+        const fullHeight = Math.max(target.scrollHeight, doc.documentElement.scrollHeight) + 60;
+        iframe.style.height = `${fullHeight}px`;
+        await new Promise((r) => setTimeout(r, 100));
+
+        const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+          import('html2canvas'),
+          import('jspdf'),
+        ]);
+
+        const canvas = await html2canvas(target, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          windowWidth: 820,
+          windowHeight: fullHeight,
+          width: target.scrollWidth,
+          height: target.scrollHeight,
+          scrollX: 0,
+          scrollY: 0,
+        });
+
+        // Build A4 PDF, slicing the tall canvas across multiple pages
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const pageWidthMm = pdf.internal.pageSize.getWidth();
+        const pageHeightMm = pdf.internal.pageSize.getHeight();
+        const marginMm = 8;
+        const usableWidthMm = pageWidthMm - marginMm * 2;
+        const usableHeightMm = pageHeightMm - marginMm * 2;
+
+        const pxPerMm = canvas.width / usableWidthMm;
+        const pageHeightPx = Math.floor(usableHeightMm * pxPerMm);
+
+        let renderedPx = 0;
+        let pageIdx = 0;
+        while (renderedPx < canvas.height) {
+          const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedPx);
+          const sliceCanvas = document.createElement('canvas');
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = sliceHeightPx;
+          const ctx = sliceCanvas.getContext('2d');
+          if (!ctx) throw new Error('Canvas 2D context unavailable');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
+          ctx.drawImage(
+            canvas,
+            0, renderedPx, canvas.width, sliceHeightPx,
+            0, 0, canvas.width, sliceHeightPx,
+          );
+          const imgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
+          if (pageIdx > 0) pdf.addPage();
+          const sliceHeightMm = sliceHeightPx / pxPerMm;
+          pdf.addImage(imgData, 'JPEG', marginMm, marginMm, usableWidthMm, sliceHeightMm);
+          renderedPx += sliceHeightPx;
+          pageIdx += 1;
+        }
+
+        pdf.save(`${bill.bill_no || 'bill'}.pdf`);
+        toast.success('PDF downloaded');
       } catch (err) {
         console.error('PDF download failed:', err);
         toast.error('Failed to download PDF');
+      } finally {
+        cleanup();
       }
       return;
     }

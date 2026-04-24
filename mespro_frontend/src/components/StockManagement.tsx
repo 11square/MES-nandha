@@ -66,11 +66,41 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
   const [errors, setErrors] = useState<ValidationErrors>({});
 
   // Get categories from shared state (DB-backed)
-  const { productCategories } = useSharedState();
+  const { productCategories, setProductCategories } = useSharedState();
   const subcategoriesByCategory: Record<string, string[]> = {};
   productCategories.forEach(cat => {
     subcategoriesByCategory[cat.name] = cat.subcategories || [];
   });
+
+  // Quick add category state
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const handleQuickCreateCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) {
+      toast.error('Category name is required');
+      return;
+    }
+    if (productCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+      toast.error('Category already exists');
+      return;
+    }
+    setCreatingCategory(true);
+    try {
+      const created = await productsService.createCategory(name);
+      setProductCategories(prev => [...prev, { ...created, subcategories: created.subcategories || [] }]);
+      setStockForm(prev => ({ ...prev, category: created.name, subcategory: '' }));
+      setErrors(prev => ({ ...prev, category: '' }));
+      setNewCategoryName('');
+      setShowAddCategory(false);
+      toast.success(`Category "${created.name}" added`);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to create category');
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
 
   const baseUnits = ['pieces', 'kits', 'rolls', 'bottles', 'boxes', 'sets', 'meters', 'kg', 'pcs', 'sqft', 'meter', 'set'];
   // Map product units to stock-friendly units
@@ -590,9 +620,23 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
                     {isFromProduct ? (
                       <Input value={stockForm.category} readOnly className="h-8 text-sm bg-gray-50" />
                     ) : (
-                      <select value={stockForm.category} onChange={(e) => { setStockForm({...stockForm, category: e.target.value, subcategory: ''}); setErrors(prev => ({...prev, category: ''})); }} className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm">
+                      <select
+                        value={stockForm.category}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (v === '__add_new__') {
+                            setNewCategoryName('');
+                            setShowAddCategory(true);
+                            return;
+                          }
+                          setStockForm({ ...stockForm, category: v, subcategory: '' });
+                          setErrors(prev => ({ ...prev, category: '' }));
+                        }}
+                        className="w-full h-8 px-2 border border-gray-300 rounded-md text-sm"
+                      >
                         <option value="">Select category</option>
                         {categories.filter(c => c !== 'all').map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        <option value="__add_new__">+ Add new category…</option>
                       </select>
                     )}
                     <FieldError message={errors.category} />
@@ -786,6 +830,39 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
             {t('addStockItem')}
           </Button>
         </div>
+
+        {/* Quick Add Category Modal */}
+        {showAddCategory && (
+          <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5"
+            >
+              <h3 className="text-base font-semibold mb-3">Add new category</h3>
+              <Label className="text-xs text-gray-500">Category name</Label>
+              <Input
+                autoFocus
+                value={newCategoryName}
+                onChange={(e) => setNewCategoryName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !creatingCategory) handleQuickCreateCategory();
+                  if (e.key === 'Escape') setShowAddCategory(false);
+                }}
+                placeholder="e.g. Hardware"
+                className="h-9 text-sm mt-1"
+              />
+              <div className="flex justify-end gap-2 mt-4">
+                <Button variant="outline" size="sm" onClick={() => setShowAddCategory(false)} disabled={creatingCategory}>
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={handleQuickCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}>
+                  {creatingCategory ? 'Adding…' : 'Add'}
+                </Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1429,6 +1506,39 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
               <Button variant="destructive" onClick={handleDeleteConfirm}>
                 <Trash2 className="w-4 h-4 mr-2" />
                 {t('delete')}
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* Quick Add Category Modal */}
+      {showAddCategory && (
+        <div className="fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white rounded-lg shadow-xl w-full max-w-sm p-5"
+          >
+            <h3 className="text-base font-semibold mb-3">Add new category</h3>
+            <Label className="text-xs text-gray-500">Category name</Label>
+            <Input
+              autoFocus
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !creatingCategory) handleQuickCreateCategory();
+                if (e.key === 'Escape') setShowAddCategory(false);
+              }}
+              placeholder="e.g. Hardware"
+              className="h-9 text-sm mt-1"
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" size="sm" onClick={() => setShowAddCategory(false)} disabled={creatingCategory}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleQuickCreateCategory} disabled={creatingCategory || !newCategoryName.trim()}>
+                {creatingCategory ? 'Adding…' : 'Add'}
               </Button>
             </div>
           </motion.div>

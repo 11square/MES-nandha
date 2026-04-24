@@ -12,16 +12,42 @@ export interface Module {
   url: string;
 }
 
+/**
+ * Hardcoded module list. Modules are no longer fetched from the backend or
+ * persisted to localStorage — every authenticated user sees this exact set.
+ */
+const HARDCODED_MODULES: Module[] = [
+  { key: 'dashboard', label: 'Dashboard', url: '/dashboard' },
+  { key: 'leads', label: 'Leads', url: '/leads' },
+  { key: 'orders', label: 'Orders', url: '/orders' },
+  { key: 'billing', label: 'Billing', url: '/billing' },
+  { key: 'production', label: 'Production', url: '/production' },
+  { key: 'sales', label: 'Sales', url: '/sales' },
+  { key: 'inventory', label: 'Inventory', url: '/inventory' },
+  { key: 'stock', label: 'Stock', url: '/stock' },
+  { key: 'purchase_orders', label: 'Purchase Orders', url: '/purchase-orders' },
+  { key: 'dispatch', label: 'Dispatch', url: '/dispatch' },
+  { key: 'products', label: 'Products', url: '/products' },
+  { key: 'clients', label: 'Clients', url: '/clients' },
+  { key: 'finance', label: 'Finance', url: '/finance' },
+  { key: 'audit', label: 'Audit', url: '/audit' },
+  { key: 'payroll', label: 'Payroll', url: '/payroll' },
+  { key: 'staff', label: 'Staff', url: '/staff' },
+  { key: 'attendance', label: 'Attendance', url: '/attendance' },
+  { key: 'vendors', label: 'Vendors', url: '/vendors' },
+  { key: 'users', label: 'Users', url: '/users' },
+  { key: 'reports', label: 'Reports', url: '/reports' },
+  { key: 'settings', label: 'Settings', url: '/settings' },
+];
+
 class AuthService {
   async login(email: string, password: string): Promise<any> {
     const response = await apiService.post<any>('/auth/login', { email, password });
     if (response.token) {
       apiService.setToken(response.token);
     }
-    // Store modules from login response
-    if (response.modules) {
-      localStorage.setItem('modules', JSON.stringify(response.modules));
-    }
+    // Modules are hardcoded; ignore anything the server returns and clear any stale cache.
+    try { localStorage.removeItem('modules'); } catch { /* ignore */ }
     return response;
   }
 
@@ -33,22 +59,14 @@ class AuthService {
     return apiService.get<any>('/auth/profile');
   }
 
-  /** Fetch enabled modules for the current user's business */
+  /** Returns the hardcoded module list (no network call, no caching). */
   async getModules(): Promise<Module[]> {
-    const response = await apiService.get<{ modules: Module[] }>('/auth/modules');
-    const modules = (response as any).modules || response || [];
-    localStorage.setItem('modules', JSON.stringify(modules));
-    return modules;
+    return HARDCODED_MODULES.slice();
   }
 
-  /** Get cached modules from localStorage */
+  /** Returns the hardcoded module list. */
   getCachedModules(): Module[] {
-    try {
-      const stored = localStorage.getItem('modules');
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
+    return HARDCODED_MODULES.slice();
   }
 
   async changePassword(currentPassword: string, newPassword: string): Promise<any> {
@@ -61,7 +79,7 @@ class AuthService {
       productsService.clearCategories();
     } catch { /* ignore */ }
     apiService.clearToken();
-    localStorage.removeItem('modules');
+    try { localStorage.removeItem('modules'); } catch { /* ignore */ }
   }
 
   isAuthenticated(): boolean {
@@ -71,3 +89,4 @@ class AuthService {
 
 export const authService = new AuthService();
 export default authService;
+

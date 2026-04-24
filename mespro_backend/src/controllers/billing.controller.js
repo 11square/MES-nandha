@@ -146,6 +146,64 @@ module.exports = {
     try {
       const { items, ...billData } = req.body;
 
+      // Pre-validate stock availability when this bill will deduct stock
+      // (i.e. quotations). Reject the whole bill if any item lacks sufficient
+      // stock so callers see a single clear error instead of a partial deduction.
+      const willDeductStock = billData.deduct_stock === true && billData.status !== 'draft';
+      if (willDeductStock && items && items.length > 0) {
+        const stockItems = await StockItem.findAll({
+          where: applyBusinessScope(req),
+          transaction: t,
+        });
+        const normalize = (s) => String(s || '').trim().toLowerCase();
+        const stripSizeSuffix = (s) => normalize(s).replace(/\s*\([^)]*\)\s*$/, '').trim();
+        const insufficient = [];
+        for (const item of items) {
+          const itemNameRaw = normalize(item.name);
+          const itemNameNoSize = stripSizeSuffix(item.name);
+          if (!itemNameRaw && !itemNameNoSize) continue;
+          const matched = stockItems.find((s) => {
+            const stockName = normalize(s.name);
+            return stockName === itemNameRaw || stockName === itemNameNoSize;
+          });
+          const requestedQty = parseFloat(item.quantity) || 0;
+          if (!matched) {
+            insufficient.push({
+              name: item.name,
+              requested: requestedQty,
+              available: 0,
+              reason: 'not_found',
+            });
+            continue;
+          }
+          const availableQty = parseFloat(matched.current_stock || 0);
+          if (requestedQty > availableQty) {
+            insufficient.push({
+              name: item.name,
+              requested: requestedQty,
+              available: availableQty,
+              unit: matched.unit || item.unit || '',
+              reason: 'insufficient',
+            });
+          }
+        }
+        if (insufficient.length > 0) {
+          await t.rollback();
+          const summary = insufficient
+            .map((i) =>
+              i.reason === 'not_found'
+                ? `${i.name} (not found in stock)`
+                : `${i.name} (need ${i.requested}, only ${i.available} available)`
+            )
+            .join('; ');
+          return ApiResponse.badRequest(
+            res,
+            `Sufficient product stock is not available: ${summary}`,
+            { insufficient }
+          );
+        }
+      }
+
       // Auto-generate bill number based on max existing bill number
       if (!billData.bill_no) {
         const year = new Date().getFullYear();
@@ -182,10 +240,18 @@ module.exports = {
           where: applyBusinessScope(req),
           transaction: t,
         });
+        const normalize = (s) => String(s || '').trim().toLowerCase();
+        // Strip a trailing " (size)" suffix to match stock items that were
+        // augmented with a size variant in the bill item name.
+        const stripSizeSuffix = (s) => normalize(s).replace(/\s*\([^)]*\)\s*$/, '').trim();
         for (const item of items) {
-          const itemName = (item.name || '').trim().toLowerCase();
-          if (!itemName) continue;
-          const matched = stockItems.find(s => (s.name || '').trim().toLowerCase() === itemName);
+          const itemNameRaw = normalize(item.name);
+          const itemNameNoSize = stripSizeSuffix(item.name);
+          if (!itemNameRaw && !itemNameNoSize) continue;
+          const matched = stockItems.find((s) => {
+            const stockName = normalize(s.name);
+            return stockName === itemNameRaw || stockName === itemNameNoSize;
+          });
           if (matched) {
             const qty = parseFloat(item.quantity) || 0;
             const newStock = Math.max(0, parseFloat(matched.current_stock || 0) - qty);

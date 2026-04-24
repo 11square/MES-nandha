@@ -462,8 +462,6 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
   };
 
   const sendOrderToBilling = (order: any, billType: 'invoice' | 'quotation') => {
-    if (isAlreadySentToBilling(order)) return;
-
     if (onSendToBill) {
       onSendToBill(buildOrderForBillingPayload(order), billType);
     }
@@ -799,13 +797,8 @@ export default function OrdersManagement({ onNavigate, onSendToBill, onSendToPro
                         <Button
                           variant="ghost"
                           size="icon"
-                          className={isAlreadySentToBilling(order) ? "text-gray-400 cursor-not-allowed" : "text-green-600 hover:text-green-700"}
-                          onClick={() => {
-                            if (!isAlreadySentToBilling(order)) {
-                              setBillingChoiceDialog({ open: true, order });
-                            }
-                          }}
-                          disabled={isAlreadySentToBilling(order)}
+                          className="text-green-600 hover:text-green-700"
+                          onClick={() => setBillingChoiceDialog({ open: true, order })}
                           title={t('sendToBilling')}
                         >
                           <Receipt className="h-4 w-4" />
@@ -1227,12 +1220,14 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
   const [leadProductsFilled, setLeadProductsFilled] = useState(false);
   const [prefillNotes, setPrefillNotes] = useState(leadData?.notes || leadData?.description || '');
   const [requiredDate, setRequiredDate] = useState(toDateInputValue(leadData?.required_date || leadData?.date));
+  const [orderSource, setOrderSource] = useState<string>(leadData?.source ? String(leadData.source).toLowerCase() : '');
 
   useEffect(() => {
     setAddedProducts([]);
     setLeadProductsFilled(false);
     setPrefillNotes(leadData?.notes || leadData?.description || '');
     setRequiredDate(toDateInputValue(leadData?.required_date || leadData?.date));
+    setOrderSource(leadData?.source ? String(leadData.source).toLowerCase() : '');
   }, [leadData]);
 
   const findProductInfo = (productRef: any) => {
@@ -1555,7 +1550,7 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
         contact: { required: true },
         mobile: { required: true, phone: true },
         source: { required: true },
-        email: { required: true, email: true },
+        email: { email: true },
         status: { required: true, label: 'Status' },
       });
       if (Object.keys(validationErrors).length) {
@@ -1726,18 +1721,23 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
               <Label className="text-xs text-gray-500">{t('orderSource')} *</Label>
               <select
                 id="source"
-                defaultValue={leadData?.source ? leadData.source.toLowerCase() : ''}
+                value={orderSource}
                 className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
-                onChange={() => errors.source && setErrors(prev => ({ ...prev, source: '' }))}
+                onChange={(e) => { setOrderSource(e.target.value); if (errors.source) setErrors(prev => ({ ...prev, source: '' })); }}
               >
                 <option value="">{t('selectSource')}</option>
                 <option value="website">{t('website')}</option>
                 <option value="phone">{t('phone')}</option>
+                <option value="email">Email</option>
+                <option value="social">Social</option>
                 <option value="walkin">{t('walkin')}</option>
                 <option value="advertisement">{t('advertisement')}</option>
                 <option value="referral">{t('referral')}</option>
                 <option value="inperson">{t('inperson')}</option>
               </select>
+              {leadData?.source && orderSource && (
+                <p className="text-[10px] text-green-600">Auto-filled from Lead</p>
+              )}
               <FieldError message={errors.source} />
             </div>
             <div>
@@ -1820,7 +1820,7 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
 
             {/* Row 3: Email | GST Number | Address (span 2) */}
             <div>
-              <Label className="text-xs text-gray-500">{t('email')} *</Label>
+              <Label className="text-xs text-gray-500">{t('email')}</Label>
               <Input id="email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={emailValue} onChange={(e) => { setEmailValue(e.target.value); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }} />
               <FieldError message={errors.email} />
             </div>
@@ -2370,7 +2370,7 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
         contact: { required: true },
         mobile: { required: true, phone: true },
         source: { required: true },
-        email: { required: true, email: true },
+        email: { email: true },
         status: { required: true, label: 'Status' },
       }
     );
@@ -2578,7 +2578,7 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
 
             {/* Row 3: Email | GST Number | District | Address */}
             <div>
-              <Label className="text-xs text-gray-500">{t('email')} *</Label>
+              <Label className="text-xs text-gray-500">{t('email')}</Label>
               <Input id="edit-email" type="email" placeholder="email@example.com" className="h-8 text-sm" value={email} onChange={(e) => { setEmail(e.target.value); setErrors(prev => ({ ...prev, email: '' })); }} />
               <FieldError message={errors.email} />
             </div>

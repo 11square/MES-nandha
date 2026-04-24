@@ -91,6 +91,7 @@ module.exports = {
       name: { type: Sequelize.STRING(150), allowNull: false },
       contact_person: { type: Sequelize.STRING(100), allowNull: true },
       phone: { type: Sequelize.STRING(20), allowNull: true },
+      phone_2: { type: Sequelize.STRING(20), allowNull: true },
       email: { type: Sequelize.STRING(100), allowNull: true },
       address: { type: Sequelize.TEXT, allowNull: true },
       gst_number: { type: Sequelize.STRING(20), allowNull: true },
@@ -98,6 +99,7 @@ module.exports = {
       district: { type: Sequelize.STRING(50), allowNull: true },
       total_orders: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
       total_value: { type: Sequelize.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
+      opening_outstanding: { type: Sequelize.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
       status: { type: Sequelize.ENUM('Active', 'Inactive'), allowNull: false, defaultValue: 'Active' },
       last_order: { type: Sequelize.DATEONLY, allowNull: true },
       join_date: { type: Sequelize.DATEONLY, allowNull: true },
@@ -116,12 +118,14 @@ module.exports = {
       contact_person: { type: Sequelize.STRING(100), allowNull: true },
       email: { type: Sequelize.STRING(100), allowNull: true },
       phone: { type: Sequelize.STRING(20), allowNull: true },
+      phone_2: { type: Sequelize.STRING(20), allowNull: true },
       address: { type: Sequelize.TEXT, allowNull: true },
       category: { type: Sequelize.STRING(50), allowNull: true },
       gst_number: { type: Sequelize.STRING(20), allowNull: true },
       total_purchases: { type: Sequelize.INTEGER, allowNull: false, defaultValue: 0 },
       total_amount: { type: Sequelize.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
       outstanding_amount: { type: Sequelize.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
+      opening_balance: { type: Sequelize.DECIMAL(15, 2), allowNull: false, defaultValue: 0 },
       last_purchase_date: { type: Sequelize.DATEONLY, allowNull: true },
       status: { type: Sequelize.ENUM('Active', 'Inactive'), allowNull: false, defaultValue: 'Active' },
       business_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'businesses', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'SET NULL' },
@@ -136,6 +140,7 @@ module.exports = {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
       name: { type: Sequelize.STRING(200), allowNull: false },
       sku: { type: Sequelize.STRING(50), allowNull: false, unique: true },
+      hsn_code: { type: Sequelize.STRING(20), allowNull: true },
       category: { type: Sequelize.STRING(50), allowNull: true },
       subcategory: { type: Sequelize.STRING(50), allowNull: true },
       description: { type: Sequelize.TEXT, allowNull: true },
@@ -502,12 +507,14 @@ module.exports = {
       category: { type: Sequelize.STRING(50), allowNull: true },
       subcategory: { type: Sequelize.STRING(50), allowNull: true },
       sku: { type: Sequelize.STRING(50), allowNull: false, unique: true },
+      hsn_sac: { type: Sequelize.STRING(20), allowNull: true },
       current_stock: { type: Sequelize.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
       reorder_level: { type: Sequelize.DECIMAL(10, 2), allowNull: false, defaultValue: 0 },
       unit: { type: Sequelize.STRING(20), allowNull: true },
       unit_price: { type: Sequelize.DECIMAL(12, 2), allowNull: false, defaultValue: 0 },
       buying_price: { type: Sequelize.DECIMAL(12, 2), allowNull: true, defaultValue: 0 },
       selling_price: { type: Sequelize.DECIMAL(12, 2), allowNull: true, defaultValue: 0 },
+      gst_rate: { type: Sequelize.DECIMAL(5, 2), allowNull: true, defaultValue: 18 },
       supplier: { type: Sequelize.STRING(150), allowNull: true },
       last_restocked: { type: Sequelize.DATEONLY, allowNull: true },
       status: { type: Sequelize.ENUM('In Stock', 'Low Stock', 'Critical', 'Out of Stock'), allowNull: false, defaultValue: 'In Stock' },
@@ -542,6 +549,9 @@ module.exports = {
       created_by: { type: Sequelize.STRING(100), allowNull: true },
       state: { type: Sequelize.STRING(50), allowNull: true },
       district: { type: Sequelize.STRING(50), allowNull: true },
+      notes: { type: Sequelize.TEXT, allowNull: true },
+      terms_conditions: { type: Sequelize.TEXT, allowNull: true },
+      place_of_supply: { type: Sequelize.STRING(60), allowNull: true },
       business_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'businesses', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'SET NULL' },
       created_at: { type: Sequelize.DATE, allowNull: false },
       updated_at: { type: Sequelize.DATE, allowNull: false },
@@ -555,6 +565,7 @@ module.exports = {
       bill_id: { type: Sequelize.INTEGER, allowNull: false, references: { model: 'bills', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'CASCADE' },
       item_id: { type: Sequelize.STRING(30), allowNull: true },
       name: { type: Sequelize.STRING(150), allowNull: false },
+      hsn_sac: { type: Sequelize.STRING(20), allowNull: true },
       category: { type: Sequelize.STRING(50), allowNull: true },
       subcategory: { type: Sequelize.STRING(50), allowNull: true },
       size: { type: Sequelize.STRING(30), allowNull: true },
@@ -602,6 +613,9 @@ module.exports = {
       reference: { type: Sequelize.STRING(100), allowNull: true },
       client_name: { type: Sequelize.STRING(150), allowNull: true },
       client_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'clients', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'SET NULL' },
+      vendor_name: { type: Sequelize.STRING(150), allowNull: true },
+      vendor_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'vendors', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'SET NULL' },
+      party_type: { type: Sequelize.STRING(10), allowNull: true },
       gst_number: { type: Sequelize.STRING(20), allowNull: true },
       mobile_number: { type: Sequelize.STRING(20), allowNull: true },
       address: { type: Sequelize.TEXT, allowNull: true },
@@ -811,7 +825,47 @@ module.exports = {
     });
 
     // ──────────────────────────────────────────────────────────────────────────
-    // 42. documents
+    // 41b. vendor_followups
+    // ──────────────────────────────────────────────────────────────────────────
+    await queryInterface.createTable('vendor_followups', {
+      id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
+      vendor_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'vendors', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'SET NULL' },
+      date: { type: Sequelize.DATEONLY, allowNull: false },
+      type: { type: Sequelize.ENUM('Call', 'Email', 'Meeting', 'Visit'), allowNull: false, defaultValue: 'Call' },
+      subject: { type: Sequelize.STRING(200), allowNull: true },
+      notes: { type: Sequelize.TEXT, allowNull: true },
+      priority: { type: Sequelize.ENUM('High', 'Medium', 'Low'), allowNull: false, defaultValue: 'Medium' },
+      status: { type: Sequelize.ENUM('Pending', 'Completed', 'Cancelled'), allowNull: false, defaultValue: 'Pending' },
+      business_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'businesses', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'SET NULL' },
+      created_at: { type: Sequelize.DATE, allowNull: false },
+      updated_at: { type: Sequelize.DATE, allowNull: false },
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 42. product_categories
+    // ──────────────────────────────────────────────────────────────────────────
+    await queryInterface.createTable('product_categories', {
+      id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
+      name: { type: Sequelize.STRING(100), allowNull: false },
+      slug: { type: Sequelize.STRING(100), allowNull: false },
+      parent_id: { type: Sequelize.INTEGER, allowNull: true, references: { model: 'product_categories', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'CASCADE' },
+      business_id: { type: Sequelize.INTEGER, allowNull: false, references: { model: 'businesses', key: 'id' }, onUpdate: 'CASCADE', onDelete: 'CASCADE' },
+      created_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
+      updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
+    });
+    await queryInterface.addIndex('product_categories', ['slug', 'parent_id', 'business_id'], {
+      unique: true,
+      name: 'product_categories_slug_parent_business_unique',
+    });
+    await queryInterface.addIndex('product_categories', ['business_id'], {
+      name: 'product_categories_business_id',
+    });
+    await queryInterface.addIndex('product_categories', ['parent_id'], {
+      name: 'product_categories_parent_id',
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // 43. documents
     // ──────────────────────────────────────────────────────────────────────────
     await queryInterface.createTable('documents', {
       id: { type: Sequelize.INTEGER, primaryKey: true, autoIncrement: true },
@@ -872,6 +926,8 @@ module.exports = {
     // Drop in reverse order to respect foreign key dependencies
     const tables = [
       'documents',
+      'product_categories',
+      'vendor_followups',
       'client_followups',
       'sales_followups',
       'sales_targets',

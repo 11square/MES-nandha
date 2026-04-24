@@ -34,6 +34,19 @@ module.exports = {
           transaction: t,
         });
       }
+      // Auto-create vendor if a name was supplied but no matching vendor exists.
+      if (!vendorRecord && poData.vendor_name && String(poData.vendor_name).trim()) {
+        vendorRecord = await Vendor.create({
+          name: String(poData.vendor_name).trim(),
+          contact_person: poData.vendor_contact_person || null,
+          email: poData.vendor_email || null,
+          phone: poData.vendor_contact || null,
+          address: poData.vendor_address || null,
+          gst_number: poData.vendor_gst || null,
+          status: 'Active',
+          business_id: req.currentBusiness,
+        }, { transaction: t });
+      }
       if (vendorRecord && !poData.vendor_id) {
         poData.vendor_id = vendorRecord.id;
       }
@@ -56,7 +69,14 @@ module.exports = {
       const poAmount = parseFloat(poData.total_amount || 0);
       if (vendorRecord && poAmount > 0) {
         const newOutstanding = parseFloat(vendorRecord.outstanding_amount || 0) + poAmount;
-        await vendorRecord.update({ outstanding_amount: newOutstanding }, { transaction: t });
+        const newTotalAmount = parseFloat(vendorRecord.total_amount || 0) + poAmount;
+        const newTotalPurchases = parseInt(vendorRecord.total_purchases || 0, 10) + 1;
+        await vendorRecord.update({
+          outstanding_amount: newOutstanding,
+          total_amount: newTotalAmount,
+          total_purchases: newTotalPurchases,
+          last_purchase_date: poData.date || new Date(),
+        }, { transaction: t });
       }
 
       if (items && items.length > 0) {
