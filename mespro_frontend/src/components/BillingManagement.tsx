@@ -381,7 +381,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     place_of_supply: '33-Tamil Nadu',
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     terms_conditions: 'Thanks for doing business with us!',
-    deduct_stock: false,
   });
 
   // Addons state
@@ -1052,7 +1051,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         place_of_supply: billForm.place_of_supply,
         terms_conditions: billForm.terms_conditions,
         state: billForm.place_of_supply,
-        deduct_stock: (billForm.bill_number || '').startsWith('QTN') ? true : billForm.deduct_stock,
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
@@ -1128,7 +1126,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       place_of_supply: '33-Tamil Nadu',
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       terms_conditions: 'Thanks for doing business with us!',
-      deduct_stock: false,
     });
     setCurrentItem({ itemId: '', quantity: 0, discount: 0 });
     setSelectedCategory('');
@@ -2889,22 +2886,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           </Card>
 
           {errors.items && <FieldError message={errors.items} />}
-
-          {/* Deduct Stock option - only for invoices, quotations always deduct */}
-          {!(billForm.bill_number || '').startsWith('QTN') && (
-            <div className="flex items-center gap-2 px-1">
-              <input
-                type="checkbox"
-                id="deduct-stock-checkbox"
-                checked={billForm.deduct_stock}
-                onChange={(e) => setBillForm(prev => ({ ...prev, deduct_stock: e.target.checked }))}
-                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-              />
-              <label htmlFor="deduct-stock-checkbox" className="text-sm text-gray-700 cursor-pointer select-none">
-                Deduct from stock
-              </label>
-            </div>
-          )}
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-2">

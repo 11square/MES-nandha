@@ -18,7 +18,7 @@ module.exports = {
   create: async (req, res, next) => {
     const t = await sequelize.transaction();
     try {
-      const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
+      const { items, add_to_stock: _ignoredAddToStock, addedItems, quantity, unit_price, ...poData } = req.body;
 
       // Resolve vendor_id from vendor_name when needed so outstanding can be tracked reliably.
       let vendorRecord = null;
@@ -73,8 +73,9 @@ module.exports = {
         );
       }
 
-      // Add/update items in stock inventory only if user opted in
-      if (add_to_stock && items && items.length > 0) {
+      // Stock addition: only for quotation POs (is_gst === false). Invoice POs do not affect stock.
+      const isQuotationPO = poData.is_gst === false || poData.is_gst === 0 || poData.is_gst === 'false';
+      if (isQuotationPO && items && items.length > 0) {
         for (const item of items) {
           const itemName = (item.name || '').trim();
           if (!itemName) continue;
@@ -144,7 +145,7 @@ module.exports = {
         return ApiResponse.notFound(res, 'Purchase Order not found');
       }
 
-      const { items, add_to_stock, addedItems, quantity, unit_price, ...poData } = req.body;
+      const { items, add_to_stock: _ignoredAddToStock, addedItems, quantity, unit_price, ...poData } = req.body;
 
       // Sanitize date fields — empty strings default to PO date
       if (!poData.expected_delivery) poData.expected_delivery = poData.date || record.date || null;
@@ -170,8 +171,10 @@ module.exports = {
           { transaction: t }
         );
 
-        // Add/update items in stock inventory only if user opted in
-        if (add_to_stock) {
+        // Stock addition: only for quotation POs (is_gst === false). Invoice POs do not affect stock.
+        const effectiveIsGst = (poData.is_gst !== undefined) ? poData.is_gst : record.is_gst;
+        const isQuotationPOUpd = effectiveIsGst === false || effectiveIsGst === 0 || effectiveIsGst === 'false';
+        if (isQuotationPOUpd) {
           for (const item of items) {
             const itemName = (item.name || '').trim();
             if (!itemName) continue;

@@ -175,8 +175,8 @@ module.exports = {
         );
       }
 
-      // Stock deduction: only when explicitly opted via deduct_stock checkbox
-      const shouldDeductStock = billData.deduct_stock === true;
+      // Stock deduction: only for quotation bills (bill_no starts with 'QTN'). Invoices do not affect stock.
+      const shouldDeductStock = (bill.bill_no || '').toUpperCase().startsWith('QTN');
       if (shouldDeductStock && billData.status !== 'draft' && items && items.length > 0) {
         const stockItems = await StockItem.findAll({
           where: applyBusinessScope(req),

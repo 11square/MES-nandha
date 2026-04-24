@@ -646,7 +646,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     created_by: '',
     notes: '',
     gstNumber: '',
-    add_to_stock: false,
   });
 
   const [gstNumber, setGstNumber] = useState('');
@@ -1514,20 +1513,6 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
         </Card>
       )}
 
-      {/* Add to Stock Checkbox */}
-      <label className="flex items-center gap-3 px-4 py-3 border rounded-lg mb-4 cursor-pointer select-none hover:bg-gray-50 transition-colors" style={{ borderColor: formData.add_to_stock ? '#16a34a' : '#d1d5db', backgroundColor: formData.add_to_stock ? '#f0fdf4' : 'transparent' }}>
-        <input
-          type="checkbox"
-          checked={formData.add_to_stock}
-          onChange={(e) => setFormData({ ...formData, add_to_stock: e.target.checked })}
-          className="w-4 h-4 accent-green-600 rounded"
-        />
-        <div>
-          <span className="text-xs font-semibold" style={{ color: formData.add_to_stock ? '#166534' : '#374151' }}>{t('addToStock')}</span>
-          <p className="text-[10px] mt-0.5" style={{ color: formData.add_to_stock ? '#16a34a' : '#6b7280' }}>Check this to add PO items to stock inventory when the purchase order is created.</p>
-        </div>
-      </label>
-
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => { formSubmittedRef.current = true; clearDraft('po'); onClose(); }}>
@@ -1562,7 +1547,6 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     expected_delivery: po.expected_delivery || '',
     created_by: po.created_by || '',
     notes: po.notes || '',
-    add_to_stock: false,
   });
 
   const [gstNumber, setGstNumber] = useState((po as any).vendor_gst || (po as any).gst_number || '');
@@ -2122,20 +2106,6 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
           )}
         </CardContent>
       </Card>
-
-      {/* Add to Stock Checkbox */}
-      <label className="flex items-center gap-3 px-4 py-3 border rounded-lg mb-4 cursor-pointer select-none hover:bg-gray-50 transition-colors" style={{ borderColor: formData.add_to_stock ? '#16a34a' : '#d1d5db', backgroundColor: formData.add_to_stock ? '#f0fdf4' : 'transparent' }}>
-        <input
-          type="checkbox"
-          checked={formData.add_to_stock}
-          onChange={(e) => setFormData({ ...formData, add_to_stock: e.target.checked })}
-          className="w-4 h-4 accent-green-600 rounded"
-        />
-        <div>
-          <span className="text-xs font-semibold" style={{ color: formData.add_to_stock ? '#166534' : '#374151' }}>{t('addToStock')}</span>
-          <p className="text-[10px] mt-0.5" style={{ color: formData.add_to_stock ? '#16a34a' : '#6b7280' }}>Check this to add PO items to stock inventory when the purchase order is updated.</p>
-        </div>
-      </label>
 
       {/* Action Buttons */}
       <div className="flex justify-end gap-2">
