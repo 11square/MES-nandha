@@ -143,97 +143,92 @@ export default function ClientDetailPage() {
   const overdueCount = outstandings.filter(o => (o.days_overdue || 0) > 0).length;
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Back + Actions */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" className="text-slate-600 hover:text-slate-900 -ml-2" onClick={() => navigate('/clients')}>
-          <ArrowLeft className="w-4 h-4 mr-2" /> Back to Clients
-        </Button>
-        {!editing ? (
-          <Button variant="outline" onClick={() => { setEditForm({ ...client }); setEditing(true); }}>
-            <Edit className="w-4 h-4 mr-2" /> Edit Details
+    <div className="px-6 pt-2 pb-4 flex flex-col gap-3">
+      {/* Compact header bar: back + name + meta + actions */}
+      <div className="flex items-center justify-between flex-shrink-0 gap-4">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900 -ml-2 h-8 px-2" onClick={() => navigate('/clients')}>
+            <ArrowLeft className="w-4 h-4" />
           </Button>
-        ) : (
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setEditing(false)}><X className="w-4 h-4 mr-2" /> Cancel</Button>
-            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave} disabled={saving}>
-              <Save className="w-4 h-4 mr-2" /> {saving ? 'Saving...' : 'Save'}
-            </Button>
+          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+            {(client.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
           </div>
-        )}
-      </div>
-
-      {/* Client Header */}
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 shadow-lg">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center text-2xl font-bold text-white">
-              {(client.name || '').split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-              <p className="text-blue-100">#{client.id} • {client.contact_person}</p>
-              <div className="flex items-center gap-4 mt-2 text-sm text-blue-100 flex-wrap">
-                {client.phone && <span className="flex items-center gap-1"><Phone className="w-3.5 h-3.5" /> {client.phone}</span>}
-                {client.email && <span className="flex items-center gap-1"><Mail className="w-3.5 h-3.5" /> {client.email}</span>}
-                {client.address && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {client.address}</span>}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg font-bold text-gray-900 leading-tight truncate">{client.name}</h1>
+              <Badge variant="outline" className="text-[10px] py-0 h-5">#{client.id}</Badge>
+              <Badge className={`text-[10px] py-0 h-5 border-0 ${client.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}`}>{client.status || 'Active'}</Badge>
+              <Badge className={`text-[10px] py-0 h-5 border-0 ${client.gst_number ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>{getCustomerType(client.gst_number)}</Badge>
+              <div className="flex">
+                {[1, 2, 3].map(s => (
+                  <Star key={s} className={`w-3 h-3 ${s <= (client.rating || 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                ))}
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <Badge className="bg-white/20 text-white border-0">{client.status || 'Active'}</Badge>
-            <Badge className={`border-0 ${client.gst_number ? 'bg-blue-400/30 text-white' : 'bg-orange-400/30 text-white'}`}>
-              {getCustomerType(client.gst_number)}
-            </Badge>
-            <div className="flex ml-2">
-              {[1, 2, 3].map(s => (
-                <Star key={s} className={`w-4 h-4 ${s <= (client.rating || 0) ? 'text-yellow-300 fill-yellow-300' : 'text-white/30'}`} />
-              ))}
+            <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap mt-0.5">
+              {client.contact_person && <span>{client.contact_person}</span>}
+              {client.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" /> {client.phone}</span>}
+              {client.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" /> {client.email}</span>}
+              {client.address && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" /> {client.address}</span>}
             </div>
           </div>
         </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {!editing ? (
+            <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...client }); setEditing(true); }}>
+              <Edit className="w-4 h-4 mr-2" /> Edit
+            </Button>
+          ) : (
+            <>
+              <Button variant="outline" size="sm" onClick={() => setEditing(false)}><X className="w-4 h-4 mr-1" /> Cancel</Button>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleSave} disabled={saving}>
+                <Save className="w-4 h-4 mr-1" /> {saving ? 'Saving…' : 'Save'}
+              </Button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-blue-500/10 border-blue-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-blue-600">Total Orders</span>
-              <ShoppingCart className="h-4 w-4 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold text-blue-700">{client.total_orders || orders.length}</p>
+      {/* Stats Cards (Orders-module style) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 flex-shrink-0">
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">{client.total_orders || orders.length}</div>
           </CardContent>
         </Card>
-        <Card className="bg-emerald-500/10 border-emerald-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-emerald-600">Total Billed</span>
-              <TrendingUp className="h-4 w-4 text-emerald-600" />
-            </div>
-            <p className="text-2xl font-bold text-emerald-700">{fmt(totalBilled)}</p>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">Total Billed</CardTitle>
+            <TrendingUp className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{fmt(totalBilled)}</div>
           </CardContent>
         </Card>
-        <Card className="bg-green-500/10 border-green-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-green-600">Received</span>
-              <IndianRupee className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-green-700">{fmt(totalPaid)}</p>
+        <Card className="bg-green-500/10 backdrop-blur-sm border-green-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">Received</CardTitle>
+            <IndianRupee className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-green-700">{fmt(totalPaid)}</div>
           </CardContent>
         </Card>
         {(() => {
           const balance = totalBilled - totalPaid;
           return (
-            <Card className={`${balance > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <span className={`text-xs font-medium ${balance > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
-                  <CreditCard className={`h-4 w-4 ${balance > 0 ? 'text-red-600' : 'text-slate-600'}`} />
-                </div>
-                <p className={`text-2xl font-bold ${balance > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(balance)}</p>
-                {overdueCount > 0 && <p className="text-xs text-red-500 mt-1">{overdueCount} overdue</p>}
+            <Card className={`backdrop-blur-sm ${balance > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+                <CardTitle className="text-sm font-medium">Outstanding</CardTitle>
+                <CreditCard className={`h-4 w-4 ${balance > 0 ? 'text-red-600' : 'text-slate-600'}`} />
+              </CardHeader>
+              <CardContent className="pt-0 pb-3 px-4">
+                <div className={`text-2xl font-bold ${balance > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(balance)}</div>
+                {overdueCount > 0 && <p className="text-xs text-red-600">{overdueCount} overdue</p>}
               </CardContent>
             </Card>
           );
