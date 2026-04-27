@@ -509,7 +509,7 @@ export default function VendorDetailPage() {
                           <TableHead className="text-right">Amount</TableHead>
                           <TableHead>Method</TableHead>
                           <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Balance</TableHead>
+                          <TableHead className="text-right">Outstanding</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
