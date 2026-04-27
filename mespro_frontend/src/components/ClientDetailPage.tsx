@@ -638,45 +638,70 @@ export default function ClientDetailPage() {
                   <p>No finance transactions found for this client</p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Method</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((txn: any) => (
-                      <TableRow key={txn.id}>
-                        <TableCell>{txn.date ? new Date(txn.date).toLocaleDateString() : '-'}</TableCell>
-                        <TableCell>
-                          <span className={`inline-flex items-center gap-1 font-medium ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                            {txn.type === 'income' ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                            {txn.type === 'income' ? 'Income' : 'Expense'}
-                          </span>
-                        </TableCell>
-                        <TableCell><Badge variant="outline">{txn.category || '-'}</Badge></TableCell>
-                        <TableCell className="text-sm text-slate-500 max-w-[250px] truncate">{txn.description || '-'}</TableCell>
-                        <TableCell className={`text-right font-semibold ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                          {txn.type === 'income' ? '+' : '-'}{fmt(txn.amount)}
-                        </TableCell>
-                        <TableCell className="text-sm">{txn.payment_method || '-'}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            txn.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                            txn.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
-                          }>{txn.status || 'pending'}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                (() => {
+                  // Compute running balance like a bank statement (chronological oldest -> newest)
+                  const signed = (t: any) => (t.type === 'income' ? 1 : -1) * (Number(t.amount) || 0);
+                  const sortedAsc = [...transactions].sort((a, b) => {
+                    const da = a.date ? new Date(a.date).getTime() : 0;
+                    const db = b.date ? new Date(b.date).getTime() : 0;
+                    if (da !== db) return da - db;
+                    return (Number(a.id) || 0) - (Number(b.id) || 0);
+                  });
+                  const balanceById = new Map<any, number>();
+                  let running = 0;
+                  for (const t of sortedAsc) {
+                    running += signed(t);
+                    balanceById.set(t.id, running);
+                  }
+                  return (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>Category</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                          <TableHead>Method</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Balance</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {transactions.map((txn: any) => {
+                          const bal = balanceById.get(txn.id) ?? 0;
+                          return (
+                            <TableRow key={txn.id}>
+                              <TableCell>{txn.date ? new Date(txn.date).toLocaleDateString() : '-'}</TableCell>
+                              <TableCell>
+                                <span className={`inline-flex items-center gap-1 font-medium ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                  {txn.type === 'income' ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
+                                  {txn.type === 'income' ? 'Income' : 'Expense'}
+                                </span>
+                              </TableCell>
+                              <TableCell><Badge variant="outline">{txn.category || '-'}</Badge></TableCell>
+                              <TableCell className="text-sm text-slate-500 max-w-[250px] truncate">{txn.description || '-'}</TableCell>
+                              <TableCell className={`text-right font-semibold ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
+                                {txn.type === 'income' ? '+' : '-'}{fmt(txn.amount)}
+                              </TableCell>
+                              <TableCell className="text-sm">{txn.payment_method || '-'}</TableCell>
+                              <TableCell>
+                                <Badge className={
+                                  txn.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
+                                  txn.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                  'bg-amber-100 text-amber-700'
+                                }>{txn.status || 'pending'}</Badge>
+                              </TableCell>
+                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-emerald-700' : bal < 0 ? 'text-red-700' : 'text-slate-700'}`}>
+                                {bal < 0 ? '-' : ''}{fmt(Math.abs(bal))}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  );
+                })()
               )}
             </CardContent>
           </Card>
