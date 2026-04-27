@@ -639,18 +639,23 @@ export default function ClientDetailPage() {
                 </div>
               ) : (
                 (() => {
-                  // Compute running balance like a bank statement (chronological oldest -> newest)
-                  const signed = (t: any) => (t.type === 'income' ? 1 : -1) * (Number(t.amount) || 0);
+                  // Running balance = remaining outstanding (what client owes us) AFTER each tx.
+                  // Income (payment received) REDUCES the balance, expense (refund/charge) INCREASES it.
+                  // Anchored so the newest tx's balance equals the top "Balance" card (totalBilled - totalPaid).
+                  const topBalance = totalBilled - totalPaid;
                   const sortedAsc = [...transactions].sort((a, b) => {
                     const da = a.date ? new Date(a.date).getTime() : 0;
                     const db = b.date ? new Date(b.date).getTime() : 0;
                     if (da !== db) return da - db;
                     return (Number(a.id) || 0) - (Number(b.id) || 0);
                   });
+                  const sumIncome = sortedAsc.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+                  const sumExpense = sortedAsc.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
                   const balanceById = new Map<any, number>();
-                  let running = 0;
+                  let running = topBalance + sumIncome - sumExpense; // opening balance (before any tx)
                   for (const t of sortedAsc) {
-                    running += signed(t);
+                    const amt = Number(t.amount) || 0;
+                    running += t.type === 'income' ? -amt : amt;
                     balanceById.set(t.id, running);
                   }
                   return (
@@ -692,8 +697,8 @@ export default function ClientDetailPage() {
                                   'bg-amber-100 text-amber-700'
                                 }>{txn.status || 'pending'}</Badge>
                               </TableCell>
-                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-emerald-700' : bal < 0 ? 'text-red-700' : 'text-slate-700'}`}>
-                                {bal < 0 ? '-' : ''}{fmt(Math.abs(bal))}
+                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-amber-700' : bal < 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                {bal < 0 ? `(${fmt(Math.abs(bal))})` : fmt(bal)}
                               </TableCell>
                             </TableRow>
                           );

@@ -474,17 +474,23 @@ export default function VendorDetailPage() {
                 </div>
               ) : (
                 (() => {
-                  const signed = (t: any) => (t.type === 'income' ? 1 : -1) * (Number(t.amount) || 0);
+                  // Running balance = remaining outstanding (what we owe vendor) AFTER each tx.
+                  // Expense (payment to vendor) REDUCES the balance, income (refund from vendor) INCREASES it.
+                  // Anchored so the newest tx's balance equals the top "Outstanding" card.
+                  const topBalance = Number(vendor.outstanding_amount) || outstandingAmount;
                   const sortedAsc = [...transactions].sort((a, b) => {
                     const da = a.date ? new Date(a.date).getTime() : 0;
                     const db = b.date ? new Date(b.date).getTime() : 0;
                     if (da !== db) return da - db;
                     return (Number(a.id) || 0) - (Number(b.id) || 0);
                   });
+                  const sumIncome = sortedAsc.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+                  const sumExpense = sortedAsc.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
                   const balanceById = new Map<any, number>();
-                  let running = 0;
+                  let running = topBalance + sumExpense - sumIncome; // opening balance (before any tx)
                   for (const t of sortedAsc) {
-                    running += signed(t);
+                    const amt = Number(t.amount) || 0;
+                    running += t.type === 'income' ? amt : -amt;
                     balanceById.set(t.id, running);
                   }
                   return (
@@ -526,8 +532,8 @@ export default function VendorDetailPage() {
                                   'bg-amber-100 text-amber-700'
                                 }>{txn.status || 'pending'}</Badge>
                               </TableCell>
-                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-emerald-700' : bal < 0 ? 'text-red-700' : 'text-slate-700'}`}>
-                                {bal < 0 ? '-' : ''}{fmt(Math.abs(bal))}
+                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-amber-700' : bal < 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
+                                {bal < 0 ? `(${fmt(Math.abs(bal))})` : fmt(bal)}
                               </TableCell>
                             </TableRow>
                           );
