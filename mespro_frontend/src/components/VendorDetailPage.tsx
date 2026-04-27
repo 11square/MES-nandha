@@ -128,7 +128,8 @@ export default function VendorDetailPage() {
   const incomeTxnTotal = transactions.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const totalPaid = expenseTxnTotal - incomeTxnTotal;
   // Live outstanding = PO outstanding minus net we've already paid via finance ledger.
-  const liveOutstanding = Math.max(0, (Number(vendor.outstanding_amount) || outstandingAmount) - totalPaid);
+  // Allow negative (over-paid / credit balance) to mirror client behavior.
+  const liveOutstanding = (Number(vendor.outstanding_amount) || outstandingAmount) - totalPaid;
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3">
