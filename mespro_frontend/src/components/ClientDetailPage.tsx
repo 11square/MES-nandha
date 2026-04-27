@@ -195,7 +195,7 @@ export default function ClientDetailPage() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-blue-500/10 border-blue-200">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
@@ -223,27 +223,21 @@ export default function ClientDetailPage() {
             <p className="text-2xl font-bold text-green-700">{fmt(totalPaid)}</p>
           </CardContent>
         </Card>
-        <Card className={`${totalOutstanding > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className={`text-xs font-medium ${totalOutstanding > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
-              <CreditCard className={`h-4 w-4 ${totalOutstanding > 0 ? 'text-red-600' : 'text-slate-600'}`} />
-            </div>
-            <p className={`text-2xl font-bold ${totalOutstanding > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(totalOutstanding)}</p>
-            {overdueCount > 0 && <p className="text-xs text-red-500 mt-1">{overdueCount} overdue</p>}
-          </CardContent>
-        </Card>
-        <Card className="bg-amber-500/10 border-amber-200">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-amber-600">Balance</span>
-              <AlertCircle className="h-4 w-4 text-amber-600" />
-            </div>
-            <p className={`text-2xl font-bold ${(totalBilled - totalPaid) > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-              {fmt(totalBilled - totalPaid)}
-            </p>
-          </CardContent>
-        </Card>
+        {(() => {
+          const balance = totalBilled - totalPaid;
+          return (
+            <Card className={`${balance > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`text-xs font-medium ${balance > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
+                  <CreditCard className={`h-4 w-4 ${balance > 0 ? 'text-red-600' : 'text-slate-600'}`} />
+                </div>
+                <p className={`text-2xl font-bold ${balance > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(balance)}</p>
+                {overdueCount > 0 && <p className="text-xs text-red-500 mt-1">{overdueCount} overdue</p>}
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       {/* Tabs */}
