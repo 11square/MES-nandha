@@ -127,9 +127,10 @@ export default function VendorDetailPage() {
   const expenseTxnTotal = transactions.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const incomeTxnTotal = transactions.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const totalPaid = expenseTxnTotal - incomeTxnTotal;
-  // Live outstanding = PO outstanding minus net we've already paid via finance ledger.
-  // Allow negative (over-paid / credit balance) to mirror client behavior.
-  const liveOutstanding = (Number(vendor.outstanding_amount) || outstandingAmount) - totalPaid;
+  // Outstanding = Total Purchase Amount − Total Paid (mirrors client: totalBilled − totalPaid).
+  // Every expense reduces what we still owe the vendor.
+  const totalAmount = Number(vendor.total_amount) || totalPurchaseAmount;
+  const liveOutstanding = totalAmount - totalPaid;
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3">
