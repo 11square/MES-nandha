@@ -315,26 +315,65 @@ export async function generatePartyReportPdf(data: PartyReportData): Promise<voi
       scrollY: 0,
     });
 
+    // Trim trailing whitespace: scan from bottom up to find the last row containing
+    // any non-near-white pixel. Prevents the spurious blank final page.
+    const trimmedCanvas = (() => {
+      const ctx0 = canvas.getContext('2d');
+      if (!ctx0) return canvas;
+      try {
+        const { width, height } = canvas;
+        const data = ctx0.getImageData(0, 0, width, height).data;
+        const isContentRow = (y: number) => {
+          // sample every 4th pixel for speed
+          const rowStart = y * width * 4;
+          for (let x = 0; x < width; x += 4) {
+            const i = rowStart + x * 4;
+            const r = data[i], g = data[i + 1], b = data[i + 2];
+            // not "near white" (allow tiny anti-alias noise)
+            if (r < 248 || g < 248 || b < 248) return true;
+          }
+          return false;
+        };
+        let lastContent = height - 1;
+        while (lastContent > 0 && !isContentRow(lastContent)) lastContent--;
+        const trimmedHeight = Math.min(height, lastContent + 24); // small bottom padding
+        if (trimmedHeight >= height - 4) return canvas;
+        const trimmed = document.createElement('canvas');
+        trimmed.width = width;
+        trimmed.height = trimmedHeight;
+        const tctx = trimmed.getContext('2d')!;
+        tctx.fillStyle = '#ffffff';
+        tctx.fillRect(0, 0, width, trimmedHeight);
+        tctx.drawImage(canvas, 0, 0, width, trimmedHeight, 0, 0, width, trimmedHeight);
+        return trimmed;
+      } catch {
+        return canvas;
+      }
+    })();
+
     const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
     const pageWidthMm = pdf.internal.pageSize.getWidth();
     const pageHeightMm = pdf.internal.pageSize.getHeight();
     const marginMm = 8;
     const usableWidthMm = pageWidthMm - marginMm * 2;
     const usableHeightMm = pageHeightMm - marginMm * 2;
-    const pxPerMm = canvas.width / usableWidthMm;
+    const pxPerMm = trimmedCanvas.width / usableWidthMm;
     const pageHeightPx = Math.floor(usableHeightMm * pxPerMm);
 
     let renderedPx = 0;
     let pageIdx = 0;
-    while (renderedPx < canvas.height) {
-      const sliceHeightPx = Math.min(pageHeightPx, canvas.height - renderedPx);
+    while (renderedPx < trimmedCanvas.height) {
+      const remainingPx = trimmedCanvas.height - renderedPx;
+      // Skip a tiny trailing slice that would create an almost-empty page
+      if (pageIdx > 0 && remainingPx < pageHeightPx * 0.04) break;
+      const sliceHeightPx = Math.min(pageHeightPx, remainingPx);
       const sliceCanvas = document.createElement('canvas');
-      sliceCanvas.width = canvas.width;
+      sliceCanvas.width = trimmedCanvas.width;
       sliceCanvas.height = sliceHeightPx;
       const ctx = sliceCanvas.getContext('2d')!;
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, sliceCanvas.width, sliceCanvas.height);
-      ctx.drawImage(canvas, 0, renderedPx, canvas.width, sliceHeightPx, 0, 0, canvas.width, sliceHeightPx);
+      ctx.drawImage(trimmedCanvas, 0, renderedPx, trimmedCanvas.width, sliceHeightPx, 0, 0, trimmedCanvas.width, sliceHeightPx);
       const imgData = sliceCanvas.toDataURL('image/jpeg', 0.95);
       if (pageIdx > 0) pdf.addPage();
       const sliceHeightMm = sliceHeightPx / pxPerMm;
