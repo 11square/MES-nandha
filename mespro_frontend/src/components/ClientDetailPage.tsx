@@ -15,11 +15,12 @@ import { useI18n } from '../contexts/I18nContext';
 import { clientsService } from '../services/clients.service';
 import { getCustomerType } from '../lib/utils';
 import { getAllStates, getDistrictsForState } from '../lib/gstUtils';
+import { generatePartyReportPdf } from '../lib/partyReportPdf';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2,
   ShoppingCart, TrendingUp, IndianRupee, AlertCircle,
   Calendar, FileText, ChevronDown, ChevronRight,
-  Edit, Star, Save, X, Plus,
+  Edit, Star, Save, X, Plus, Download,
   CreditCard, Clock, MessageSquare, Package,
   Truck, ArrowDownRight, ArrowUpRight,
 } from 'lucide-react';
@@ -46,6 +47,7 @@ export default function ClientDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Followup dialog
   const [followupOpen, setFollowupOpen] = useState(false);
@@ -174,6 +176,21 @@ export default function ClientDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {!editing && (
+            <Button variant="outline" size="sm" disabled={downloading} onClick={async () => {
+              setDownloading(true);
+              try {
+                await generatePartyReportPdf({
+                  kind: 'client', party: client, bills, payments, transactions, orders, followups, outstandings,
+                  totals: { totalBilled, totalPaid, outstanding: totalBilled - totalPaid, ordersCount: client.total_orders || orders.length, incomeTxnTotal, expenseTxnTotal },
+                });
+                toast.success('Statement downloaded');
+              } catch (e: any) { toast.error(e?.message || 'Failed to generate PDF'); }
+              finally { setDownloading(false); }
+            }}>
+              <Download className="w-4 h-4 mr-2" /> {downloading ? 'Generating…' : 'Download'}
+            </Button>
+          )}
           {!editing ? (
             <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...client }); setEditing(true); }}>
               <Edit className="w-4 h-4 mr-2" /> Edit

@@ -13,10 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { useI18n } from '../contexts/I18nContext';
 import { vendorsService } from '../services/vendors.service';
+import { generatePartyReportPdf } from '../lib/partyReportPdf';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2,
   ShoppingCart, IndianRupee, Calendar, FileText,
-  Edit, Save, X, Package, Clock, CreditCard,
+  Edit, Save, X, Package, Clock, CreditCard, Download,
   ChevronDown, ChevronRight, Plus, MessageSquare,
   Truck, ArrowDownRight, ArrowUpRight, TrendingUp,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ export default function VendorDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Followup dialog
   const [followupOpen, setFollowupOpen] = useState(false);
@@ -159,6 +161,21 @@ export default function VendorDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          {!editing && (
+            <Button variant="outline" size="sm" disabled={downloading} onClick={async () => {
+              setDownloading(true);
+              try {
+                await generatePartyReportPdf({
+                  kind: 'vendor', party: vendor, purchaseOrders, transactions, followups, outstandings: [],
+                  totals: { totalBilled: totalAmount, totalPaid, outstanding: liveOutstanding, ordersCount: vendor.total_purchases || purchaseOrders.length, incomeTxnTotal, expenseTxnTotal },
+                });
+                toast.success('Statement downloaded');
+              } catch (e: any) { toast.error(e?.message || 'Failed to generate PDF'); }
+              finally { setDownloading(false); }
+            }}>
+              <Download className="w-4 h-4 mr-2" /> {downloading ? 'Generating…' : 'Download'}
+            </Button>
+          )}
           {!editing ? (
             <Button variant="outline" size="sm" onClick={() => { setEditForm({ ...vendor }); setEditing(true); }}>
               <Edit className="w-4 h-4 mr-2" /> Edit
