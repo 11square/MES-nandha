@@ -132,7 +132,13 @@ export default function ClientDetailPage() {
 
   // Stats
   const totalBilled = bills.reduce((s, b) => s + (Number(b.grand_total) || 0), 0);
-  const totalPaid = payments.reduce((s, p) => s + (Number(p.amount) || Number(p.paid_amount) || 0), 0);
+  const paymentsTotal = payments.reduce((s, p) => s + (Number(p.amount) || Number(p.paid_amount) || 0), 0);
+  // Finance ledger transactions also represent collected/paid money for this client.
+  // Income = money received from client, Expense = refund/charge given to client.
+  const incomeTxnTotal = transactions.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const expenseTxnTotal = transactions.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  // Total received = bill payments + standalone income transactions, minus any refunds (expense txns).
+  const totalPaid = paymentsTotal + incomeTxnTotal - expenseTxnTotal;
   const totalOutstanding = outstandings.reduce((s, o) => s + (Number(o.balance) || 0), 0);
   const overdueCount = outstandings.filter(o => (o.days_overdue || 0) > 0).length;
 

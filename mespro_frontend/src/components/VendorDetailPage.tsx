@@ -123,7 +123,12 @@ export default function VendorDetailPage() {
     return status !== 'received' && status !== 'cancelled';
   });
   const outstandingAmount = outstandingPOs.reduce((s, po) => s + (Number(po.total_amount) || 0), 0);
-  const totalPaid = transactions.reduce((s, tx) => s + (Number(tx.amount) || 0), 0);
+  // For a vendor: expense = money we paid them, income = refund/credit from them.
+  const expenseTxnTotal = transactions.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const incomeTxnTotal = transactions.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
+  const totalPaid = expenseTxnTotal - incomeTxnTotal;
+  // Live outstanding = PO outstanding minus net we've already paid via finance ledger.
+  const liveOutstanding = Math.max(0, (Number(vendor.outstanding_amount) || outstandingAmount) - totalPaid);
 
   return (
     <div className="p-6 space-y-6">
@@ -199,13 +204,13 @@ export default function VendorDetailPage() {
             <p className="text-2xl font-bold text-green-700">{fmt(totalPaid)}</p>
           </CardContent>
         </Card>
-        <Card className={`${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
+        <Card className={`${liveOutstanding > 0 ? 'bg-red-500/10 border-red-200' : 'bg-slate-500/10 border-slate-200'}`}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-1">
-              <span className={`text-xs font-medium ${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
-              <CreditCard className={`h-4 w-4 ${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'text-red-600' : 'text-slate-600'}`} />
+              <span className={`text-xs font-medium ${liveOutstanding > 0 ? 'text-red-600' : 'text-slate-600'}`}>Outstanding</span>
+              <CreditCard className={`h-4 w-4 ${liveOutstanding > 0 ? 'text-red-600' : 'text-slate-600'}`} />
             </div>
-            <p className={`text-2xl font-bold ${(Number(vendor.outstanding_amount) || outstandingAmount) > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(Number(vendor.outstanding_amount) || outstandingAmount)}</p>
+            <p className={`text-2xl font-bold ${liveOutstanding > 0 ? 'text-red-700' : 'text-slate-700'}`}>{fmt(liveOutstanding)}</p>
             {outstandingPOs.length > 0 && <p className="text-xs text-red-500 mt-1">{outstandingPOs.length} pending POs</p>}
           </CardContent>
         </Card>
@@ -477,7 +482,7 @@ export default function VendorDetailPage() {
                   // Running balance = remaining outstanding (what we owe vendor) AFTER each tx.
                   // Expense (payment to vendor) REDUCES the balance, income (refund from vendor) INCREASES it.
                   // Anchored so the newest tx's balance equals the top "Outstanding" card.
-                  const topBalance = Number(vendor.outstanding_amount) || outstandingAmount;
+                  const topBalance = liveOutstanding;
                   const sortedAsc = [...transactions].sort((a, b) => {
                     const da = a.date ? new Date(a.date).getTime() : 0;
                     const db = b.date ? new Date(b.date).getTime() : 0;
