@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -11,6 +12,8 @@ import { validateFields, FieldError, blockInvalidNumberKeys, type ValidationErro
 import { Textarea } from './ui/textarea';
 import { translations, Language } from '../translations';
 import { ConfirmDialog } from './ui/confirm-dialog';
+import { useLedgerFilter, applyLedgerFilter, getRangeLabel, type LedgerRange } from './ledgerFilter';
+import { exportFinanceStatementPdf, type FinanceTxnRow } from '../lib/financeStatementPdf';
 
 interface FinanceManagementProps {
   language?: Language;
@@ -78,6 +81,8 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
   const [activeTab, setActiveTab] = useState('transactions');
+  // Date range filter (reuses Ledger filter for consistency)
+  const dateFilter = useLedgerFilter();
   const [transactionForm, setTransactionForm] = useState({
     date: new Date().toISOString().split('T')[0],
     type: 'income' as 'income' | 'expense',
@@ -585,6 +590,21 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       return (b._sourceId || 0) - (a._sourceId || 0);
     });
 
+  // Apply date-range filter on top
+  const dateFilteredTransactions = (() => {
+    const entries = filteredTransactions.map(tx => ({
+      key: String(tx.id),
+      date: tx.date,
+      item: tx.description,
+      ref: tx.reference || '',
+      debit: tx.type === 'expense' ? Number(tx.amount) || 0 : 0,
+      credit: tx.type === 'income' ? Number(tx.amount) || 0 : 0,
+    }));
+    const filtered = applyLedgerFilter(entries, dateFilter.range, dateFilter.customFrom, dateFilter.customTo);
+    const allowed = new Set(filtered.map(e => e.key));
+    return filteredTransactions.filter(tx => allowed.has(String(tx.id)));
+  })();
+
   const totalReceivable = computedPending || outstandings
     .filter((item: any) => getOutstandingBalance(item) > 0)
     .reduce((sum: number, item: any) => sum + getOutstandingBalance(item), 0);
@@ -1031,74 +1051,47 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       </div>
       ) : (
       <>
-      {/* Header */}
-      <div className="flex justify-between items-start flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">{t('financeManagement')}</h1>
-          <p className="text-muted-foreground text-sm">{t('managePaymentsAndTransactions')}</p>
-        </div>
-      </div>
-
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <ArrowDownRight className="w-4 h-4 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">{t('totalIncome')}</p>
-          <p className="text-xl text-gray-800 font-semibold">₹{totalIncome.toLocaleString()}</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalIncome')}</CardTitle>
+            <ArrowDownRight className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">₹{totalIncome.toLocaleString()}</div>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4 text-red-600" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">{t('totalExpenses')}</p>
-          <p className="text-xl text-gray-800 font-semibold">₹{totalExpense.toLocaleString()}</p>
-        </motion.div>
+        <Card className="bg-red-500/10 backdrop-blur-sm border-red-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalExpenses')}</CardTitle>
+            <ArrowUpRight className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-red-700">₹{totalExpense.toLocaleString()}</div>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-4 h-4 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">{t('pendingPayments')}</p>
-          <p className="text-xl text-gray-800 font-semibold">₹{totalReceivable.toLocaleString()}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('pendingPayments')}</CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">₹{totalReceivable.toLocaleString()}</div>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white px-4 py-3 rounded-lg border border-gray-200 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
-              <AlertCircle className="w-4 h-4 text-red-600" />
-            </div>
-          </div>
-          <p className="text-sm text-gray-600">{t('overdue')}</p>
-          <p className="text-xl text-gray-800 font-semibold">₹{overdueAmount.toLocaleString()}</p>
-        </motion.div>
+        <Card className="bg-red-500/10 backdrop-blur-sm border-red-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('overdue')}</CardTitle>
+            <AlertCircle className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-red-700">₹{overdueAmount.toLocaleString()}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Tabs for Transactions, Follow-ups, and Outstandings */}
@@ -1153,50 +1146,106 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
               </h2>
               {/* Type & Source filters */}
               <div className="flex items-center gap-1.5 flex-wrap">
-                {[
-                  { key: 'all' as const, label: 'All Types' },
-                  { key: 'income' as const, label: 'Income' },
-                  { key: 'expense' as const, label: 'Expense' },
-                ].map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => setTypeFilter(f.key)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
-                      typeFilter === f.key
-                        ? f.key === 'income' ? 'bg-emerald-600 text-white border-emerald-600'
-                          : f.key === 'expense' ? 'bg-red-600 text-white border-red-600'
-                          : 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {f.label}
-                  </button>
-                ))}
+                {/* Date range */}
+                <Select value={dateFilter.range} onValueChange={(v) => dateFilter.setRange(v as LedgerRange)}>
+                  <SelectTrigger className="h-7 w-[150px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="this_week">This week</SelectItem>
+                    <SelectItem value="this_month">This month</SelectItem>
+                    <SelectItem value="this_year">This year</SelectItem>
+                    <SelectItem value="financial_year">Financial year</SelectItem>
+                    <SelectItem value="custom">Custom range</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateFilter.range === 'custom' && (
+                  <>
+                    <Input
+                      type="date"
+                      value={dateFilter.customFrom}
+                      onChange={(e) => dateFilter.setCustomFrom(e.target.value)}
+                      className="h-7 w-[140px] text-xs"
+                    />
+                    <span className="text-xs text-gray-500">to</span>
+                    <Input
+                      type="date"
+                      value={dateFilter.customTo}
+                      onChange={(e) => dateFilter.setCustomTo(e.target.value)}
+                      className="h-7 w-[140px] text-xs"
+                    />
+                  </>
+                )}
                 <div className="w-px h-5 bg-gray-300 mx-1" />
-                {[
-                  { key: 'all', label: 'All' },
-                  { key: 'transaction', label: 'Manual' },
-                  { key: 'order', label: 'Orders' },
-                  { key: 'bill', label: 'Invoices' },
-                  { key: 'purchase_order', label: 'Purchase Orders' },
-                ].map(f => (
-                  <button
-                    key={f.key}
-                    onClick={() => setSourceFilter(f.key)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors border ${
-                      sourceFilter === f.key
-                        ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    {f.label}
-                    {f.key !== 'all' && (
-                      <span className="ml-1 text-[10px] opacity-80">
-                        ({transactionsData.filter(tx => (tx._source || 'transaction') === f.key).length})
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {/* Type filter */}
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                  <SelectTrigger className="h-7 w-[120px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expense</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                {/* Source filter */}
+                <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v)}>
+                  <SelectTrigger className="h-7 w-[170px] text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[
+                      { key: 'all', label: 'All Sources' },
+                      { key: 'transaction', label: 'Manual' },
+                      { key: 'order', label: 'Orders' },
+                      { key: 'bill', label: 'Invoices' },
+                      { key: 'purchase_order', label: 'Purchase Orders' },
+                    ].map(f => (
+                      <SelectItem key={f.key} value={f.key}>
+                        {f.label}
+                        {f.key !== 'all' && ` (${transactionsData.filter(tx => (tx._source || 'transaction') === f.key).length})`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="w-px h-5 bg-gray-300 mx-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  disabled={dateFilteredTransactions.length === 0}
+                  onClick={() => {
+                    const rows: FinanceTxnRow[] = dateFilteredTransactions.map(tx => ({
+                      id: tx.id,
+                      date: tx.date,
+                      type: tx.type,
+                      category: tx.category,
+                      description: tx.description,
+                      party: tx.client_name || tx.vendor_name || tx.client || tx.vendor || '',
+                      partyType: tx.party_type,
+                      reference: tx.reference || (tx._source && tx._source !== 'transaction' ? `${tx._source}-${tx._sourceId || ''}` : ''),
+                      source: tx._source || 'transaction',
+                      paymentMethod: tx.payment_method,
+                      status: tx.status,
+                      amount: Number(tx.amount) || 0,
+                    }));
+                    const periodLabel = getRangeLabel(dateFilter.range, dateFilter.customFrom, dateFilter.customTo);
+                    const filterParts: string[] = [];
+                    filterParts.push(`Type: ${typeFilter === 'all' ? 'All' : typeFilter}`);
+                    filterParts.push(`Source: ${sourceFilter === 'all' ? 'All' : sourceFilter}`);
+                    exportFinanceStatementPdf(
+                      `finance_statement_${new Date().toISOString().slice(0, 10)}.pdf`,
+                      periodLabel,
+                      filterParts.join('  |  '),
+                      rows,
+                    );
+                  }}
+                >
+                  <Download className="w-3.5 h-3.5 mr-1" /> Export PDF
+                </Button>
               </div>
             </div>
 
@@ -1216,7 +1265,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredTransactions.map((transaction) => (
+                  {dateFilteredTransactions.map((transaction) => (
                     <tr key={transaction.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2 text-sm text-gray-700">

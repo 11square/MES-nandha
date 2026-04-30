@@ -1471,84 +1471,51 @@ export default function DispatchManagement({ onViewOrder, language = 'en', billF
       </div>
       ) : (
       <>
-      {/* Header */}
-      <div className="flex justify-between items-start flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">{t('dispatchManagement')}</h1>
-          <p className="text-muted-foreground text-sm">{t('manageDispatch')}</p>
-        </div>
-      </div>
-
       {/* Dispatch Content */}
       <div className="w-full flex-1 min-h-0 flex flex-col">
         {/* Stock Dispatch Stats */}
         <div className="flex-1 min-h-0 flex flex-col gap-3">
           {/* Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-slate-600 font-medium">{t('readyToDispatch')}</span>
-                <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-                  <Package className="w-4 h-4 text-amber-600" />
-                </div>
-              </div>
-              <p className="text-2xl text-slate-900 font-bold">
-                {stockDispatches.filter(d => d.status === 'Ready to Dispatch').length}
-              </p>
-            </motion.div>
+            <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+                <CardTitle className="text-sm font-medium">{t('readyToDispatch')}</CardTitle>
+                <Package className="h-4 w-4 text-amber-600" />
+              </CardHeader>
+              <CardContent className="pt-0 pb-3 px-4">
+                <div className="text-2xl font-bold text-amber-700">{stockDispatches.filter(d => d.status === 'Ready to Dispatch').length}</div>
+              </CardContent>
+            </Card>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-slate-600 font-medium">{t('inTransit')}</span>
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-                  <Truck className="w-4 h-4 text-blue-600" />
-                </div>
-              </div>
-              <p className="text-2xl text-slate-900 font-bold">
-                {stockDispatches.filter(d => d.status === 'In Transit').length}
-              </p>
-            </motion.div>
+            <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+                <CardTitle className="text-sm font-medium">{t('inTransit')}</CardTitle>
+                <Truck className="h-4 w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent className="pt-0 pb-3 px-4">
+                <div className="text-2xl font-bold text-blue-700">{stockDispatches.filter(d => d.status === 'In Transit').length}</div>
+              </CardContent>
+            </Card>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-slate-600 font-medium">{t('delivered')}</span>
-                <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                </div>
-              </div>
-              <p className="text-2xl text-slate-900 font-bold">
-                {stockDispatches.filter(d => d.status === 'Delivered').length}
-              </p>
-            </motion.div>
+            <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+                <CardTitle className="text-sm font-medium">{t('delivered')}</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              </CardHeader>
+              <CardContent className="pt-0 pb-3 px-4">
+                <div className="text-2xl font-bold text-emerald-700">{stockDispatches.filter(d => d.status === 'Delivered').length}</div>
+              </CardContent>
+            </Card>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-            >
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-slate-600 font-medium">Total</span>
-                <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-                  <Box className="w-4 h-4 text-violet-600" />
-                </div>
-              </div>
-              <p className="text-2xl text-slate-900 font-bold">{stockDispatches.length}</p>
-            </motion.div>
+            <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+                <CardTitle className="text-sm font-medium">Total</CardTitle>
+                <Box className="h-4 w-4 text-purple-600" />
+              </CardHeader>
+              <CardContent className="pt-0 pb-3 px-4">
+                <div className="text-2xl font-bold text-purple-700">{stockDispatches.length}</div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Search, Filter and Create Button */}

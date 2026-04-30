@@ -1,6 +1,6 @@
 import { toast } from 'sonner';
 import { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -38,6 +38,7 @@ import { useSharedState } from '../contexts/SharedStateContext';
 export default function StockManagement({ language = 'en' }: StockManagementProps) {
   const t = (key: keyof typeof translations.en) => translations[language][key] || translations.en[key];
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddStock, setShowAddStock] = useState(false);
@@ -148,6 +149,18 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
     setIsFromProduct(false);
     setSelectedItemId('');
   };
+
+  // Open Add Product dialog with prefilled category/subcategory when navigated from ProductManagement
+  useEffect(() => {
+    const st = location.state as any;
+    if (st?.addProduct) {
+      setStockForm(prev => ({ ...prev, category: st.category || '', subcategory: st.subcategory || '' }));
+      setShowAddStock(true);
+      // Clear state so it doesn't re-trigger
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   const generateSKU = () => {
     if (stockForm.category && stockForm.name) {
@@ -1204,97 +1217,64 @@ export default function StockManagement({ language = 'en' }: StockManagementProp
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 flex-shrink-0">
-        <div>
-          <h2 className="text-2xl text-slate-900 font-bold leading-tight">{t('stockManagement')}</h2>
-          <p className="text-sm text-slate-600">{t('manageStock')}</p>
-        </div>
-       
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-shrink-0">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('totalStockValue')}</span>
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Package className="w-4 h-4 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{formatCurrency(totalValue)}</p>
-          {totalValue > 0 && (
-            <p className="text-xs text-slate-500">{t('totalStockValue')}</p>
-          )}
-        </motion.div>
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalStockValue')}</CardTitle>
+            <Package className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">{formatCurrency(totalValue)}</div>
+            {totalValue > 0 && (
+              <p className="text-xs text-blue-600">{t('totalStockValue')}</p>
+            )}
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('totalItems')}</span>
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <Boxes className="w-4 h-4 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{totalItems}</p>
-          <p className="text-xs text-slate-600">{stockListItems.length} SKUs</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalItems')}</CardTitle>
+            <Boxes className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{totalItems}</div>
+            <p className="text-xs text-emerald-600">{stockListItems.length} SKUs</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('lowStockAlerts')}</span>
-            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{lowStockCount}</p>
-          <p className="text-xs text-amber-600">{t('needReordering')}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('lowStockAlerts')}</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">{lowStockCount}</div>
+            <p className="text-xs text-amber-600">{t('needReordering')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('category')}</span>
-            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Package className="w-4 h-4 text-violet-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{categories.length - 1}</p>
-          <p className="text-xs text-slate-600">{t('stockCategories')}</p>
-        </motion.div>
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('category')}</CardTitle>
+            <Package className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{categories.length - 1}</div>
+            <p className="text-xs text-purple-600">{t('stockCategories')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('totalProducts')}</span>
-            <div className="w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-              <Package className="w-4 h-4 text-indigo-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{stockListItems.length}</p>
-          <p className="text-xs text-slate-600">{t('productsInStock')}</p>
-        </motion.div>
+        <Card className="bg-indigo-500/10 backdrop-blur-sm border-indigo-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalProducts')}</CardTitle>
+            <Package className="h-4 w-4 text-indigo-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-indigo-700">{stockListItems.length}</div>
+            <p className="text-xs text-indigo-600">{t('productsInStock')}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filter */}

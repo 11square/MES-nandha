@@ -133,6 +133,7 @@ export default function ProductManagement({ productCategories = [], onCategories
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setEditingCat({ id: selectedCat.id, name: selectedCat.name, dbId: (selectedCat as any).dbId })}><Edit className="w-4 h-4 mr-1" /> Rename</Button>
               <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => setDeleteConfirm({ open: true, type: 'category', id: selectedCat.id, dbId: (selectedCat as any).dbId })}><Trash2 className="w-4 h-4 mr-1" /> Delete</Button>
+              <Button variant="outline" size="sm" className="text-blue-600 hover:bg-blue-50 hover:text-blue-700" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name } })}><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
               <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setAddSubTarget(selectedCat.id); setNewSubName(''); setShowAddSubcategory(true); }}><Plus className="w-4 h-4 mr-1" /> Add Subcategory</Button>
             </div>
           </div>
@@ -146,9 +147,12 @@ export default function ProductManagement({ productCategories = [], onCategories
                   <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0"><Tag className="w-4 h-4 text-violet-600" /></div>
                   <div className="min-w-0"><h2 className="font-semibold text-base truncate">{selectedSub}</h2><p className="text-[11px] text-slate-500">Items in this subcategory</p></div>
                 </div>
-                <div className="relative w-64 max-w-full">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                  <Input value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder="Search items..." className="h-9 pl-8" />
+                <div className="flex items-center gap-2">
+                  <div className="relative w-64 max-w-full">
+                    <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                    <Input value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder="Search items..." className="h-9 pl-8" />
+                  </div>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name, subcategory: selectedSub } })}><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
                 </div>
               </div>
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -255,6 +259,7 @@ export default function ProductManagement({ productCategories = [], onCategories
                               <td className="px-4 py-2.5 text-right"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-medium"><Package className="w-3 h-3" />{count}</span></td>
                               <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-0.5">
+                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-600 hover:bg-blue-50" title="Add Product" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name, subcategory: sub } })}><Plus className="w-3.5 h-3.5 mr-1" />Add Product</Button>
                                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50" title="Rename" onClick={() => setEditingSub({ parentId: selectedCat.id, oldName: sub, newName: sub, dbId: (selectedCat as any).subDbIds?.[sub] })}><Edit className="w-3.5 h-3.5" /></Button>
                                   <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" title="Delete" onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: selectedCat.id, dbId: (selectedCat as any).subDbIds?.[sub] })}><Trash2 className="w-3.5 h-3.5" /></Button>
                                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 ml-1" />
@@ -285,17 +290,17 @@ export default function ProductManagement({ productCategories = [], onCategories
       </div>
 
       <div className="grid grid-cols-3 gap-4 flex-shrink-0">
-        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center"><FolderOpen className="w-5 h-5 text-blue-600" /></div>
-          <div><p className="text-2xl font-bold leading-tight">{categories.length}</p><p className="text-xs text-gray-500">Categories</p></div>
+        <div className="bg-blue-500/10 backdrop-blur-sm border border-blue-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center"><FolderOpen className="w-5 h-5 text-blue-600" /></div>
+          <div><p className="text-2xl font-bold leading-tight text-blue-700">{categories.length}</p><p className="text-xs text-blue-600">Categories</p></div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center"><Tag className="w-5 h-5 text-violet-600" /></div>
-          <div><p className="text-2xl font-bold leading-tight">{totalSub}</p><p className="text-xs text-gray-500">Subcategories</p></div>
+        <div className="bg-purple-500/10 backdrop-blur-sm border border-purple-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center"><Tag className="w-5 h-5 text-purple-600" /></div>
+          <div><p className="text-2xl font-bold leading-tight text-purple-700">{totalSub}</p><p className="text-xs text-purple-600">Subcategories</p></div>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm flex items-center gap-3">
-          <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center"><Boxes className="w-5 h-5 text-emerald-600" /></div>
-          <div><p className="text-2xl font-bold leading-tight">{categories.length + totalSub}</p><p className="text-xs text-gray-500">Total</p></div>
+        <div className="bg-emerald-500/10 backdrop-blur-sm border border-emerald-200 rounded-xl px-4 py-3 shadow-sm flex items-center gap-3">
+          <div className="w-10 h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center"><Boxes className="w-5 h-5 text-emerald-600" /></div>
+          <div><p className="text-2xl font-bold leading-tight text-emerald-700">{categories.length + totalSub}</p><p className="text-xs text-emerald-600">Total</p></div>
         </div>
       </div>
 

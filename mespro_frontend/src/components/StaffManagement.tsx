@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { translations, Language } from '../translations';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
@@ -300,68 +301,49 @@ export default function StaffManagement({ language = 'en' }: StaffManagementProp
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('totalStaff')}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Briefcase className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{totalStaff}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('employees')}</p>
-        </motion.div>
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalStaff')}</CardTitle>
+            <Briefcase className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">{totalStaff}</div>
+            <p className="text-xs text-blue-600">{t('employees')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('activeToday')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{activeStaff}</p>
-          <p className="text-xs text-slate-600 mt-1">{totalStaff > 0 ? `${activeRate.toFixed(1)}% ${t('active')}` : t('noDataFound')}</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('activeToday')}</CardTitle>
+            <Calendar className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{activeStaff}</div>
+            <p className="text-xs text-emerald-600">{totalStaff > 0 ? `${activeRate.toFixed(1)}% ${t('active')}` : t('noDataFound')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('onLeave')}</span>
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{onLeaveStaff}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('onLeave')}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('onLeave')}</CardTitle>
+            <Calendar className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">{onLeaveStaff}</div>
+            <p className="text-xs text-amber-600">{t('onLeave')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('departments')}</span>
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Briefcase className="w-5 h-5 text-violet-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{departmentCount}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('activeDepartments')}</p>
-        </motion.div>
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('departments')}</CardTitle>
+            <Briefcase className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{departmentCount}</div>
+            <p className="text-xs text-purple-600">{t('activeDepartments')}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filter */}

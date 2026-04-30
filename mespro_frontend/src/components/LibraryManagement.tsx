@@ -230,13 +230,6 @@ const LibraryManagement: React.FC<LibraryManagementProps> = ({ language = 'en' }
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('libraryManagement')}</h1>
-          <p className="text-muted-foreground">{t('manageVendorsSuppliers')}</p>
-        </div>
-      </div>
-
       <Tabs defaultValue="vendors" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="vendors">{t('vendors')}</TabsTrigger>

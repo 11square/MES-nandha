@@ -249,68 +249,49 @@ export default function UserManagement({}: UserManagementProps) {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('totalUsers')}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Shield className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{users.length}</p>
-          <p className="text-xs text-slate-500 mt-1">{t('totalUsers')}</p>
-        </motion.div>
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalUsers')}</CardTitle>
+            <Shield className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">{users.length}</div>
+            <p className="text-xs text-blue-600">{t('totalUsers')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('activeUsers')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{users.filter(u => u.status === 'Active').length}</p>
-          <p className="text-xs text-slate-600 mt-1">{Math.round((users.filter(u => u.status === 'Active').length / users.length) * 100)}% {t('activeRate')}</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('activeUsers')}</CardTitle>
+            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{users.filter(u => u.status === 'Active').length}</div>
+            <p className="text-xs text-emerald-600">{Math.round((users.filter(u => u.status === 'Active').length / users.length) * 100)}% {t('activeRate')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('admins')}</span>
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <ShieldAlert className="w-5 h-5 text-purple-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">{users.filter(u => u.role === 'Admin').length}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('fullAccess')}</p>
-        </motion.div>
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('admins')}</CardTitle>
+            <ShieldAlert className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{users.filter(u => u.role === 'Admin').length}</div>
+            <p className="text-xs text-purple-600">{t('fullAccess')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('roles')}</span>
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Key className="w-5 h-5 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-3xl text-slate-900 font-bold">4</p>
-          <p className="text-xs text-slate-600 mt-1">{t('adminManagerProductionSales')}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('roles')}</CardTitle>
+            <Key className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">4</div>
+            <p className="text-xs text-amber-600">{t('adminManagerProductionSales')}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filter */}

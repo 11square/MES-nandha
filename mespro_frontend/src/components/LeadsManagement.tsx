@@ -528,46 +528,6 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
-      {/* Page Heading with Date Filter */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 leading-tight">{t('leadsTitle')}</h1>
-          <p className="text-gray-600 text-sm">{t('trackAndManageSalesLeads')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
-            <SelectTrigger className="w-44">
-              <Calendar className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
-              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
-              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
-              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
-              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
-            </SelectContent>
-          </Select>
-          {dateFilter === 'custom' && (
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                className="w-36 h-9 text-sm"
-                value={customDateFrom}
-                onChange={(e) => setCustomDateFrom(e.target.value)}
-              />
-              <span className="text-gray-400 text-sm">to</span>
-              <Input
-                type="date"
-                className="w-36 h-9 text-sm"
-                value={customDateTo}
-                onChange={(e) => setCustomDateTo(e.target.value)}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-shrink-0">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200 cursor-pointer hover:shadow-md" onClick={() => setFilterStatus('new')}>
@@ -627,8 +587,8 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4 flex-shrink-0">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+        <div className="relative flex-1 max-w-md min-w-[220px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input 
             placeholder={t('searchByLeadCustomerOrContact')}
@@ -652,6 +612,36 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <SelectItem value="rejected">{t('rejected')}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+          <SelectTrigger className="w-44">
+            <Calendar className="w-4 h-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+            <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+            <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+            <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+            <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+          </SelectContent>
+        </Select>
+        {dateFilter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <Input
+              type="date"
+              className="w-36 h-9 text-sm"
+              value={customDateFrom}
+              onChange={(e) => setCustomDateFrom(e.target.value)}
+            />
+            <span className="text-gray-400 text-sm">to</span>
+            <Input
+              type="date"
+              className="w-36 h-9 text-sm"
+              value={customDateTo}
+              onChange={(e) => setCustomDateTo(e.target.value)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Main Tabs */}

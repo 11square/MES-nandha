@@ -57,12 +57,28 @@ const formatCurrency = (v: any): string => {
 const pct = (v: any): string => `${safe(v)}%`;
 
 // Reusable metric card
+const METRIC_THEME: Record<string, { card: string; label: string; value: string }> = {
+  blue:   { card: 'bg-blue-500/10 backdrop-blur-sm border-blue-200',     label: 'text-blue-600',   value: 'text-blue-700' },
+  green:  { card: 'bg-green-500/10 backdrop-blur-sm border-green-200',   label: 'text-green-600',  value: 'text-green-700' },
+  emerald:{ card: 'bg-emerald-500/10 backdrop-blur-sm border-emerald-200',label: 'text-emerald-600',value: 'text-emerald-700' },
+  purple: { card: 'bg-purple-500/10 backdrop-blur-sm border-purple-200', label: 'text-purple-600', value: 'text-purple-700' },
+  orange: { card: 'bg-orange-500/10 backdrop-blur-sm border-orange-200', label: 'text-orange-600', value: 'text-orange-700' },
+  amber:  { card: 'bg-amber-500/10 backdrop-blur-sm border-amber-200',   label: 'text-amber-600',  value: 'text-amber-700' },
+  red:    { card: 'bg-red-500/10 backdrop-blur-sm border-red-200',       label: 'text-red-600',    value: 'text-red-700' },
+  teal:   { card: 'bg-teal-500/10 backdrop-blur-sm border-teal-200',     label: 'text-teal-600',   value: 'text-teal-700' },
+  indigo: { card: 'bg-indigo-500/10 backdrop-blur-sm border-indigo-200', label: 'text-indigo-600', value: 'text-indigo-700' },
+  violet: { card: 'bg-violet-500/10 backdrop-blur-sm border-violet-200', label: 'text-violet-600', value: 'text-violet-700' },
+  cyan:   { card: 'bg-cyan-500/10 backdrop-blur-sm border-cyan-200',     label: 'text-cyan-600',   value: 'text-cyan-700' },
+  slate:  { card: 'bg-slate-500/10 backdrop-blur-sm border-slate-200',   label: 'text-slate-600',  value: 'text-slate-700' },
+};
 function MetricCard({ icon: Icon, iconBg, iconColor, label, value, change, changeTrend }: {
   icon: any; iconBg: string; iconColor: string; label: string; value: string | number;
   change?: string; changeTrend?: 'up' | 'down' | 'neutral';
 }) {
+  const m = iconBg.match(/bg-([a-z]+)-/);
+  const theme = METRIC_THEME[m?.[1] || 'slate'] || METRIC_THEME.slate;
   return (
-    <Card>
+    <Card className={theme.card}>
       <CardContent className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div className={`w-12 h-12 ${iconBg} rounded-lg flex items-center justify-center`}>
@@ -75,8 +91,8 @@ function MetricCard({ icon: Icon, iconBg, iconColor, label, value, change, chang
             </Badge>
           )}
         </div>
-        <h3 className="text-gray-600 text-sm mb-1">{label}</h3>
-        <p className="text-2xl font-semibold text-gray-900">{value}</p>
+        <h3 className={`text-sm mb-1 ${theme.label}`}>{label}</h3>
+        <p className={`text-2xl font-semibold ${theme.value}`}>{value}</p>
       </CardContent>
     </Card>
   );
@@ -741,18 +757,6 @@ export default function ReportsPage({ userRole, language = 'en' }: ReportsPagePr
   // ═══════════════════════════════════════════════════════════
   return (
     <div className="space-y-6 overflow-auto h-full pb-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Business Analytics & Reports</h2>
-          <p className="text-gray-600">Comprehensive insights across all 8 modules</p>
-        </div>
-        <Button className="bg-blue-600 hover:bg-blue-700" onClick={exportAllReports}>
-          <Download className="w-4 h-4 mr-2" />
-          Export All Reports
-        </Button>
-      </div>
-
       {/* Key Metrics Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <MetricCard icon={Users} iconBg="bg-blue-100" iconColor="text-blue-600"
@@ -771,15 +775,21 @@ export default function ReportsPage({ userRole, language = 'en' }: ReportsPagePr
 
       {/* 8 REPORT TABS */}
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="flex flex-wrap gap-2">
-          <TabsTrigger value="overview" className="flex items-center gap-2 text-sm px-4 py-2"><BarChart3 className="w-5 h-5" /> Overview</TabsTrigger>
-          <TabsTrigger value="sales" className="flex items-center gap-2 text-sm px-4 py-2"><Briefcase className="w-5 h-5" /> Sales & Leads</TabsTrigger>
-          <TabsTrigger value="production" className="flex items-center gap-2 text-sm px-4 py-2"><Factory className="w-5 h-5" /> Production</TabsTrigger>
-          <TabsTrigger value="finance" className="flex items-center gap-2 text-sm px-4 py-2"><Wallet className="w-5 h-5" /> Finance</TabsTrigger>
-          <TabsTrigger value="orders" className="flex items-center gap-2 text-sm px-4 py-2"><Package className="w-5 h-5" /> Orders & Dispatch</TabsTrigger>
-          <TabsTrigger value="supply" className="flex items-center gap-2 text-sm px-4 py-2"><Link className="w-5 h-5" /> Supply Chain</TabsTrigger>
-          <TabsTrigger value="hr" className="flex items-center gap-2 text-sm px-4 py-2"><Users className="w-5 h-5" /> Staffs</TabsTrigger>
-        </TabsList>
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <TabsList className="flex flex-wrap gap-2">
+            <TabsTrigger value="overview" className="flex items-center gap-2 text-sm px-4 py-2"><BarChart3 className="w-5 h-5" /> Overview</TabsTrigger>
+            <TabsTrigger value="sales" className="flex items-center gap-2 text-sm px-4 py-2"><Briefcase className="w-5 h-5" /> Sales & Leads</TabsTrigger>
+            <TabsTrigger value="production" className="flex items-center gap-2 text-sm px-4 py-2"><Factory className="w-5 h-5" /> Production</TabsTrigger>
+            <TabsTrigger value="finance" className="flex items-center gap-2 text-sm px-4 py-2"><Wallet className="w-5 h-5" /> Finance</TabsTrigger>
+            <TabsTrigger value="orders" className="flex items-center gap-2 text-sm px-4 py-2"><Package className="w-5 h-5" /> Orders & Dispatch</TabsTrigger>
+            <TabsTrigger value="supply" className="flex items-center gap-2 text-sm px-4 py-2"><Link className="w-5 h-5" /> Supply Chain</TabsTrigger>
+            <TabsTrigger value="hr" className="flex items-center gap-2 text-sm px-4 py-2"><Users className="w-5 h-5" /> Staffs</TabsTrigger>
+          </TabsList>
+          <Button className="bg-blue-600 hover:bg-blue-700" onClick={exportAllReports}>
+            <Download className="w-4 h-4 mr-2" />
+            Export All Reports
+          </Button>
+        </div>
 
         {/* ════════════════════════════════════════════════════ */}
         {/* TAB 1 — OVERVIEW                                    */}

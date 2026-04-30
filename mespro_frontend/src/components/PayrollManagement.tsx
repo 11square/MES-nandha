@@ -424,68 +424,49 @@ export default function PayrollManagement({ language = 'en' }: PayrollManagement
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('payroll')}</span>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{formatCurrency(totalPayroll)}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('thisMonth')}</p>
-        </motion.div>
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('payroll')}</CardTitle>
+            <DollarSign className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">{formatCurrency(totalPayroll)}</div>
+            <p className="text-xs text-blue-600">{t('thisMonth')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('paid')}</span>
-            <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{formatCurrency(paidAmount)}</p>
-          <p className="text-xs text-emerald-600 mt-1">{payrollRecords.filter(r => r.status === 'Paid').length} employees paid</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('paid')}</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{formatCurrency(paidAmount)}</div>
+            <p className="text-xs text-emerald-600">{payrollRecords.filter(r => r.status === 'Paid').length} employees paid</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('pending')}</span>
-            <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-5 h-5 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{formatCurrency(pendingAmount)}</p>
-          <p className="text-xs text-amber-600 mt-1">{payrollRecords.filter(r => r.status !== 'Paid').length} {t('staff')} {t('pending')}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('pending')}</CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">{formatCurrency(pendingAmount)}</div>
+            <p className="text-xs text-amber-600">{payrollRecords.filter(r => r.status !== 'Paid').length} {t('staff')} {t('pending')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm text-slate-600 font-medium">{t('staff')}</span>
-            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Users className="w-5 h-5 text-violet-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{payrollRecords.length}</p>
-          <p className="text-xs text-slate-600 mt-1">{t('active')} {t('payroll')}</p>
-        </motion.div>
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('staff')}</CardTitle>
+            <Users className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{payrollRecords.length}</div>
+            <p className="text-xs text-purple-600">{t('active')} {t('payroll')}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filter */}

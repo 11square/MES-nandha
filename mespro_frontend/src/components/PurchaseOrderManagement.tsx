@@ -313,104 +313,56 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
-      <div className="flex justify-between items-start flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">{t('purchaseOrderManagement')}</h1>
-          <p className="text-muted-foreground text-sm">{t('managePurchaseOrders')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
-            <SelectTrigger className="w-44">
-              <Calendar className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
-              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
-              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
-              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
-              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
-            </SelectContent>
-          </Select>
-          {dateFilter === 'custom' && (
-            <div className="flex items-center gap-2">
-              <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
-              <span className="text-gray-400 text-sm">to</span>
-              <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('totalPOValue')}</span>
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-4 h-4 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">₹{totalPOValue.toLocaleString()}</p>
-          <p className="text-xs text-slate-600">{t('allPurchaseOrders')}</p>
-        </motion.div>
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalPOValue')}</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">₹{totalPOValue.toLocaleString()}</div>
+            <p className="text-xs text-blue-600">{t('allPurchaseOrders')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('pendingApproval')}</span>
-            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-              <Clock className="w-4 h-4 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{pendingPOs}</p>
-          <p className="text-xs text-amber-600">{t('awaitingApproval')}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('pendingApproval')}</CardTitle>
+            <Clock className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">{pendingPOs}</div>
+            <p className="text-xs text-amber-600">{t('awaitingApproval')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('inProgress')}</span>
-            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-              <Truck className="w-4 h-4 text-violet-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{orderedPOs}</p>
-          <p className="text-xs text-slate-600">{t('approvedordered')}</p>
-        </motion.div>
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('inProgress')}</CardTitle>
+            <Truck className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{orderedPOs}</div>
+            <p className="text-xs text-purple-600">{t('approvedordered')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('received')}</span>
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <Package className="w-4 h-4 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{receivedPOs}</p>
-          <p className="text-xs text-emerald-600">{t('completedOrders')}</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('received')}</CardTitle>
+            <Package className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{receivedPOs}</div>
+            <p className="text-xs text-emerald-600">{t('completedOrders')}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Search and Filter */}
-      <div className="flex items-center gap-4 flex-shrink-0">
-        <div className="relative flex-1 max-w-md">
+      <div className="flex items-center gap-3 flex-shrink-0 flex-wrap">
+        <div className="relative flex-1 max-w-md min-w-[220px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input 
             placeholder={t('searchByPoVendorOrItem')}
@@ -433,6 +385,26 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
             <SelectItem value="received">{t('received')}</SelectItem>
           </SelectContent>
         </Select>
+        <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+          <SelectTrigger className="w-44">
+            <Calendar className="w-4 h-4 mr-2" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+            <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+            <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+            <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+            <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+          </SelectContent>
+        </Select>
+        {dateFilter === 'custom' && (
+          <div className="flex items-center gap-2">
+            <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
+            <span className="text-gray-400 text-sm">to</span>
+            <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
+          </div>
+        )}
       </div>
 
       {/* Tabs */}

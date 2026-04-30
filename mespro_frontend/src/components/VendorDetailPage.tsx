@@ -14,12 +14,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { useI18n } from '../contexts/I18nContext';
 import { vendorsService } from '../services/vendors.service';
 import { generatePartyReportPdf } from '../lib/partyReportPdf';
+import { useLedgerFilter, applyLedgerFilter, LedgerToolbar, exportLedgerPdf, getRangeLabel, type LedgerEntry } from './ledgerFilter';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2,
   ShoppingCart, IndianRupee, Calendar, FileText,
   Edit, Save, X, Package, Clock, CreditCard, Download,
   ChevronDown, ChevronRight, Plus, MessageSquare,
-  Truck, ArrowDownRight, ArrowUpRight, TrendingUp,
+  Truck, ArrowDownRight, ArrowUpRight, TrendingUp, Receipt,
 } from 'lucide-react';
 
 const fmt = (val: number) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
@@ -42,6 +43,7 @@ export default function VendorDetailPage() {
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [viewPo, setViewPo] = useState<any>(null);
 
   // Followup dialog
   const [followupOpen, setFollowupOpen] = useState(false);
@@ -98,6 +100,8 @@ export default function VendorDetailPage() {
     }
   };
 
+  const ledgerFilter = useLedgerFilter();
+
   if (loading) {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
@@ -133,6 +137,58 @@ export default function VendorDetailPage() {
   // Every expense reduces what we still owe the vendor.
   const totalAmount = Number(vendor.total_amount) || totalPurchaseAmount;
   const liveOutstanding = totalAmount - totalPaid;
+
+  // Build unified ledger entries from POs (debits) and transactions (credits = payments to vendor, debits = refunds from vendor).
+  const ledgerEntries: LedgerEntry[] = [];
+  for (const po of purchaseOrders) {
+    const status = String(po?.status || '').toLowerCase();
+    if (status === 'cancelled') continue;
+    const amt = Number(po.total_amount) || 0;
+    if (amt <= 0) continue;
+    const itemsLabel = Array.isArray(po.items) && po.items.length
+      ? po.items.map((it: any) => it.item_name || it.name || it.description).filter(Boolean).join(', ')
+      : (po.description || 'Purchase Order');
+    ledgerEntries.push({
+      key: `po-${po.id}`,
+      date: po.date || po.order_date || po.po_date || po.created_at || po.createdAt || '',
+      item: itemsLabel || 'Purchase Order',
+      ref: po.po_number || po.po_no || `PO-${po.id}`,
+      debit: amt,
+      credit: 0,
+      source: po,
+      kind: 'po',
+    });
+  }
+  for (const t of transactions) {
+    const amt = Number(t.amount) || 0;
+    if (amt <= 0) continue;
+    const isPayment = t.type !== 'income';
+    ledgerEntries.push({
+      key: `tx-${t.id}`,
+      date: t.date || '',
+      item: t.description || t.category || (isPayment ? 'Payment' : 'Refund'),
+      ref: t.reference || t.bill_no || t.bill?.bill_no || `TXN-${t.id}`,
+      debit: isPayment ? 0 : amt,
+      credit: isPayment ? amt : 0,
+      source: t,
+      kind: 'tx',
+    });
+  }
+  const ledgerFiltered = applyLedgerFilter(ledgerEntries, ledgerFilter.range, ledgerFilter.customFrom, ledgerFilter.customTo);
+  const ledgerSortedAsc = [...ledgerFiltered].sort((a, b) => {
+    const da = a.date ? new Date(a.date).getTime() : 0;
+    const db = b.date ? new Date(b.date).getTime() : 0;
+    if (da !== db) return da - db;
+    return a.key.localeCompare(b.key);
+  });
+  const ledgerBalanceByKey = new Map<string, number>();
+  {
+    let running = 0;
+    for (const e of ledgerSortedAsc) {
+      running += e.debit - e.credit;
+      ledgerBalanceByKey.set(e.key, running);
+    }
+  }
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3">
@@ -238,7 +294,7 @@ export default function VendorDetailPage() {
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
           <TabsTrigger value="purchases" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Purchase Orders ({purchaseOrders.length})</TabsTrigger>
           <TabsTrigger value="outstanding" className="text-xs px-3 py-1.5"><CreditCard className="w-3.5 h-3.5 mr-1" /> Outstanding ({outstandingPOs.length})</TabsTrigger>
-          <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Finance ({transactions.length})</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Ledger ({purchaseOrders.filter((p:any)=>String(p?.status||'').toLowerCase()!=='cancelled').length + transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
         </TabsList>
 
@@ -475,81 +531,93 @@ export default function VendorDetailPage() {
         <TabsContent value="transactions" className="mt-4">
           <Card>
             <CardContent className="p-0">
-              {transactions.length === 0 ? (
+              <LedgerToolbar
+                range={ledgerFilter.range}
+                setRange={ledgerFilter.setRange}
+                customFrom={ledgerFilter.customFrom}
+                setCustomFrom={ledgerFilter.setCustomFrom}
+                customTo={ledgerFilter.customTo}
+                setCustomTo={ledgerFilter.setCustomTo}
+                exportDisabled={ledgerSortedAsc.length === 0}
+                onExport={() => {
+                  const rows = [...ledgerSortedAsc].reverse().map((e) => ({
+                    ...e,
+                    balance: ledgerBalanceByKey.get(e.key) ?? 0,
+                  }));
+                  const safeName = String(vendor?.name || 'vendor').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+                  const periodLabel = getRangeLabel(ledgerFilter.range, ledgerFilter.customFrom, ledgerFilter.customTo);
+                  exportLedgerPdf(
+                    `ledger_${safeName}_${new Date().toISOString().slice(0,10)}.pdf`,
+                    {
+                      kind: 'vendor',
+                      name: vendor?.name || 'Vendor',
+                      code: vendor?.id,
+                      contact: vendor?.contact_person,
+                      email: vendor?.email,
+                      phone: vendor?.phone,
+                      address: vendor?.address,
+                      gst: vendor?.gst_number,
+                    },
+                    periodLabel,
+                    rows,
+                  );
+                }}
+              />
+              {ledgerSortedAsc.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No finance transactions found for this vendor</p>
+                  <p>No ledger entries found for the selected range</p>
                 </div>
               ) : (
-                (() => {
-                  // Running balance = remaining outstanding (what we owe vendor) AFTER each tx.
-                  // Expense (payment to vendor) REDUCES the balance, income (refund from vendor) INCREASES it.
-                  // Anchored so the newest tx's balance equals the top "Outstanding" card.
-                  const topBalance = liveOutstanding;
-                  const sortedAsc = [...transactions].sort((a, b) => {
-                    const da = a.date ? new Date(a.date).getTime() : 0;
-                    const db = b.date ? new Date(b.date).getTime() : 0;
-                    if (da !== db) return da - db;
-                    return (Number(a.id) || 0) - (Number(b.id) || 0);
-                  });
-                  const sumIncome = sortedAsc.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-                  const sumExpense = sortedAsc.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-                  const balanceById = new Map<any, number>();
-                  let running = topBalance + sumExpense - sumIncome; // opening balance (before any tx)
-                  for (const t of sortedAsc) {
-                    const amt = Number(t.amount) || 0;
-                    running += t.type === 'income' ? amt : -amt;
-                    balanceById.set(t.id, running);
-                  }
-                  return (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead>Method</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Outstanding</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {transactions.map((txn: any) => {
-                          const bal = balanceById.get(txn.id) ?? 0;
-                          return (
-                            <TableRow key={txn.id}>
-                              <TableCell>{txn.date ? new Date(txn.date).toLocaleDateString() : '-'}</TableCell>
-                              <TableCell>
-                                <span className={`inline-flex items-center gap-1 font-medium ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                  {txn.type === 'income' ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                                  {txn.type === 'income' ? 'Income' : 'Expense'}
-                                </span>
-                              </TableCell>
-                              <TableCell><Badge variant="outline">{txn.category || '-'}</Badge></TableCell>
-                              <TableCell className="text-sm text-slate-500 max-w-[250px] truncate">{txn.description || '-'}</TableCell>
-                              <TableCell className={`text-right font-semibold ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {txn.type === 'income' ? '+' : '-'}{fmt(txn.amount)}
-                              </TableCell>
-                              <TableCell className="text-sm">{txn.payment_method || '-'}</TableCell>
-                              <TableCell>
-                                <Badge className={
-                                  txn.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                  txn.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                  'bg-amber-100 text-amber-700'
-                                }>{txn.status || 'pending'}</Badge>
-                              </TableCell>
-                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-amber-700' : bal < 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                {bal < 0 ? `(${fmt(Math.abs(bal))})` : fmt(bal)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  );
-                })()
+                <div className="overflow-x-auto">
+                  <Table className="text-sm">
+                    <TableHeader>
+                      <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide w-[140px]">Date</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide w-[160px]">Bill Reference</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide">Particulars</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide text-right w-[120px]">Credit</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide text-right w-[120px]">Debit</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide text-right w-[140px]">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...ledgerSortedAsc].reverse().map((e) => {
+                        const bal = ledgerBalanceByKey.get(e.key) ?? 0;
+                        const clickable = e.kind === 'po' && e.source;
+                        return (
+                          <TableRow key={e.key} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/60 border-b border-slate-100">
+                            <TableCell className="py-2.5 text-slate-700 whitespace-nowrap">{e.date ? new Date(e.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : '-'}</TableCell>
+                            <TableCell className="py-2.5 font-mono text-xs whitespace-nowrap">
+                              {clickable ? (
+                                <button
+                                  type="button"
+                                  className="text-blue-700 hover:text-blue-900 hover:underline focus:outline-none"
+                                  onClick={() => setViewPo(e.source)}
+                                  title="View purchase order"
+                                >
+                                  {e.ref}
+                                </button>
+                              ) : (
+                                <span className="text-slate-500">{e.ref}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2.5 text-slate-800 max-w-[320px] truncate" title={e.item}>{e.item}</TableCell>
+                            <TableCell className="py-2.5 text-right tabular-nums font-medium text-emerald-700">
+                              {e.credit > 0 ? fmt(e.credit) : <span className="text-slate-300">—</span>}
+                            </TableCell>
+                            <TableCell className="py-2.5 text-right tabular-nums font-medium text-rose-700">
+                              {e.debit > 0 ? fmt(e.debit) : <span className="text-slate-300">—</span>}
+                            </TableCell>
+                            <TableCell className={`py-2.5 text-right tabular-nums font-semibold ${bal < 0 ? 'text-emerald-700' : bal > 0 ? 'text-slate-900' : 'text-slate-500'}`}>
+                              {bal < 0 ? `(${fmt(Math.abs(bal))})` : fmt(bal)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -738,6 +806,126 @@ export default function VendorDetailPage() {
               Add Follow-up
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Purchase Order Dialog (from Ledger) */}
+      <Dialog open={!!viewPo} onOpenChange={(o) => !o && setViewPo(null)}>
+        <DialogContent className="!max-w-6xl w-[95vw] max-h-[92vh] p-0 gap-0 flex flex-col">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Purchase Order {viewPo?.po_number || viewPo?.po_no || `#${viewPo?.id}`}</DialogTitle>
+          </DialogHeader>
+          {viewPo && (() => {
+            const status = String(viewPo.status || 'pending').toLowerCase();
+            const totalAmount = Number(viewPo.total_amount) || 0;
+            const items = Array.isArray(viewPo.items) ? viewPo.items : [];
+            const statusBadgeClass = status === 'received' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+              : status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200'
+              : status === 'ordered' ? 'bg-blue-100 text-blue-700 border-blue-200'
+              : 'bg-amber-100 text-amber-700 border-amber-200';
+            const subtotal = items.reduce((s: number, it: any) => s + (Number(it.total || it.total_price) || (Number(it.unit_price || it.price) || 0) * (Number(it.quantity) || 0)), 0);
+            return (
+              <>
+                <div className="p-5 space-y-4 w-full flex-1 overflow-y-auto">
+                  <div className="flex justify-between items-start border-b pb-3">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{viewPo.po_number || viewPo.po_no || `PO-${viewPo.id}`}</h2>
+                    <p className="text-gray-500 text-sm mt-0.5">Date: {viewPo.date ? new Date(viewPo.date).toLocaleDateString() : '-'}</p>
+                  </div>
+                  <Badge className={`${statusBadgeClass} flex items-center gap-1 text-xs px-3 py-1 border`}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+                      <Building2 className="w-4 h-4" /> Vendor
+                    </h3>
+                    <p className="font-medium">{vendor?.name}</p>
+                    <p className="text-gray-600 text-sm mt-0.5">{vendor?.address || '-'}</p>
+                    {vendor?.gst_number && <p className="text-gray-500 text-xs mt-1">GSTIN: {vendor.gst_number}</p>}
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4" /> Order Info
+                    </h3>
+                    <div className="space-y-1.5 text-sm">
+                      <p className="flex justify-between"><span className="text-gray-600">PO Number:</span> <span>{viewPo.po_number || viewPo.po_no || `PO-${viewPo.id}`}</span></p>
+                      <p className="flex justify-between"><span className="text-gray-600">Expected Delivery:</span> <span>{viewPo.expected_delivery ? new Date(viewPo.expected_delivery).toLocaleDateString() : '-'}</span></p>
+                      <p className="flex justify-between font-semibold"><span>Total Amount:</span> <span className="text-blue-600">{fmt(totalAmount)}</span></p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+                      <Receipt className="w-4 h-4" /> Details
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Items:</span>
+                        <Badge variant="outline">{items.length}</Badge>
+                      </div>
+                      {viewPo.created_by && <p className="text-gray-500 text-xs">Created by: {viewPo.created_by}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {items.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table className="text-sm">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="font-semibold py-2">Item</TableHead>
+                          <TableHead className="font-semibold py-2">Qty</TableHead>
+                          <TableHead className="font-semibold py-2">Unit Price (₹)</TableHead>
+                          <TableHead className="text-right font-semibold py-2">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {items.map((it: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium py-2">{it.name || it.item_name || '-'}</TableCell>
+                            <TableCell className="py-2">{it.quantity ?? 0}</TableCell>
+                            <TableCell className="py-2">{fmt(Number(it.unit_price || it.price) || 0)}</TableCell>
+                            <TableCell className="text-right font-semibold py-2">{fmt(Number(it.total || it.total_price) || 0)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  {viewPo.notes ? (
+                    <div className="bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200 text-sm flex-1">
+                      <span className="font-semibold text-gray-700 mr-2">Notes:</span>
+                      <span className="text-gray-600">{viewPo.notes}</span>
+                    </div>
+                  ) : <div className="flex-1" />}
+                  <div className="w-full md:w-72 bg-gray-50 p-4 rounded-lg border">
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal:</span>
+                        <span>{fmt(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-lg border-t pt-2 mt-1">
+                        <span>Grand Total:</span>
+                        <span className="text-blue-600">{fmt(totalAmount)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                </div>
+
+                <DialogFooter className="px-5 py-3 border-t bg-white shrink-0">
+                  <Button variant="outline" size="sm" onClick={() => setViewPo(null)}>Close</Button>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setViewPo(null); navigate('/purchase-orders'); }}>
+                    Open in Purchase Orders
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

@@ -61,12 +61,10 @@ const DialogContent = React.forwardRef<
       )}
       {...props}
     >
-      <div className="sticky top-0 z-20 flex justify-end -mb-6 -mt-2 -mr-2">
-        <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground rounded-sm p-1 opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
-          <XIcon />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      </div>
+      <DialogPrimitive.Close className="absolute -top-4 -right-4 z-[60] flex items-center justify-center rounded-full bg-red-600 text-black h-9 w-9 shadow-lg ring-2 ring-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-400 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-5 [&_svg]:stroke-[3]">
+        <XIcon />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
       {children}
     </DialogPrimitive.Content>
   </DialogPortal>

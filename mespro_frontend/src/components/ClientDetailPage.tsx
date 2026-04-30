@@ -16,13 +16,14 @@ import { clientsService } from '../services/clients.service';
 import { getCustomerType } from '../lib/utils';
 import { getAllStates, getDistrictsForState } from '../lib/gstUtils';
 import { generatePartyReportPdf } from '../lib/partyReportPdf';
+import { useLedgerFilter, applyLedgerFilter, LedgerToolbar, exportLedgerPdf, getRangeLabel, type LedgerEntry } from './ledgerFilter';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2,
   ShoppingCart, TrendingUp, IndianRupee, AlertCircle,
   Calendar, FileText, ChevronDown, ChevronRight,
   Edit, Star, Save, X, Plus, Download,
   CreditCard, Clock, MessageSquare, Package,
-  Truck, ArrowDownRight, ArrowUpRight,
+  Truck, ArrowDownRight, ArrowUpRight, Receipt,
 } from 'lucide-react';
 
 const fmt = (val: number) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
@@ -48,6 +49,7 @@ export default function ClientDetailPage() {
   const [editForm, setEditForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [viewBill, setViewBill] = useState<any>(null);
 
   // Followup dialog
   const [followupOpen, setFollowupOpen] = useState(false);
@@ -111,6 +113,7 @@ export default function ClientDetailPage() {
   };
 
   const districts = editForm.state ? getDistrictsForState(editForm.state) : [];
+  const ledgerFilter = useLedgerFilter();
 
   if (loading) {
     return (
@@ -143,6 +146,59 @@ export default function ClientDetailPage() {
   const totalPaid = paymentsTotal + incomeTxnTotal - expenseTxnTotal;
   const totalOutstanding = outstandings.reduce((s, o) => s + (Number(o.balance) || 0), 0);
   const overdueCount = outstandings.filter(o => (o.days_overdue || 0) > 0).length;
+
+  // Build unified ledger entries from Bills (debits) and Transactions (credits = receipts, debits = refunds).
+  const ledgerEntries: LedgerEntry[] = [];
+  for (const bill of bills) {
+    const status = String(bill?.payment_status || '').toLowerCase();
+    if (status === 'cancelled') continue;
+    const amt = Number(bill.grand_total) || 0;
+    if (amt <= 0) continue;
+    const items = Array.isArray(bill.items) ? bill.items : [];
+    const itemsLabel = items.length > 0
+      ? items.map((i: any) => i.name || i.item_name || i.description).filter(Boolean).join(', ')
+      : (bill.description || 'Bill');
+    ledgerEntries.push({
+      key: `bill-${bill.id}`,
+      date: bill.date || bill.created_at || bill.createdAt || '',
+      item: itemsLabel || 'Bill',
+      ref: bill.bill_no || bill.invoice_no || `BILL-${bill.id}`,
+      debit: amt,
+      credit: 0,
+      source: bill,
+      kind: 'bill',
+    });
+  }
+  for (const t of transactions) {
+    const amt = Number(t.amount) || 0;
+    if (amt <= 0) continue;
+    const isReceipt = t.type === 'income';
+    ledgerEntries.push({
+      key: `tx-${t.id}`,
+      date: t.date || '',
+      item: t.description || t.category || (isReceipt ? 'Payment Received' : 'Refund'),
+      ref: t.reference || t.bill_no || t.bill?.bill_no || `TXN-${t.id}`,
+      debit: isReceipt ? 0 : amt,
+      credit: isReceipt ? amt : 0,
+      source: t,
+      kind: 'tx',
+    });
+  }
+  const ledgerFiltered = applyLedgerFilter(ledgerEntries, ledgerFilter.range, ledgerFilter.customFrom, ledgerFilter.customTo);
+  const ledgerSortedAsc = [...ledgerFiltered].sort((a, b) => {
+    const da = a.date ? new Date(a.date).getTime() : 0;
+    const db = b.date ? new Date(b.date).getTime() : 0;
+    if (da !== db) return da - db;
+    return a.key.localeCompare(b.key);
+  });
+  const ledgerBalanceByKey = new Map<string, number>();
+  {
+    let running = 0;
+    for (const e of ledgerSortedAsc) {
+      running += e.debit - e.credit;
+      ledgerBalanceByKey.set(e.key, running);
+    }
+  }
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3">
@@ -258,7 +314,7 @@ export default function ClientDetailPage() {
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
           <TabsTrigger value="bills" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Bills ({bills.length})</TabsTrigger>
           <TabsTrigger value="orders" className="text-xs px-3 py-1.5"><Package className="w-3.5 h-3.5 mr-1" /> Orders ({orders.length})</TabsTrigger>
-          <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Finance ({transactions.length})</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Ledger ({bills.filter((b:any)=>String(b?.payment_status||'').toLowerCase()!=='cancelled').length + transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
         </TabsList>
 
@@ -644,81 +700,93 @@ export default function ClientDetailPage() {
         <TabsContent value="transactions" className="mt-4">
           <Card>
             <CardContent className="p-0">
-              {transactions.length === 0 ? (
+              <LedgerToolbar
+                range={ledgerFilter.range}
+                setRange={ledgerFilter.setRange}
+                customFrom={ledgerFilter.customFrom}
+                setCustomFrom={ledgerFilter.setCustomFrom}
+                customTo={ledgerFilter.customTo}
+                setCustomTo={ledgerFilter.setCustomTo}
+                exportDisabled={ledgerSortedAsc.length === 0}
+                onExport={() => {
+                  const rows = [...ledgerSortedAsc].reverse().map((e) => ({
+                    ...e,
+                    balance: ledgerBalanceByKey.get(e.key) ?? 0,
+                  }));
+                  const safeName = String(client?.name || 'client').replace(/[^a-z0-9]+/gi, '_').toLowerCase();
+                  const periodLabel = getRangeLabel(ledgerFilter.range, ledgerFilter.customFrom, ledgerFilter.customTo);
+                  exportLedgerPdf(
+                    `ledger_${safeName}_${new Date().toISOString().slice(0,10)}.pdf`,
+                    {
+                      kind: 'client',
+                      name: client?.name || 'Client',
+                      code: client?.id,
+                      contact: client?.contact_person,
+                      email: client?.email,
+                      phone: client?.phone,
+                      address: client?.address,
+                      gst: client?.gst_number,
+                    },
+                    periodLabel,
+                    rows,
+                  );
+                }}
+              />
+              {ledgerSortedAsc.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No finance transactions found for this client</p>
+                  <p>No ledger entries found for the selected range</p>
                 </div>
               ) : (
-                (() => {
-                  // Running balance = remaining outstanding (what client owes us) AFTER each tx.
-                  // Income (payment received) REDUCES the balance, expense (refund/charge) INCREASES it.
-                  // Anchored so the newest tx's balance equals the top "Balance" card (totalBilled - totalPaid).
-                  const topBalance = totalBilled - totalPaid;
-                  const sortedAsc = [...transactions].sort((a, b) => {
-                    const da = a.date ? new Date(a.date).getTime() : 0;
-                    const db = b.date ? new Date(b.date).getTime() : 0;
-                    if (da !== db) return da - db;
-                    return (Number(a.id) || 0) - (Number(b.id) || 0);
-                  });
-                  const sumIncome = sortedAsc.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-                  const sumExpense = sortedAsc.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
-                  const balanceById = new Map<any, number>();
-                  let running = topBalance + sumIncome - sumExpense; // opening balance (before any tx)
-                  for (const t of sortedAsc) {
-                    const amt = Number(t.amount) || 0;
-                    running += t.type === 'income' ? -amt : amt;
-                    balanceById.set(t.id, running);
-                  }
-                  return (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Category</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
-                          <TableHead>Method</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead className="text-right">Outstanding</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {transactions.map((txn: any) => {
-                          const bal = balanceById.get(txn.id) ?? 0;
-                          return (
-                            <TableRow key={txn.id}>
-                              <TableCell>{txn.date ? new Date(txn.date).toLocaleDateString() : '-'}</TableCell>
-                              <TableCell>
-                                <span className={`inline-flex items-center gap-1 font-medium ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                  {txn.type === 'income' ? <ArrowDownRight className="w-3.5 h-3.5" /> : <ArrowUpRight className="w-3.5 h-3.5" />}
-                                  {txn.type === 'income' ? 'Income' : 'Expense'}
-                                </span>
-                              </TableCell>
-                              <TableCell><Badge variant="outline">{txn.category || '-'}</Badge></TableCell>
-                              <TableCell className="text-sm text-slate-500 max-w-[250px] truncate">{txn.description || '-'}</TableCell>
-                              <TableCell className={`text-right font-semibold ${txn.type === 'income' ? 'text-emerald-600' : 'text-red-600'}`}>
-                                {txn.type === 'income' ? '+' : '-'}{fmt(txn.amount)}
-                              </TableCell>
-                              <TableCell className="text-sm">{txn.payment_method || '-'}</TableCell>
-                              <TableCell>
-                                <Badge className={
-                                  txn.status === 'completed' ? 'bg-emerald-100 text-emerald-700' :
-                                  txn.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                                  'bg-amber-100 text-amber-700'
-                                }>{txn.status || 'pending'}</Badge>
-                              </TableCell>
-                              <TableCell className={`text-right font-semibold tabular-nums ${bal > 0 ? 'text-amber-700' : bal < 0 ? 'text-emerald-700' : 'text-slate-500'}`}>
-                                {bal < 0 ? `(${fmt(Math.abs(bal))})` : fmt(bal)}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  );
-                })()
+                <div className="overflow-x-auto">
+                  <Table className="text-sm">
+                    <TableHeader>
+                      <TableRow className="bg-slate-100 hover:bg-slate-100 border-b border-slate-200">
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide w-[140px]">Date</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide w-[160px]">Bill Reference</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide">Particulars</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide text-right w-[120px]">Credit</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide text-right w-[120px]">Debit</TableHead>
+                        <TableHead className="text-slate-700 font-semibold uppercase text-xs tracking-wide text-right w-[140px]">Balance</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {[...ledgerSortedAsc].reverse().map((e) => {
+                        const bal = ledgerBalanceByKey.get(e.key) ?? 0;
+                        const clickable = e.kind === 'bill' && e.source;
+                        return (
+                          <TableRow key={e.key} className="odd:bg-white even:bg-slate-50/60 hover:bg-blue-50/60 border-b border-slate-100">
+                            <TableCell className="py-2.5 text-slate-700 whitespace-nowrap">{e.date ? new Date(e.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }) : '-'}</TableCell>
+                            <TableCell className="py-2.5 font-mono text-xs whitespace-nowrap">
+                              {clickable ? (
+                                <button
+                                  type="button"
+                                  className="text-blue-700 hover:text-blue-900 hover:underline focus:outline-none"
+                                  onClick={() => setViewBill(e.source)}
+                                  title="View bill"
+                                >
+                                  {e.ref}
+                                </button>
+                              ) : (
+                                <span className="text-slate-500">{e.ref}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="py-2.5 text-slate-800 max-w-[320px] truncate" title={e.item}>{e.item}</TableCell>
+                            <TableCell className="py-2.5 text-right tabular-nums font-medium text-emerald-700">
+                              {e.credit > 0 ? fmt(e.credit) : <span className="text-slate-300">—</span>}
+                            </TableCell>
+                            <TableCell className="py-2.5 text-right tabular-nums font-medium text-rose-700">
+                              {e.debit > 0 ? fmt(e.debit) : <span className="text-slate-300">—</span>}
+                            </TableCell>
+                            <TableCell className={`py-2.5 text-right tabular-nums font-semibold ${bal < 0 ? 'text-emerald-700' : bal > 0 ? 'text-slate-900' : 'text-slate-500'}`}>
+                              {bal < 0 ? `(${fmt(Math.abs(bal))})` : fmt(bal)}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -825,6 +893,154 @@ export default function ClientDetailPage() {
               Add Follow-up
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Bill Dialog (from Ledger) */}
+      <Dialog open={!!viewBill} onOpenChange={(o) => !o && setViewBill(null)}>
+        <DialogContent className="!max-w-6xl w-[95vw] max-h-[92vh] p-0 gap-0 flex flex-col">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Bill {viewBill?.bill_no || viewBill?.invoice_no || `#${viewBill?.id}`}</DialogTitle>
+          </DialogHeader>
+          {viewBill && (() => {
+            const status = String(viewBill.payment_status || viewBill.status || 'pending').toLowerCase();
+            const grandTotal = Number(viewBill.grand_total) || 0;
+            const paidAmount = Number(viewBill.paid_amount) || 0;
+            const balance = grandTotal - paidAmount;
+            const subtotal = Number(viewBill.subtotal) || 0;
+            const totalDiscount = Number(viewBill.total_discount) || 0;
+            const totalTax = Number(viewBill.total_tax) || 0;
+            const items = Array.isArray(viewBill.items) ? viewBill.items : [];
+            const statusBadgeClass = status === 'paid' ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+              : status === 'partial' ? 'bg-blue-100 text-blue-700 border-blue-200'
+              : status === 'cancelled' ? 'bg-red-100 text-red-700 border-red-200'
+              : 'bg-amber-100 text-amber-700 border-amber-200';
+            const paymentType = String(viewBill.payment_type || '').toLowerCase();
+            return (
+              <>
+                <div className="p-5 space-y-4 flex-1 overflow-y-auto">
+                  {/* Header with Status */}
+                <div className="flex justify-between items-start border-b pb-3">
+                  <div>
+                    <h2 className="text-2xl font-bold text-gray-900">{viewBill.bill_no || viewBill.invoice_no}</h2>
+                    <p className="text-gray-500 text-sm mt-0.5">Date: {viewBill.date ? new Date(viewBill.date).toLocaleDateString() : '-'}</p>
+                  </div>
+                  <Badge className={`${statusBadgeClass} flex items-center gap-1 text-xs px-3 py-1 border`}>
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                  </Badge>
+                </div>
+
+                {/* Client & Payment Info */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+                      <Building2 className="w-4 h-4" /> Bill To
+                    </h3>
+                    <p className="font-medium">{viewBill.client_name || client?.name}</p>
+                    <p className="text-gray-600 text-sm mt-0.5">{viewBill.client_address || client?.address || '-'}</p>
+                    {(viewBill.client_gst || client?.gst_number) && (
+                      <p className="text-gray-500 text-xs mt-1">GSTIN: {viewBill.client_gst || client?.gst_number}</p>
+                    )}
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+                      <Calendar className="w-4 h-4" /> Payment Info
+                    </h3>
+                    <div className="space-y-1.5 text-sm">
+                      <p className="flex justify-between"><span className="text-gray-600">Bill Number:</span> <span>{viewBill.bill_no || viewBill.invoice_no}</span></p>
+                      <p className="flex justify-between"><span className="text-gray-600">Amount Paid:</span> <span className="text-emerald-600 font-medium">{fmt(paidAmount)}</span></p>
+                      <p className="flex justify-between font-semibold"><span>Balance:</span> <span className="text-red-600">{fmt(balance)}</span></p>
+                    </div>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+                      <Receipt className="w-4 h-4" /> Bill Type
+                    </h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">Type:</span>
+                        <Badge className={paymentType === 'cash' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
+                          {paymentType === 'cash' ? 'Cash' : paymentType === 'credit' ? 'Credit' : (viewBill.payment_type || '-')}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-600">GST:</span>
+                        <Badge variant="outline">Per Item</Badge>
+                      </div>
+                      {viewBill.created_by && <p className="text-gray-500 text-xs">Created by: {viewBill.created_by}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items Table */}
+                {items.length > 0 && (
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table className="text-sm">
+                      <TableHeader>
+                        <TableRow className="bg-gray-50">
+                          <TableHead className="font-semibold py-2">Item</TableHead>
+                          <TableHead className="font-semibold py-2">Qty</TableHead>
+                          <TableHead className="font-semibold py-2">Unit Price (₹)</TableHead>
+                          <TableHead className="font-semibold py-2">Discount</TableHead>
+                          <TableHead className="font-semibold py-2">Tax</TableHead>
+                          <TableHead className="text-right font-semibold py-2">Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {items.map((it: any, i: number) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium py-2">{it.name || it.item_name || it.description || '-'}</TableCell>
+                            <TableCell className="py-2">{it.quantity ?? it.qty ?? 0}</TableCell>
+                            <TableCell className="py-2">{fmt(Number(it.unit_price || it.rate || it.price) || 0)}</TableCell>
+                            <TableCell className="py-2">{(Number(it.discount) || 0)}%</TableCell>
+                            <TableCell className="py-2">{(Number(it.tax) || 0)}%</TableCell>
+                            <TableCell className="text-right font-semibold py-2">{fmt(Number(it.total || it.total_price || it.amount) || 0)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+
+                {/* Summary + Actions row */}
+                <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+                  {viewBill.notes ? (
+                    <div className="bg-yellow-50 px-4 py-2 rounded-lg border border-yellow-200 text-sm flex-1">
+                      <span className="font-semibold text-gray-700 mr-2">Notes:</span>
+                      <span className="text-gray-600">{viewBill.notes}</span>
+                    </div>
+                  ) : <div className="flex-1" />}
+                  <div className="w-full md:w-72 bg-gray-50 p-4 rounded-lg border">
+                    <div className="space-y-1.5 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Subtotal:</span>
+                        <span>{fmt(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-red-600">
+                        <span>Discount:</span>
+                        <span>-{fmt(totalDiscount)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">GST:</span>
+                        <span>{fmt(totalTax)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-lg border-t pt-2 mt-1">
+                        <span>Grand Total:</span>
+                        <span className="text-blue-600">{fmt(grandTotal)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                </div>
+                <DialogFooter className="px-5 py-3 border-t bg-white shrink-0">
+                  <Button variant="outline" size="sm" onClick={() => setViewBill(null)}>Close</Button>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => { setViewBill(null); navigate('/billing'); }}>
+                    Open in Billing
+                  </Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

@@ -432,7 +432,7 @@ export default function App() {
             </div>
 
             {/* Professional search bar */}
-            <div className="hidden md:flex flex-1 max-w-2xl">
+            <div className="hidden flex-1 max-w-2xl">
               <GlobalSearch placeholder={t('searchPlaceholder')} />
             </div>
           </div>

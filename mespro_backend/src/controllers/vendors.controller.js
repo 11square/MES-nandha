@@ -85,6 +85,51 @@ module.exports = {
           v.dataValues.total_purchases = agg.count;
           v.dataValues.total_amount = agg.total;
         });
+
+        // Compute outstanding from transactions (expense = paid to vendor reduces outstanding,
+        // income = refund from vendor increases outstanding).
+        const txWhere = applyBusinessScope(req, {});
+        const txOr = [];
+        if (vendorIds.length > 0) txOr.push({ vendor_id: { [Op.in]: vendorIds } });
+        if (vendorNames.length > 0) txOr.push({ vendor_name: { [Op.in]: vendorNames } });
+        if (txOr.length > 0) {
+          txWhere[Op.or] = txOr;
+          const txAgg = await Transaction.findAll({
+            attributes: [
+              'vendor_id',
+              'vendor_name',
+              'type',
+              [sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('amount')), 0), 'sum_amount'],
+            ],
+            where: txWhere,
+            group: ['vendor_id', 'vendor_name', 'type'],
+            raw: true,
+          });
+          const txByVendor = new Map();
+          for (const row of txAgg) {
+            let vid = row.vendor_id ? Number(row.vendor_id) : null;
+            if (!vid && row.vendor_name) {
+              const match = items.find(v => v.name === row.vendor_name);
+              if (match) vid = match.id;
+            }
+            if (!vid) continue;
+            const cur = txByVendor.get(vid) || { income: 0, expense: 0 };
+            if (row.type === 'income') cur.income += Number(row.sum_amount) || 0;
+            else cur.expense += Number(row.sum_amount) || 0;
+            txByVendor.set(vid, cur);
+          }
+          items.forEach(v => {
+            const tx = txByVendor.get(v.id) || { income: 0, expense: 0 };
+            const total = Number(v.dataValues.total_amount) || 0;
+            v.dataValues.total_paid = tx.expense;
+            v.dataValues.outstanding_amount = total + tx.income - tx.expense;
+          });
+        } else {
+          items.forEach(v => {
+            v.dataValues.total_paid = 0;
+            v.dataValues.outstanding_amount = Number(v.dataValues.total_amount) || 0;
+          });
+        }
       }
 
       return ApiResponse.paginated(res, items, pagination);

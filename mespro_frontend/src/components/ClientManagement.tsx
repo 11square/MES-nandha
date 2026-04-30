@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { translations, Language } from '../translations';
@@ -142,6 +143,8 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
       district: String(raw?.district ?? ''),
       total_orders: Number(raw?.total_orders ?? raw?.totalOrders ?? 0) || 0,
       total_value: Number(raw?.total_value ?? raw?.totalValue ?? 0) || 0,
+      total_amount: Number(raw?.total_amount ?? raw?.totalAmount ?? raw?.total_billed ?? 0) || 0,
+      outstanding_amount: Number(raw?.outstanding_amount ?? raw?.outstandingAmount ?? 0) || 0,
       status: String(raw?.status ?? 'Active'),
       last_order: String(raw?.last_order ?? raw?.lastOrder ?? raw?.created_at ?? ''),
       join_date: String(raw?.join_date ?? raw?.joinDate ?? raw?.created_at ?? ''),
@@ -640,79 +643,51 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
-      {/* Header */}
-      <div className="flex justify-between items-center flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">{t('clientManagement')}</h1>
-          <p className="text-muted-foreground text-sm">{t('manageClients')}</p>
-        </div>
-       
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('totalClients')}</span>
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-blue-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{clientsData.length}</p>
-          <p className="text-xs text-emerald-600">{activeClientsCount} {t('active')}</p>
-        </motion.div>
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalClients')}</CardTitle>
+            <Building2 className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">{clientsData.length}</div>
+            <p className="text-xs text-blue-600">{activeClientsCount} {t('active')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('totalSales')}</span>
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <IndianRupee className="w-4 h-4 text-emerald-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{formatLargeCurrency(totalSalesAmount)}</p>
-          <p className="text-xs text-emerald-600">{allClientSales.length} {t('totalOrders')}</p>
-        </motion.div>
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('totalSales')}</CardTitle>
+            <IndianRupee className="h-4 w-4 text-emerald-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{formatLargeCurrency(totalSalesAmount)}</div>
+            <p className="text-xs text-emerald-600">{allClientSales.length} {t('totalOrders')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('activeOrders')}</span>
-            <div className="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-4 h-4 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{activeOrdersCount}</p>
-          <p className="text-xs text-slate-600">{t('inProgressOrders')}</p>
-        </motion.div>
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('activeOrders')}</CardTitle>
+            <ShoppingCart className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">{activeOrdersCount}</div>
+            <p className="text-xs text-amber-600">{t('inProgressOrders')}</p>
+          </CardContent>
+        </Card>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-slate-600 font-medium">{t('followups')}</span>
-            <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center">
-              <MessageSquare className="w-4 h-4 text-violet-600" />
-            </div>
-          </div>
-          <p className="text-2xl text-slate-900 font-bold">{pendingFollowupsCount}</p>
-          <p className="text-xs text-amber-600">{t('pendingThisWeek')}</p>
-        </motion.div>
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
+            <CardTitle className="text-sm font-medium">{t('followups')}</CardTitle>
+            <MessageSquare className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{pendingFollowupsCount}</div>
+            <p className="text-xs text-purple-600">{t('pendingThisWeek')}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex items-center gap-4 justify-between flex-shrink-0">
@@ -804,75 +779,26 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03 }}
             whileHover={{ y: -1 }}
-            className="bg-white rounded-md border border-slate-200 p-3 shadow-sm hover:shadow transition-all cursor-pointer"
+            className="bg-white rounded-lg border border-slate-100 p-3 cursor-pointer hover:shadow-sm transition-all min-h-[110px] flex flex-col gap-2"
             onClick={() => navigate(`/clients/${client.id}`)}
           >
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-blue-700 rounded flex items-center justify-center text-white text-xs font-semibold">
-                  {client.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                </div>
-                <div>
-                  <h3 className="text-sm text-slate-900 font-semibold leading-tight">{client.name}</h3>
-                  <p className="text-[10px] text-slate-400">{client.id}</p>
-                </div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-8 h-8 rounded bg-slate-200 flex items-center justify-center text-slate-600 text-xs font-semibold">
+                {client.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
               </div>
-              <div className="flex items-center gap-1.5">
-                <Badge className={`text-[10px] px-1.5 py-0 h-5 ${getStatusColor(client.status)}`}>
-                  {client.status}
-                </Badge>
-                <Badge className={`text-[10px] px-1.5 py-0 h-5 ${(client as any).gst_number ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                  {getCustomerType((client as any).gst_number)}
-                </Badge>
-                <div className="flex items-center">
-                  {getStarRating(client.rating)}
-                </div>
+              <div className="flex-1">
+                <div className="text-[13px] font-medium text-slate-900 truncate">{client.name}</div>
+                <div className="text-[10px] text-slate-400">{client.contact_person}  {client.phone}</div>
               </div>
             </div>
-
-            <div className="space-y-0.5 mb-2 text-[11px] text-slate-500">
-              <div className="flex items-center gap-1.5">
-                <Phone className="w-3 h-3" />
-                <span className="truncate">{client.contact_person} • {client.phone}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Mail className="w-3 h-3" />
-                <span className="truncate">{client.email}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3 h-3" />
-                <span className="truncate">{client.address}</span>
-              </div>
+            <div className="text-[11px] text-slate-500 truncate">{client.email}</div>
+            <div className="text-[11px] text-slate-400 truncate">{client.address}</div>
+            <div className="flex items-center gap-4 mt-1 text-[11px]">
+              <span>Orders: <span className="font-semibold text-slate-700">{client.total_orders}</span></span>
+              <span>Amount: <span className="font-semibold text-slate-700">{formatLargeCurrency(Number(client.total_amount) || 0)}</span></span>
+              <span>Outstanding: <span className={`font-semibold ${Number(client.outstanding_amount) > 0 ? 'text-red-600' : 'text-slate-600'}`}>{formatLargeCurrency(Number(client.outstanding_amount) || 0)}</span></span>
             </div>
-
-            <div className="flex items-center justify-between py-2 border-t border-slate-100 text-[11px]">
-              <div>
-                <span className="text-slate-400">Orders: </span>
-                <span className="font-semibold text-slate-700">{client.total_orders}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">Value: </span>
-                <span className="font-semibold text-slate-700">{formatCurrency(client.total_value)}</span>
-              </div>
-              <div>
-                <span className="text-slate-400">Last: </span>
-                <span className="text-slate-600">{client.last_order && !isNaN(new Date(client.last_order).getTime()) ? new Date(client.last_order).toLocaleDateString() : '—'}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-1.5 mt-1.5">
-              <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] px-2" onClick={(e: React.MouseEvent) => { e.stopPropagation(); navigate(`/clients/${client.id}`); }}>
-                <Eye className="w-3 h-3 mr-1" />
-                {t('view')}
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1 h-7 text-[11px] px-2" onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleEditClient(client); }}>
-                <Edit className="w-3 h-3 mr-1" />
-                {t('edit')}
-              </Button>
-              <Button variant="outline" size="sm" className="h-7 text-[11px] px-2 text-red-600 hover:bg-red-50 hover:text-red-700 border-red-200" onClick={(e: React.MouseEvent) => { e.stopPropagation(); const cid = String(client.id); setDeletingClientId(cid); setDeleteBlocked(false); setLinkedModules({ orders: 0, bills: 0, dispatches: 0 }); setDeleteDialogOpen(true); checkClientLinks(cid); }}>
-                <Trash2 className="w-3 h-3" />
-              </Button>
-            </div>
+        
           </motion.div>
         ))}
       </div>

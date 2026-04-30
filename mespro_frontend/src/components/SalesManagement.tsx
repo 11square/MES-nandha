@@ -454,56 +454,49 @@ const SalesManagement: React.FC<SalesManagementProps> = ({ language = 'en' }) =>
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('salesManagement')}</h1>
-          <p className="text-muted-foreground">{t('manageSales')}</p>
-        </div>
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('totalSales')}</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <DollarSign className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₹{totalSales.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">{t('thisMonth')}</p>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-blue-700">₹{totalSales.toLocaleString()}</div>
+            <p className="text-xs text-blue-600">{t('thisMonth')}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="bg-amber-500/10 backdrop-blur-sm border-amber-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('pendingOrders')}</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="h-4 w-4 text-amber-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{pendingSales}</div>
-            <p className="text-xs text-muted-foreground">{t('awaitingPayment')}</p>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-amber-700">{pendingSales}</div>
+            <p className="text-xs text-amber-600">{t('awaitingPayment')}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="bg-purple-500/10 backdrop-blur-sm border-purple-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('approved')}</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            <CheckCircle className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{confirmedSales}</div>
-            <p className="text-xs text-muted-foreground">{t('inProgressOrders')}</p>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-purple-700">{confirmedSales}</div>
+            <p className="text-xs text-purple-600">{t('inProgressOrders')}</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <Card className="bg-emerald-500/10 backdrop-blur-sm border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 pt-3 px-4">
             <CardTitle className="text-sm font-medium">{t('delivered')}</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+            <ShoppingCart className="h-4 w-4 text-emerald-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{deliveredSales}</div>
-            <p className="text-xs text-muted-foreground">{t('completedOrders')}</p>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="text-2xl font-bold text-emerald-700">{deliveredSales}</div>
+            <p className="text-xs text-emerald-600">{t('completedOrders')}</p>
           </CardContent>
         </Card>
       </div>

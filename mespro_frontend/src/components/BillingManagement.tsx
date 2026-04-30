@@ -2998,35 +2998,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   return (
     <div className="px-6 pt-2 pb-4 flex flex-col gap-3 overflow-hidden" style={{ height: 'calc(100dvh - 72px)' }}>
-      <div className="flex justify-between items-center flex-shrink-0">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">{t('billing')}</h1>
-          <p className="text-muted-foreground text-sm">{t('createInvoicesAndManagePayments')}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
-            <SelectTrigger className="w-44">
-              <Calendar className="w-4 h-4 mr-2" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
-              <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
-              <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
-              <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
-              <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
-            </SelectContent>
-          </Select>
-          {dateFilter === 'custom' && (
-            <div className="flex items-center gap-2">
-              <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
-              <span className="text-gray-400 text-sm">to</span>
-              <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
-            </div>
-          )}
-        </div>
-      </div>
-
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 flex-shrink-0">
         <Card className="bg-blue-500/10 backdrop-blur-sm border-blue-200">
@@ -3133,6 +3104,26 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <option value="b2b">{t('b2b')}</option>
                   <option value="b2c">{t('b2c')}</option>
                 </select>
+                <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+                  <SelectTrigger className="w-44">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+                    <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+                    <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+                    <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+                    <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateFilter === 'custom' && (
+                  <div className="flex items-center gap-2">
+                    <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
+                    <span className="text-gray-400 text-sm">to</span>
+                    <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
+                  </div>
+                )}
                 <Button variant="outline" onClick={() => exportBillsCSV(dateFilteredBills.filter(b => (b.bill_no || '').startsWith('INV') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('export')}
@@ -3304,6 +3295,26 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <option value="b2b">{t('b2b')}</option>
                   <option value="b2c">{t('b2c')}</option>
                 </select>
+                <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
+                  <SelectTrigger className="w-44">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t('allTime') || 'All Time'}</SelectItem>
+                    <SelectItem value="today">{t('today') || 'Today'}</SelectItem>
+                    <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
+                    <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
+                    <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {dateFilter === 'custom' && (
+                  <div className="flex items-center gap-2">
+                    <Input type="date" className="w-36 h-9 text-sm" value={customDateFrom} onChange={(e) => setCustomDateFrom(e.target.value)} />
+                    <span className="text-gray-400 text-sm">to</span>
+                    <Input type="date" className="w-36 h-9 text-sm" value={customDateTo} onChange={(e) => setCustomDateTo(e.target.value)} />
+                  </div>
+                )}
                 <Button variant="outline" onClick={() => exportBillsCSV(dateFilteredBills.filter(b => (b.bill_no || '').startsWith('QTN') && ((b.bill_no || '').toLowerCase().includes(searchTerm.toLowerCase()) || (b.client_name || '').toLowerCase().includes(searchTerm.toLowerCase()))))}>
                   <Download className="mr-2 h-4 w-4" />
                   {t('export')}

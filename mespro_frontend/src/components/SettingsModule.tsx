@@ -225,11 +225,7 @@ const SettingsModule: React.FC<SettingsModuleProps> = ({ language = 'en' }) => {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">{t('settings')}</h1>
-          <p className="text-muted-foreground">{t('configureApplicationSettings')}</p>
-        </div>
+      <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button variant="outline" onClick={handleExportSettings}>
             <Download className="mr-2 h-4 w-4" />
