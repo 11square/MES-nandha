@@ -3286,15 +3286,6 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <Filter className="mr-2 h-4 w-4" />
                   {t('filter')}
                 </Button>
-                <select
-                  value={filterCustomerType}
-                  onChange={(e) => setFilterCustomerType(e.target.value)}
-                  className="text-sm border rounded-md px-3 py-2 bg-white outline-none cursor-pointer"
-                >
-                  <option value="all">{t('allCustomerTypes')}</option>
-                  <option value="b2b">{t('b2b')}</option>
-                  <option value="b2c">{t('b2c')}</option>
-                </select>
                 <Select value={dateFilter} onValueChange={(v: any) => setDateFilter(v)}>
                   <SelectTrigger className="w-44">
                     <Calendar className="w-4 h-4 mr-2" />
@@ -3328,9 +3319,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     <TableHead>{t('invoiceNo')}</TableHead>
                     <TableHead>{t('date')}</TableHead>
                     <TableHead>{t('client')}</TableHead>
-                    <TableHead>{t('gstNo')}</TableHead>
+                    <TableHead>{t('reference')}</TableHead>
                     <TableHead>{t('amount')}</TableHead>
-                    <TableHead>B2B/B2C</TableHead>
                     <TableHead>{t('type')}</TableHead>
                     <TableHead>{t('status')}</TableHead>
                     <TableHead className="text-right">{t('actions')}</TableHead>
@@ -3343,7 +3333,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     (bill.bill_no || '').startsWith('QTN')
                   ).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                         {t('noQuotationBillsFound')}
                       </TableCell>
                     </TableRow>
@@ -3365,13 +3355,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             <div className="text-xs text-gray-500">{getBillClientAddress(bill)}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">{bill.client_gst || '—'}</TableCell>
+                        <TableCell className="font-mono text-xs">{bill.reference || '—'}</TableCell>
                         <TableCell className="font-semibold">₹{bill.grand_total.toLocaleString()}</TableCell>
-                        <TableCell>
-                          <Badge className={`text-[10px] px-1.5 py-0.5 ${bill.client_gst ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                            {getCustomerType(bill.client_gst)}
-                          </Badge>
-                        </TableCell>
                         <TableCell>
                           <Badge className={bill.payment_type === 'cash' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
                             {bill.payment_type === 'cash' ? (t('cash')) : (t('credit'))}

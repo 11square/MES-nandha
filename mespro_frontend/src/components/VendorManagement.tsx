@@ -98,7 +98,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
       contact_person: { required: true, min: 2, label: 'Contact Person' },
       email: { email: true },
       phone: { required: true, phone: true },
-      category: { required: true, label: 'Category' },
+      category: { label: 'Category' },
       gst_number: { label: 'GST Number' },
       address: { required: true, label: 'Address' },
     });
@@ -346,7 +346,7 @@ const VendorManagement: React.FC<VendorManagementProps> = ({ language = 'en' }) 
                             />
                           </div>
                           <div className="space-y-2">
-                            <Label htmlFor="vendor-category">{t('category')} *</Label>
+                            <Label htmlFor="vendor-category">{t('category')}</Label>
                             <Input
                               id="vendor-category"
                               value={vendorForm.category}
