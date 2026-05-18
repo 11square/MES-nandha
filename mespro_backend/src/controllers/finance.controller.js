@@ -125,10 +125,10 @@ module.exports = {
           };
         });
 
-      // 3. Bills / Invoices → income entries (exclude drafts)
+      // 3. Bills / Invoices → income entries (exclude drafts and credit bills until paid)
       const billRows = await Bill.findAll({ where, order: [['created_at', 'DESC']] });
       const bills = billRows
-        .filter(b => b.status !== 'draft')
+        .filter(b => b.status !== 'draft' && b.payment_type !== 'credit' && b.payment_status === 'paid')
         .map(b => {
           const d = b.toJSON();
           const statusMap = { 'paid': 'completed', 'partial': 'partial', 'pending': 'pending', 'overdue': 'pending' };
@@ -155,8 +155,8 @@ module.exports = {
           };
         });
 
-      // 4. Purchase Orders → expense entries
-      const poRows = await PurchaseOrder.findAll({ where, order: [['created_at', 'DESC']] });
+      // 4. Purchase Orders → expense entries (only auto-post when a real payment exists — skip synthesis here)
+      const poRows = [];
       const pos = poRows
         .filter(p => parseFloat(p.total_amount) > 0)
         .map(p => {

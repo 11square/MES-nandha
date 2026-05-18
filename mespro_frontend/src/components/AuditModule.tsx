@@ -169,9 +169,10 @@ export default function AuditModule({}: AuditModuleProps) {
         });
       });
 
-      // --- Aggregate purchased quantities & values from PO items ---
+      // --- Aggregate purchased quantities & values from PO items (invoice POs only) ---
       const purchasedByItem: Record<string, { qty: number; value: number }> = {};
       rawPOs.forEach((po: any) => {
+        if (po.is_gst === false) return;
         const poItems = Array.isArray(po.items) ? po.items : [];
         poItems.forEach((pi: any) => {
           const name = (pi.name || '').trim().toLowerCase();
@@ -378,7 +379,7 @@ export default function AuditModule({}: AuditModuleProps) {
           className="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl p-6 text-white shadow-lg"
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-blue-100 font-medium">{t('inputGstPurchases')}</span>
+            <span className="text-sm text-blue-100 font-medium">GSTR1</span>
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
               <ArrowDownRight className="w-5 h-5" />
             </div>
@@ -395,7 +396,7 @@ export default function AuditModule({}: AuditModuleProps) {
           className="bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-6 text-white shadow-lg"
         >
           <div className="flex items-center justify-between mb-3">
-            <span className="text-sm text-emerald-100 font-medium">{t('outputGstSales')}</span>
+            <span className="text-sm text-emerald-100 font-medium">GSTR2</span>
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
               <ArrowUpRight className="w-5 h-5" />
             </div>
@@ -413,7 +414,7 @@ export default function AuditModule({}: AuditModuleProps) {
         >
           <div className="flex items-center justify-between mb-3">
             <span className={`text-sm font-medium ${gstPayable > 0 ? 'text-red-100' : 'text-violet-100'}`}>
-              {gstPayable > 0 ? (t('gstPayable')) : (t('gstCredit'))}
+              GSTR3B
             </span>
             <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
               <Calculator className="w-5 h-5" />
