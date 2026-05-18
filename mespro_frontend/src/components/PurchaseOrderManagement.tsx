@@ -450,8 +450,6 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
                       <TableHead>PO ID</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Vendor</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Quantity</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Expected Delivery</TableHead>
                       <TableHead>Status</TableHead>
@@ -469,8 +467,6 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
                             <div className="text-xs text-gray-500">{po.vendor_contact}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{Array.isArray(po.items) ? po.items.map((item: any) => item.name).join(', ') : po.items}</TableCell>
-                        <TableCell>{Array.isArray(po.items) ? po.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0) : (po.quantity || 0)}</TableCell>
                         <TableCell className="font-semibold">₹{(po.total_amount ?? 0).toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -527,8 +523,6 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
                       <TableHead>PO ID</TableHead>
                       <TableHead>Date</TableHead>
                       <TableHead>Vendor</TableHead>
-                      <TableHead>Items</TableHead>
-                      <TableHead>Quantity</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Expected Delivery</TableHead>
                       <TableHead>Status</TableHead>
@@ -546,8 +540,6 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
                             <div className="text-xs text-gray-500">{po.vendor_contact}</div>
                           </div>
                         </TableCell>
-                        <TableCell>{Array.isArray(po.items) ? po.items.map((item: any) => item.name).join(', ') : po.items}</TableCell>
-                        <TableCell>{Array.isArray(po.items) ? po.items.reduce((sum: number, item: any) => sum + (Number(item.quantity) || 0), 0) : (po.quantity || 0)}</TableCell>
                         <TableCell className="font-semibold">₹{(po.total_amount ?? 0).toLocaleString()}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -1790,7 +1782,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       created_by: selectedStaffMember?.name || formData.created_by,
       addedItems: addedItems,
       vendor_gst: gstNumber || '',
-      is_gst: !!gstNumber,
+      is_gst: po.is_gst,
     });
   };
 
