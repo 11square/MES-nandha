@@ -408,9 +408,9 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
   const handleAddClient = async () => {
     const validationErrors = validateFields(newClientForm, {
       name: { required: true, min: 2 },
-      contact_person: { required: true, label: 'Contact Person' },
+      contact_person: { label: 'Contact Person' },
       phone: { required: true, phone: true },
-      email: { required: true, email: true },
+      email: { email: true },
       address: { required: true },
     });
     if (Object.keys(validationErrors).length) { setErrors(validationErrors); return; }
@@ -893,10 +893,11 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
         if (!open) resetNewClientForm();
         setErrors({});
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
+        <DialogContent className="w-screen h-screen max-w-none sm:max-w-none sm:rounded-none p-0 flex flex-col">
+          <DialogHeader className="px-6 py-4 border-b">
             <DialogTitle>{t('addNewClient')}</DialogTitle>
           </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6">
           <div className="space-y-4 py-2">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -909,7 +910,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
                 <FieldError message={errors.name} />
               </div>
               <div className="space-y-2">
-                <Label>{t('contactPerson')} *</Label>
+                <Label>{t('contactPerson')}</Label>
                 <Input 
                   value={newClientForm.contact_person}
                   onChange={(e) => { setNewClientForm({...newClientForm, contact_person: e.target.value}); setErrors(prev => ({...prev, contact_person: ''})); }}
@@ -939,7 +940,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>{t('email')} *</Label>
+                <Label>{t('email')}</Label>
                 <Input 
                   type="email"
                   value={newClientForm.email}
@@ -1061,7 +1062,8 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
               <p className="text-xs text-gray-500">{t('openingOutstandingHint') || 'Outstanding amount before using this software'}</p>
             </div>
           </div>
-          <DialogFooter>
+          </div>
+          <DialogFooter className="px-6 py-4 border-t">
             <Button variant="outline" onClick={() => {
               setAddDialogOpen(false);
               resetNewClientForm();
@@ -1071,7 +1073,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
             <Button 
               onClick={handleAddClient} 
               className="bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={!newClientForm.name || !newClientForm.contact_person || !newClientForm.phone || !newClientForm.email || !newClientForm.address}
+              disabled={!newClientForm.name || !newClientForm.phone || !newClientForm.address}
             >
               {t('addClient')}
             </Button>
