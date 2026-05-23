@@ -139,10 +139,12 @@ export default function VendorDetailPage() {
   const liveOutstanding = totalAmount - totalPaid;
 
   // Build unified ledger entries from POs (debits) and transactions (credits = payments to vendor, debits = refunds from vendor).
+  // Only quotation-bill POs flow into the ledger; invoice POs are document-only and are excluded to avoid double counting.
   const ledgerEntries: LedgerEntry[] = [];
   for (const po of purchaseOrders) {
     const status = String(po?.status || '').toLowerCase();
     if (status === 'cancelled') continue;
+    if (po?.is_gst) continue;
     const amt = Number(po.total_amount) || 0;
     if (amt <= 0) continue;
     const itemsLabel = Array.isArray(po.items) && po.items.length
@@ -294,7 +296,7 @@ export default function VendorDetailPage() {
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
           <TabsTrigger value="purchases" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Purchase Orders ({purchaseOrders.length})</TabsTrigger>
           <TabsTrigger value="outstanding" className="text-xs px-3 py-1.5"><CreditCard className="w-3.5 h-3.5 mr-1" /> Outstanding ({outstandingPOs.length})</TabsTrigger>
-          <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Ledger ({purchaseOrders.filter((p:any)=>String(p?.status||'').toLowerCase()!=='cancelled').length + transactions.length})</TabsTrigger>
+          <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Ledger ({purchaseOrders.filter((p:any)=>String(p?.status||'').toLowerCase()!=='cancelled' && !p?.is_gst).length + transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
         </TabsList>
 

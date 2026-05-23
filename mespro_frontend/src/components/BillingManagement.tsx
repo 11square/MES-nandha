@@ -721,7 +721,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       }
 
       const unitPrice = row.price > 0 ? row.price : stock.unitPrice;
-      const itemGstRate = row.gstRate ?? stock.gstRate ?? 18;
+      const isQuotationMode = activeTab === 'non-gst-bills' || (billForm.bill_number || '').startsWith('QTN');
+      const itemGstRate = isQuotationMode ? 0 : (row.gstRate ?? stock.gstRate ?? 18);
       const subtotal = unitPrice * row.quantity;
       const discountAmount = (subtotal * row.discount) / 100;
       const taxableAmount = subtotal - discountAmount;
@@ -785,11 +786,13 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   const saveEditItem = () => {
     if (editingItemIndex === null || !editingItem) return;
-    
+
+    const isQuotationMode = activeTab === 'non-gst-bills' || (billForm.bill_number || '').startsWith('QTN');
+    const effectiveTax = isQuotationMode ? 0 : editingItem.tax;
     const subtotal = editingItem.unit_price * editingItem.quantity;
     const discountAmount = (subtotal * editingItem.discount) / 100;
     const taxableAmount = subtotal - discountAmount;
-    const taxAmount = (taxableAmount * editingItem.tax) / 100;
+    const taxAmount = (taxableAmount * effectiveTax) / 100;
     const total = taxableAmount + taxAmount;
 
     setBillForm(prev => {
@@ -800,7 +803,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           quantity: editingItem.quantity,
           unit_price: editingItem.unit_price,
           discount: editingItem.discount,
-          tax: editingItem.tax,
+          tax: effectiveTax,
           total: Math.round(total),
         };
       }

@@ -99,9 +99,10 @@ type POItem = {
   gstRate: number;
 };
 
-const calculatePOItemTotal = (quantity: number, unitPrice: number, gstRate: number) => {
+const calculatePOItemTotal = (quantity: number, unitPrice: number, gstRate: number, isGst: boolean = true) => {
   const subtotal = quantity * unitPrice;
   const taxable = subtotal;
+  if (!isGst) return taxable;
   const taxAmount = (taxable * gstRate) / 100;
   return taxable + taxAmount;
 };
@@ -869,7 +870,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       productName: row.itemName,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
-      total: calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate),
+      total: calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate, isInvoice),
       unit: row.unit || 'Pcs',
       hsnSac: row.hsnSac || '',
       gstRate: row.gstRate ?? 18,
@@ -1380,7 +1381,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                     </td>
                     <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
                       {(row.itemId || row.itemName.trim()) && row.quantity > 0
-                        ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate).toLocaleString()}`
+                        ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate, isInvoice).toLocaleString()}`
                         : '-'}
                     </td>
                     <td className="py-1 flex gap-0.5 justify-center">
@@ -1625,7 +1626,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
         productName: item.name,
         quantity: Number(item.quantity) || 1,
         unitPrice: Number(item.rate) || 0,
-        total: calculatePOItemTotal(Number(item.quantity) || 1, Number(item.rate) || 0, Number(item.gst_rate ?? item.gstRate ?? 18)),
+        total: calculatePOItemTotal(Number(item.quantity) || 1, Number(item.rate) || 0, Number(item.gst_rate ?? item.gstRate ?? 18), !!po.is_gst),
         unit: item.unit || 'pcs',
         hsnSac: item.hsn_sac || item.hsnSac || '',
         gstRate: Number(item.gst_rate ?? item.gstRate ?? 18),
@@ -1736,7 +1737,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       productName: row.itemName,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
-      total: calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate),
+      total: calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate, !!po.is_gst),
       unit: row.unit || 'Pcs',
       hsnSac: row.hsnSac || '',
       gstRate: row.gstRate ?? 18,

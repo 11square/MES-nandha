@@ -893,7 +893,7 @@ export default function ClientManagement({ language = 'en' }: ClientManagementPr
         if (!open) resetNewClientForm();
         setErrors({});
       }}>
-        <DialogContent className="w-screen h-screen max-w-none sm:max-w-none sm:rounded-none p-0 flex flex-col">
+        <DialogContent className="w-[95vw] max-w-3xl max-h-[90vh] p-0 flex flex-col">
           <DialogHeader className="px-6 py-4 border-b">
             <DialogTitle>{t('addNewClient')}</DialogTitle>
           </DialogHeader>
