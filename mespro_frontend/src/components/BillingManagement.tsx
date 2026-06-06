@@ -1179,6 +1179,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       const taxableTotal = taxablePrice * item.quantity;
       const gstAmt = taxableTotal * ((item.tax || 0) / 100);
       const finalRate = taxablePrice * (1 + (item.tax || 0) / 100);
+      const lineAmount = taxableTotal + gstAmt;
       totalQty += item.quantity;
       if (isQuotation) {
         return `
@@ -1191,7 +1192,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <td class="tc">${item.quantity}</td>
           <td class="tc">${item.unit || 'Pcs'}</td>
           <td class="tr">${fmtCur(item.unit_price)}</td>
-          <td class="tr bold">${fmtCur(item.total)}</td>
+          <td class="tr bold">${fmtCur(lineAmount)}</td>
         </tr>`;
       }
       return `
@@ -1208,7 +1209,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           <td class="tr">${fmtCur(taxablePrice)}</td>
           <td class="tr">${fmtCur(gstAmt)}</td>
           <td class="tr">${fmtCur(finalRate)}</td>
-          <td class="tr bold">${fmtCur(item.total)}</td>
+          <td class="tr bold">${fmtCur(lineAmount)}</td>
         </tr>`;
     }).join('');
 
@@ -1871,7 +1872,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     setBillForm({
       date: bill.date,
       client_id: bill.client_id,
-      items: [...bill.items],
+      items: bill.items.map(it => {
+        const taxable = (it.unit_price * it.quantity) * (1 - (it.discount || 0) / 100);
+        return { ...it, total: Math.round(taxable * (1 + (it.tax || 0) / 100) * 100) / 100 };
+      }),
       bill_number: bill.bill_no,
       notes: bill.notes || '',
       created_by: bill.created_by,
@@ -2605,7 +2609,8 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         const itemDiscAmt = (itemSub * item.discount) / 100;
                         const itemTaxable = (item.unit_price * item.quantity - (item.unit_price * item.quantity * item.discount / 100)) / item.quantity;
                         const itemGstAmt = (itemSub - itemDiscAmt) * item.tax / 100;
-                        const finalRate = (item.total / item.quantity);
+                        const itemAmount = itemSub - itemDiscAmt + itemGstAmt;
+                        const finalRate = (itemAmount / item.quantity);
                         return (
                           <tr key={index} className="border-b border-gray-100 hover:bg-gray-50/50">
                             <td className="py-1.5 px-2 text-gray-500">{index + 1}</td>
@@ -2625,7 +2630,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             {!isQuotation && <td className="py-1.5 px-2 text-right text-gray-600">₹{itemTaxable.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>}
                             {!isQuotation && <td className="py-1.5 px-2 text-center text-gray-600">{item.tax}%</td>}
                             {!isQuotation && <td className="py-1.5 px-2 text-right font-medium">₹{finalRate.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>}
-                            <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                            <td className="py-1.5 px-2 text-right font-bold">₹{itemAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                             <td className="py-1.5 px-2">
                               {editingItemIndex === index ? (
                                 <div className="flex gap-0.5 justify-center">
