@@ -741,7 +741,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         unit_price: unitPrice,
         discount: row.discount,
         tax: itemGstRate,
-        total: Math.round(total),
+        total: Math.round(total * 100) / 100,
       });
     }
 
@@ -804,7 +804,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
           unit_price: editingItem.unit_price,
           discount: editingItem.discount,
           tax: effectiveTax,
-          total: Math.round(total),
+          total: Math.round(total * 100) / 100,
         };
       }
       return { ...prev, items: updatedItems };
@@ -1038,10 +1038,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         client_address: client.address || '',
         client_gst: billForm.gst_number || client.gstNo || '',
         items: billForm.items,
-        subtotal: Math.round(totals.subtotal),
-        total_discount: Math.round(totals.totalDiscount),
-        total_tax: Math.round(totals.totalTax),
-        grand_total: Math.round(totals.grandTotal),
+        subtotal: Math.round(totals.subtotal * 100) / 100,
+        total_discount: Math.round(totals.totalDiscount * 100) / 100,
+        total_tax: Math.round(totals.totalTax * 100) / 100,
+        grand_total: Math.round(totals.grandTotal * 100) / 100,
         status: isDraft ? 'draft' : 'final',
         payment_status: 'pending',
         payment_type: billForm.payment_type,
@@ -1934,10 +1934,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         client_address: client.address || '',
         client_gst: billForm.gst_number || client.gstNo || '',
         items: billForm.items,
-        subtotal: Math.round(totals.subtotal),
-        total_discount: Math.round(totals.totalDiscount),
-        total_tax: Math.round(totals.totalTax),
-        grand_total: Math.round(totals.grandTotal),
+        subtotal: Math.round(totals.subtotal * 100) / 100,
+        total_discount: Math.round(totals.totalDiscount * 100) / 100,
+        total_tax: Math.round(totals.totalTax * 100) / 100,
+        grand_total: Math.round(totals.grandTotal * 100) / 100,
         payment_type: billForm.payment_type,
         notes: billForm.notes,
         gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
@@ -2550,7 +2550,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                             </select>
                           </td>
                           <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
-                            {row.itemId ? `₹${Math.round(rowTotal).toLocaleString()}` : '-'}
+                            {row.itemId ? `₹${rowTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                           </td>
                           <td className="py-1">
                             <div className="flex gap-0.5">
@@ -2696,9 +2696,9 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         <td className="py-2 px-2"></td>
                         <td className="py-2 px-2"></td>
                         {!isQuotation && <td className="py-2 px-2"></td>}
-                        {!isQuotation && <td className="py-2 px-2 text-right">₹{Math.round(totals.totalTax).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>}
+                        {!isQuotation && <td className="py-2 px-2 text-right">₹{totals.totalTax.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>}
                         {!isQuotation && <td className="py-2 px-2"></td>}
-                        <td className="py-2 px-2 text-right text-blue-700">₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td className="py-2 px-2 text-right text-blue-700">₹{totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td></td>
                       </tr>
                     </tbody>
@@ -2722,12 +2722,12 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                   <div className="space-y-1.5 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Sub Total</span>
-                      <span>₹{Math.round(totals.subtotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span>₹{totals.subtotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     {totals.totalDiscount > 0 && (
                       <div className="flex justify-between text-red-600">
                         <span>Discount</span>
-                        <span>-₹{Math.round(totals.totalDiscount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span>-₹{totals.totalDiscount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     {!isQuotation && (
@@ -2758,22 +2758,22 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                     {totals.totalAddons > 0 && (
                       <div className="flex justify-between text-blue-600">
                         <span>Addons</span>
-                        <span>+₹{Math.round(totals.totalAddons).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                        <span>+₹{totals.totalAddons.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </div>
                     )}
                     <div className="flex justify-between font-bold text-base border-t-2 border-gray-800 pt-2 mt-2">
                       <span>Grand Total</span>
-                      <span className="text-blue-700">₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span className="text-blue-700">₹{totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between text-gray-500">
                       <span>Balance</span>
-                      <span>₹{Math.round(totals.grandTotal).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+                      <span>₹{totals.grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                   {/* Amount in Words */}
                   <div className="mt-3 pt-2 border-t border-gray-200">
                     <p className="text-[10px] text-gray-500 uppercase font-semibold">{isQuotation ? 'Amount in Words' : 'Invoice Amount in Words'}</p>
-                    <p className="text-xs text-gray-700 font-medium italic">{amountToWords(Math.round(totals.grandTotal))}</p>
+                    <p className="text-xs text-gray-700 font-medium italic">{amountToWords(Math.round(totals.grandTotal * 100) / 100)}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -2881,7 +2881,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                         <p className="text-lg font-bold text-amber-800">
                           ₹{(() => {
                             const qty = billForm.items.reduce((s, i) => s + i.quantity, 0);
-                            return qty > 0 ? Math.round(totals.subtotal / qty).toLocaleString('en-IN') : '0';
+                            return qty > 0 ? (totals.subtotal / qty).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0';
                           })()}
                         </p>
                       </div>
