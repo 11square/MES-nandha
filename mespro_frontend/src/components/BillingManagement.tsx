@@ -2459,7 +2459,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       const rowSubtotal = rowPrice * row.quantity;
                       const rowDiscAmt = (rowSubtotal * row.discount) / 100;
                       const rowTaxable = rowSubtotal - rowDiscAmt;
-                      const rowItemGst = row.gstRate ?? 18;
+                      const rowItemGst = isQuotation ? 0 : (row.gstRate ?? 18);
                       const rowTax = (rowTaxable * rowItemGst) / 100;
                       const rowTotal = rowTaxable + rowTax;
                       return (

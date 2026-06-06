@@ -1248,7 +1248,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                   <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">{t('quantity')} *</th>
                   <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[9%]">UNIT</th>
                   <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[11%]">PRICE/UNIT</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">GST %</th>
+                  {isInvoice && <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">GST %</th>}
                   <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">AMOUNT</th>
                   <th className="w-[10%]"></th>
                 </tr>
@@ -1368,6 +1368,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                         className="h-7 text-xs text-right"
                       />
                     </td>
+                    {isInvoice && (
                     <td className="py-1 pr-2">
                       <select
                         value={row.gstRate}
@@ -1379,6 +1380,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                         ))}
                       </select>
                     </td>
+                    )}
                     <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
                       {(row.itemId || row.itemName.trim()) && row.quantity > 0
                         ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate, isInvoice).toLocaleString()}`
@@ -1426,7 +1428,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-12">Unit</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
-                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>
+                    {isInvoice && <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>}
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
                     <th className="w-10"></th>
                   </tr>
@@ -1440,7 +1442,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                       <td className="py-1.5 px-2 text-center">{item.quantity}</td>
                       <td className="py-1.5 px-2 text-center">{item.unit || 'Pcs'}</td>
                       <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-1.5 px-2 text-center">{item.gstRate ?? 18}%</td>
+                      {isInvoice && <td className="py-1.5 px-2 text-center">{item.gstRate ?? 18}%</td>}
                       <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       <td className="py-1.5 px-2">
                         <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
@@ -1452,7 +1454,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                   {/* Totals Row */}
                   <tr className="bg-gray-50 font-bold border-t-2 border-gray-300">
                     <td colSpan={3} className="py-2 px-2">Total Qty: {addedItems.reduce((s, i) => s + i.quantity, 0)}</td>
-                    <td colSpan={4} className="py-2 px-2"></td>
+                    <td colSpan={isInvoice ? 4 : 3} className="py-2 px-2"></td>
                     <td className="py-2 px-2 text-right text-blue-700">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td className="py-2 px-2"></td>
                   </tr>
@@ -1544,6 +1546,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
 
   const [gstNumber, setGstNumber] = useState((po as any).vendor_gst || (po as any).gst_number || '');
   const [gstError, setGstError] = useState('');
+  const isInvoice = !!po.is_gst;
 
   const validateGstNumber = (value: string): string => {
     if (!value) return '';
@@ -1959,7 +1962,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                   <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">{t('quantity')} *</th>
                   <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[9%]">UNIT</th>
                   <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[11%]">PRICE/UNIT</th>
-                  <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">GST %</th>
+                  {isInvoice && <th className="text-center text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[8%]">GST %</th>}
                   <th className="text-right text-[10px] font-semibold text-gray-500 uppercase py-1 pr-2 w-[10%]">AMOUNT</th>
                   <th className="w-[10%]"></th>
                 </tr>
@@ -2025,13 +2028,15 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                     <td className="py-1 pr-2">
                       <Input type="number" min="0" step="0.01" placeholder="Auto" value={row.unitPrice || ''} onChange={(e) => updateItemRow(row.id, 'unitPrice', parseFloat(e.target.value) || 0)} onFocus={(e) => e.target.select()} onKeyDown={(e) => { blockInvalidNumberKeys(e); if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); addNewItemRow(); } if (e.key === 'Enter') { e.preventDefault(); addNewItemRow(); } }} className="h-7 text-xs text-right" />
                     </td>
+                    {isInvoice && (
                     <td className="py-1 pr-2">
                       <select value={row.gstRate} onChange={(e) => updateItemRow(row.id, 'gstRate', Number(e.target.value))} className="h-7 w-full text-xs border border-gray-200 rounded-md px-1 bg-white text-center">
                         {GST_RATE_OPTIONS.map(rate => <option key={rate} value={rate}>{rate}%</option>)}
                       </select>
                     </td>
+                    )}
                     <td className="py-1 pr-2 text-right text-xs font-medium text-gray-700">
-                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate).toLocaleString()}` : '-'}
+                      {(row.itemId || row.itemName.trim()) && row.quantity > 0 ? `₹${calculatePOItemTotal(row.quantity, row.unitPrice, row.gstRate, isInvoice).toLocaleString()}` : '-'}
                     </td>
                     <td className="py-1 flex gap-0.5 justify-center">
                       <Button type="button" size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => removeItemRow(row.id)} title="Remove row"><Minus className="h-3 w-3 text-red-500" /></Button>
@@ -2063,7 +2068,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Qty</th>
                     <th className="text-center py-2 px-2 font-semibold text-gray-600 w-14">Unit</th>
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Unit Price</th>
-                    <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>
+                    {isInvoice && <th className="text-center py-2 px-2 font-semibold text-gray-600 w-16">GST %</th>}
                     <th className="text-right py-2 px-2 font-semibold text-gray-600 w-24">Amount</th>
                     <th className="w-10"></th>
                   </tr>
@@ -2077,7 +2082,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                       <td className="py-1.5 px-2 text-center">{item.quantity}</td>
                       <td className="py-1.5 px-2 text-center">{item.unit}</td>
                       <td className="py-1.5 px-2 text-right">₹{item.unitPrice.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                      <td className="py-1.5 px-2 text-center">{item.gstRate ?? 18}%</td>
+                      {isInvoice && <td className="py-1.5 px-2 text-center">{item.gstRate ?? 18}%</td>}
                       <td className="py-1.5 px-2 text-right font-bold">₹{item.total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                       <td className="py-1.5 px-2 text-center">
                         <Button type="button" size="sm" variant="ghost" className="h-5 w-5 p-0" onClick={() => removeItem(item.id)}>
@@ -2089,7 +2094,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
                 </tbody>
                 <tfoot className="bg-blue-50">
                   <tr>
-                    <td colSpan={7} className="py-2 px-2 text-right text-xs font-bold text-blue-900">{t('total')}:</td>
+                    <td colSpan={isInvoice ? 7 : 6} className="py-2 px-2 text-right text-xs font-bold text-blue-900">{t('total')}:</td>
                     <td className="py-2 px-2 text-right text-sm font-bold text-blue-900">₹{getTotalAmount().toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                     <td></td>
                   </tr>
