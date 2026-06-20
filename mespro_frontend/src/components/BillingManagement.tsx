@@ -2201,7 +2201,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
         <form ref={billFormRef} onSubmit={handleBillSubmit} noValidate>
           {/* Invoice Details + Client - Compact Two-Column Layout */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-start">
             {/* Left: Invoice Details */}
             <Card className="shadow-sm">
               <CardHeader className="py-3 px-4">
@@ -2715,7 +2715,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
           {/* Summary + Tax Breakdown - Side by Side */}
           {(billForm.items.length > 0 || addons.length > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-start">
               {/* Amount Summary */}
               <Card className="shadow-sm">
                 <CardHeader className="py-3 px-4">

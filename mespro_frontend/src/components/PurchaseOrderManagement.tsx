@@ -178,7 +178,7 @@ const PurchaseOrderManagement: React.FC<PurchaseOrderManagementProps> = ({ langu
       const { gstNumber, addedItems, ...poPayload } = newPO as any;
       await purchaseOrdersService.createPurchaseOrder({
         ...poPayload,
-        total_amount: poPayload.quantity * poPayload.unit_price,
+        total_amount: Number(poPayload.total_amount) || (poPayload.quantity * poPayload.unit_price),
         vendor_gst: poPayload.vendor_gst || gstNumber || '',
         is_gst: poPayload.is_gst ?? !!gstNumber,
       });
@@ -1015,7 +1015,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       status: isDraft ? 'draft' : 'received',
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
-      unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,
+      unit_price: addedItems.length > 0 ? Math.round((totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) * 100) / 100 : 0,
       total_amount: totalAmount,
       created_by: selectedStaffMember?.name || formData.created_by,
       addedItems: addedItems,
@@ -1033,7 +1033,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
       {/* PO Details + Vendor Info - Compact Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-start">
         {/* Left: PO Details */}
         <Card className="shadow-sm">
           <CardHeader className="py-3 px-4">
@@ -1781,7 +1781,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       expected_delivery: formData.expected_delivery || formData.date || null,
       items: itemsArray,
       quantity: addedItems.reduce((sum, item) => sum + item.quantity, 0),
-      unit_price: addedItems.length > 0 ? Math.round(totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) : 0,
+      unit_price: addedItems.length > 0 ? Math.round((totalAmount / addedItems.reduce((sum, item) => sum + item.quantity, 0)) * 100) / 100 : 0,
       total_amount: totalAmount,
       created_by: selectedStaffMember?.name || formData.created_by,
       addedItems: addedItems,
@@ -1793,7 +1793,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
   return (
     <form ref={formRef} onSubmit={handleSubmit} noValidate>
       {/* PO Details + Vendor Info - Compact Two-Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-start">
         {/* Left: PO Details */}
         <Card className="shadow-sm">
           <CardHeader className="py-3 px-4">
@@ -1926,7 +1926,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       </div>
 
       {/* Vendor Address + Notes */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4 items-start">
         <Card className="shadow-sm">
           <CardContent className="p-4">
             <Label className="text-xs text-gray-500">{t('vendorAddress')}</Label>
