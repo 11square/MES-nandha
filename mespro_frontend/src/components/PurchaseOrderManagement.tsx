@@ -999,6 +999,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     const totalAmount = getTotalAmount();
     const itemsArray = addedItems.map((item, index) => ({
       id: index + 1,
+      product_id: item.product,
       name: item.productName,
       quantity: item.quantity,
       unit: item.unit || 'pcs',
@@ -1089,33 +1090,20 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
               <div>
                 <Label className="text-xs text-gray-500">{t('vendor')} *</Label>
                 <div className="relative">
-                  <div
-                    tabIndex={0}
+                  <Input
+                    type="text"
                     role="combobox"
                     aria-expanded={showVendorDropdown}
-                    className="w-full h-8 px-2 border border-gray-300 rounded-md cursor-pointer flex items-center justify-between bg-white text-xs"
-                    onClick={() => setShowVendorDropdown(!showVendorDropdown)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVendorDropdown(!showVendorDropdown); } }}
-                  >
-                    <span className={selectedVendor ? 'text-gray-900' : 'text-gray-500'}>
-                      {selectedVendor ? selectedVendor.name : (t('selectVendor'))}
-                    </span>
-                    <ChevronsUpDown className="w-3 h-3 text-gray-400" />
-                  </div>
+                    placeholder={t('selectVendor')}
+                    value={showVendorDropdown ? vendorSearchQuery : (selectedVendor ? selectedVendor.name : vendorSearchQuery)}
+                    onChange={(e) => { setVendorSearchQuery(e.target.value); setShowVendorDropdown(true); }}
+                    onFocus={() => { setShowVendorDropdown(true); setVendorSearchQuery(''); }}
+                    onBlur={() => setTimeout(() => setShowVendorDropdown(false), 200)}
+                    className="w-full h-8 text-xs pr-7"
+                  />
+                  <ChevronsUpDown className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                   {showVendorDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-hidden">
-                      <div className="p-2 border-b">
-                        <div className="relative">
-                          <Search className="w-3 h-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                          <Input
-                            placeholder={t('searchVendor')}
-                            value={vendorSearchQuery}
-                            onChange={(e) => setVendorSearchQuery(e.target.value)}
-                            className="pl-7 h-7 text-xs"
-                            onClick={(e) => e.stopPropagation()}
-                          />
-                        </div>
-                      </div>
                       <div className="max-h-56 overflow-y-auto">
                         {filteredVendors.length === 0 ? (
                           <div className="p-2 text-xs text-gray-500 text-center">
@@ -1126,7 +1114,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
                             <div
                               key={vendor.id}
                               className={`px-3 py-1.5 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`}
-                              onClick={() => handleVendorSelect(vendor)}
+                              onMouseDown={(e) => { e.preventDefault(); handleVendorSelect(vendor); }}
                             >
                               <div>
                                 <div className="text-sm font-medium text-gray-900">{vendor.name}</div>
@@ -1767,6 +1755,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     const totalAmount = getTotalAmount();
     const itemsArray = addedItems.map((item, index) => ({
       id: index + 1,
+      product_id: item.product,
       name: item.productName,
       quantity: item.quantity,
       unit: item.unit || 'pcs',
@@ -1865,29 +1854,26 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
               <div>
                 <Label className="text-xs text-gray-500">{t('vendor')} *</Label>
                 <div className="relative">
-                  <div
-                    tabIndex={0} role="combobox" aria-expanded={showVendorDropdown}
-                    className="w-full h-8 px-2 border border-gray-300 rounded-md cursor-pointer flex items-center justify-between bg-white text-xs"
-                    onClick={() => setShowVendorDropdown(!showVendorDropdown)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setShowVendorDropdown(!showVendorDropdown); } }}
-                  >
-                    <span className={selectedVendor ? 'text-gray-900' : 'text-gray-500'}>{selectedVendor ? selectedVendor.name : (t('selectVendor'))}</span>
-                    <ChevronsUpDown className="w-3 h-3 text-gray-400" />
-                  </div>
+                  <Input
+                    type="text"
+                    role="combobox"
+                    aria-expanded={showVendorDropdown}
+                    placeholder={t('selectVendor')}
+                    value={showVendorDropdown ? vendorSearchQuery : (selectedVendor ? selectedVendor.name : vendorSearchQuery)}
+                    onChange={(e) => { setVendorSearchQuery(e.target.value); setShowVendorDropdown(true); }}
+                    onFocus={() => { setShowVendorDropdown(true); setVendorSearchQuery(''); }}
+                    onBlur={() => setTimeout(() => setShowVendorDropdown(false), 200)}
+                    className="w-full h-8 text-xs pr-7"
+                  />
+                  <ChevronsUpDown className="w-3 h-3 text-gray-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                   {showVendorDropdown && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-72 overflow-hidden">
-                      <div className="p-2 border-b">
-                        <div className="relative">
-                          <Search className="w-3 h-3 absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                          <Input placeholder={t('searchVendor')} value={vendorSearchQuery} onChange={(e) => setVendorSearchQuery(e.target.value)} className="pl-7 h-7 text-xs" onClick={(e) => e.stopPropagation()} />
-                        </div>
-                      </div>
                       <div className="max-h-56 overflow-y-auto">
                         {filteredVendors.length === 0 ? (
                           <div className="p-2 text-xs text-gray-500 text-center">{t('noVendorFound')}</div>
                         ) : (
                           filteredVendors.map(vendor => (
-                            <div key={vendor.id} className={`px-3 py-1.5 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`} onClick={() => handleVendorSelect(vendor)}>
+                            <div key={vendor.id} className={`px-3 py-1.5 cursor-pointer hover:bg-blue-50 flex items-center justify-between ${selectedVendorId === vendor.id ? 'bg-blue-50' : ''}`} onMouseDown={(e) => { e.preventDefault(); handleVendorSelect(vendor); }}>
                               <div>
                                 <div className="text-sm font-medium text-gray-900">{vendor.name}</div>
                                 <div className="text-[10px] text-gray-500">{vendor.contactPerson} • {vendor.category}</div>

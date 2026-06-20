@@ -147,6 +147,11 @@ export default function ClientDetailPage() {
   const totalOutstanding = outstandings.reduce((s, o) => s + (Number(o.balance) || 0), 0);
   const overdueCount = outstandings.filter(o => (o.days_overdue || 0) > 0).length;
 
+  // Split bills into invoices vs quotations (quotation bills are numbered QTN…).
+  const isQuotationBill = (b: any) => String(b?.bill_no || b?.invoice_no || '').toUpperCase().startsWith('QTN');
+  const quotationBills = bills.filter(isQuotationBill);
+  const invoiceBills = bills.filter((b: any) => !isQuotationBill(b));
+
   // Build unified ledger entries from Bills (debits) and Transactions (credits = receipts, debits = refunds).
   // Only quotation bills flow into the ledger; tax invoices are document-only and are excluded to avoid double counting.
   const ledgerEntries: LedgerEntry[] = [];
@@ -315,7 +320,8 @@ export default function ClientDetailPage() {
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1 w-full justify-start bg-slate-100 p-1 rounded-lg">
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
-          <TabsTrigger value="bills" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Bills ({bills.length})</TabsTrigger>
+          <TabsTrigger value="bills" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Bills ({invoiceBills.length})</TabsTrigger>
+          <TabsTrigger value="quotations" className="text-xs px-3 py-1.5"><Receipt className="w-3.5 h-3.5 mr-1" /> Quotations ({quotationBills.length})</TabsTrigger>
           <TabsTrigger value="orders" className="text-xs px-3 py-1.5"><Package className="w-3.5 h-3.5 mr-1" /> Orders ({orders.length})</TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Ledger ({bills.filter((b:any)=>String(b?.payment_status||'').toLowerCase()!=='cancelled' && String(b?.bill_no||b?.invoice_no||'').toUpperCase().startsWith('QTN')).length + transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
@@ -459,7 +465,7 @@ export default function ClientDetailPage() {
         <TabsContent value="bills" className="mt-4">
           <Card>
             <CardContent className="p-0">
-              {bills.length === 0 ? (
+              {invoiceBills.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No bills found for this client</p>
@@ -480,7 +486,7 @@ export default function ClientDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {bills.map((bill, idx) => {
+                    {invoiceBills.map((bill, idx) => {
                       const rk = `bill-${bill.id || idx}`;
                       const exp = expandedRows.has(rk);
                       const items = Array.isArray(bill.items) ? bill.items : [];
@@ -516,6 +522,88 @@ export default function ClientDetailPage() {
                         ...(exp && items.length > 0 ? [
                           <TableRow key={`${rk}-d`} className="bg-slate-50/80">
                             <TableCell colSpan={9}>
+                              <div className="rounded-md border bg-white overflow-hidden">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-slate-50">
+                                    <tr className="border-b">
+                                      <th className="text-left px-3 py-2 font-medium text-slate-700">Item</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Qty</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Unit Price</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Disc %</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {items.map((it: any, i: number) => (
+                                      <tr key={i} className="border-b last:border-b-0">
+                                        <td className="px-3 py-2">{it.name || '-'}</td>
+                                        <td className="px-3 py-2 text-right">{it.quantity || 0}</td>
+                                        <td className="px-3 py-2 text-right">{fmt(it.unit_price)}</td>
+                                        <td className="px-3 py-2 text-right">{it.discount || 0}%</td>
+                                        <td className="px-3 py-2 text-right font-medium">{fmt(it.total)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ] : []),
+                      ];
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== QUOTATIONS TAB ===== */}
+        <TabsContent value="quotations" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              {quotationBills.length === 0 ? (
+                <div className="p-12 text-center text-slate-400">
+                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No quotations found for this client</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Quotation No</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                      <TableHead className="text-right">GST</TableHead>
+                      <TableHead className="text-right">Grand Total</TableHead>
+                      <TableHead className="text-right">Details</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quotationBills.map((bill, idx) => {
+                      const rk = `qtn-${bill.id || idx}`;
+                      const exp = expandedRows.has(rk);
+                      const items = Array.isArray(bill.items) ? bill.items : [];
+                      return [
+                        <TableRow key={`${rk}-m`}>
+                          <TableCell className="font-mono font-medium text-blue-600">{bill.bill_no || bill.invoice_no}</TableCell>
+                          <TableCell>{bill.date ? new Date(bill.date).toLocaleDateString() : '-'}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{items.length > 0 ? items.map((i: any) => i.name).join(', ') : '-'}</TableCell>
+                          <TableCell className="text-right">{fmt(bill.subtotal)}</TableCell>
+                          <TableCell className="text-right">{fmt(bill.total_tax)}</TableCell>
+                          <TableCell className="text-right font-semibold">{fmt(bill.grand_total)}</TableCell>
+                          <TableCell className="text-right">
+                            {items.length > 0 && (
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-blue-600" onClick={() => toggleRow(rk)}>
+                                {exp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>,
+                        ...(exp && items.length > 0 ? [
+                          <TableRow key={`${rk}-d`} className="bg-slate-50/80">
+                            <TableCell colSpan={7}>
                               <div className="rounded-md border bg-white overflow-hidden">
                                 <table className="w-full text-sm">
                                   <thead className="bg-slate-50">

@@ -14,6 +14,8 @@ router.put('/transactions/:id', financeController.update);
 router.delete('/transactions/:id', financeController.delete);
 router.get('/receipts', financeController.getReceipts);
 router.post('/receipts', financeController.createReceipt);
+router.put('/receipts/:id', financeController.updateReceipt);
+router.delete('/receipts/:id', financeController.deleteReceipt);
 router.get('/summary', financeController.getSummary);
 
 module.exports = router;

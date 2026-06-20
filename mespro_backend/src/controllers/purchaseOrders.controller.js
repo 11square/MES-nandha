@@ -11,6 +11,20 @@ const baseController = createCrudController(PurchaseOrder, {
   defaultOrder: [['date', 'DESC']],
 });
 
+// Resolve the stock item a PO line refers to so the same product is never duplicated.
+// Prefers the selected stock product id; falls back to a trimmed name match (MySQL match is case-insensitive).
+async function findStockForPoItem(item, businessId, t) {
+  const rawId = item.product_id ?? item.product;
+  const numericId = (rawId !== undefined && rawId !== null && /^\d+$/.test(String(rawId))) ? Number(rawId) : null;
+  if (numericId) {
+    const byId = await StockItem.findOne({ where: { id: numericId, business_id: businessId }, transaction: t });
+    if (byId) return byId;
+  }
+  const itemName = (item.name || '').trim();
+  if (!itemName) return null;
+  return StockItem.findOne({ where: { name: itemName, business_id: businessId }, transaction: t });
+}
+
 module.exports = {
   ...baseController,
 
@@ -100,18 +114,16 @@ module.exports = {
           const itemName = (item.name || '').trim();
           if (!itemName) continue;
 
-          // Check if stock item with same name already exists
-          const existing = await StockItem.findOne({
-            where: { name: itemName, business_id: req.currentBusiness },
-            transaction: t,
-          });
+          // Match the same product by id first, then name, so it is never duplicated in stock.
+          const existing = await findStockForPoItem(item, req.currentBusiness, t);
 
           if (existing) {
-            // Update existing stock: increase current_stock and update prices
+            // Update existing stock: increase current_stock, set latest buying price, keep selling price as-is.
             const newStock = Number(existing.current_stock || 0) + Number(item.quantity || 0);
             const updateData = { current_stock: newStock, last_restocked: new Date() };
-            if (item.rate) updateData.buying_price = item.rate;
+            if (item.rate !== undefined && item.rate !== null && item.rate !== '') updateData.buying_price = item.rate;
             if (poData.vendor_name) updateData.supplier = poData.vendor_name;
+            // selling_price is intentionally left unchanged — it is managed manually.
             // Update status based on new stock level
             if (newStock <= 0) updateData.status = 'Out of Stock';
             else if (newStock <= Number(existing.reorder_level || 10)) updateData.status = 'Low Stock';
@@ -199,15 +211,13 @@ module.exports = {
             const itemName = (item.name || '').trim();
             if (!itemName) continue;
 
-            const existing = await StockItem.findOne({
-              where: { name: itemName, business_id: req.currentBusiness },
-              transaction: t,
-            });
+            const existing = await findStockForPoItem(item, req.currentBusiness, t);
 
             if (existing) {
               const updateData = { last_restocked: new Date() };
-              if (item.rate) updateData.buying_price = item.rate;
+              if (item.rate !== undefined && item.rate !== null && item.rate !== '') updateData.buying_price = item.rate;
               if (poData.vendor_name) updateData.supplier = poData.vendor_name;
+              // selling_price is intentionally left unchanged — it is managed manually.
               await existing.update(updateData, { transaction: t });
             } else {
               const sku = `PO-${record.id}-${Date.now()}-${Math.random().toString(36).substr(2, 4).toUpperCase()}`;

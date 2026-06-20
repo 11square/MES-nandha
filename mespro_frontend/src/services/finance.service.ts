@@ -38,6 +38,14 @@ class FinanceService {
     return apiService.post<any>('/finance/receipts', receipt);
   }
 
+  async updateReceipt(id: string, receipt: any): Promise<any> {
+    return apiService.put<any>(`/finance/receipts/${id}`, receipt);
+  }
+
+  async deleteReceipt(id: string): Promise<void> {
+    return apiService.delete<void>(`/finance/receipts/${id}`);
+  }
+
   async getSummary(): Promise<any> {
     return apiService.get<any>('/finance/summary');
   }

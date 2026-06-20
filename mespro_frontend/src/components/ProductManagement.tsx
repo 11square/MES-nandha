@@ -11,6 +11,7 @@ import { useI18n } from '../contexts/I18nContext';
 import { useSharedState } from '../contexts/SharedStateContext';
 import { ConfirmDialog } from './ui/confirm-dialog';
 import { productsService } from '../services/products.service';
+import { stockService } from '../services/stock.service';
 
 interface Category { id: string; name: string; subcategories: string[]; dbId?: number; subDbIds?: Record<string, number>; }
 
@@ -46,6 +47,28 @@ export default function ProductManagement({ productCategories = [], onCategories
   const [subFilter, setSubFilter] = useState<'all' | 'with-items' | 'empty'>('all');
 
   useEffect(() => { if (productCategories.length > 0) setCategories(productCategories); }, [productCategories]);
+
+  // Products shown here are the actual stock items the user adds (via the Stock
+  // module's "Add Product"), which live in the stock table — not the legacy
+  // /products table. Fetch them so they appear under their category/subcategory.
+  const [stockItems, setStockItems] = useState<any[]>([]);
+  useEffect(() => {
+    stockService.getStockItems()
+      .then(data => {
+        const arr = Array.isArray(data) ? data : ((data as any)?.items || (data as any)?.rows || []);
+        setStockItems(arr);
+      })
+      .catch(() => { /* keep empty on failure */ });
+  }, []);
+
+  // Prefer fetched stock items; fall back to any products passed in via props.
+  const productList = stockItems.length ? stockItems : sharedProducts;
+  // Case/space-insensitive comparison so products are matched reliably even when
+  // their stored category/subcategory differ slightly in casing or whitespace.
+  const norm = (s: any) => String(s ?? '').trim().toLowerCase();
+  // Sentinel sub used to surface products that belong to a category but whose
+  // subcategory doesn't match any defined one (so they're never hidden).
+  const UNCATEGORIZED = '__uncategorized__';
 
   const updateLocal = (cats: Category[]) => { setCategories(cats); onCategoriesChange?.(cats); };
 
@@ -127,7 +150,7 @@ export default function ProductManagement({ productCategories = [], onCategories
               </div>
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold leading-tight truncate">{selectedCat.name}</h1>
-                <p className="text-muted-foreground text-sm">{selectedCat.subcategories.length} subcategories</p>
+                <p className="text-muted-foreground text-sm">{selectedCat.subcategories.length} subcategories · {productList.filter(p => norm(p.category) === norm(selectedCat.name)).length} items</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -145,14 +168,14 @@ export default function ProductManagement({ productCategories = [], onCategories
                 <div className="flex items-center gap-2 min-w-0">
                   <Button variant="ghost" size="sm" className="h-8" onClick={() => { setSelectedSub(null); setItemSearch(''); }}>← Back</Button>
                   <div className="w-8 h-8 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0"><Tag className="w-4 h-4 text-violet-600" /></div>
-                  <div className="min-w-0"><h2 className="font-semibold text-base truncate">{selectedSub}</h2><p className="text-[11px] text-slate-500">Items in this subcategory</p></div>
+                  <div className="min-w-0"><h2 className="font-semibold text-base truncate">{selectedSub === UNCATEGORIZED ? 'Uncategorized' : selectedSub}</h2><p className="text-[11px] text-slate-500">Items in this subcategory</p></div>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="relative w-64 max-w-full">
                     <Search className="w-4 h-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                     <Input value={itemSearch} onChange={e => setItemSearch(e.target.value)} placeholder="Search items..." className="h-9 pl-8" />
                   </div>
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name, subcategory: selectedSub } })}><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name, subcategory: selectedSub === UNCATEGORIZED ? '' : selectedSub } })}><Plus className="w-4 h-4 mr-1" /> Add Product</Button>
                 </div>
               </div>
               <div className="bg-white rounded-lg border border-gray-200 shadow-sm flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -171,15 +194,21 @@ export default function ProductManagement({ productCategories = [], onCategories
                     <tbody>
                       {(() => {
                         const q = itemSearch.trim().toLowerCase();
-                        const items = sharedProducts.filter(p => p.category === selectedCat.name && p.subcategory === selectedSub && (!q || p.name.toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q) || (p.hsn_code || '').toLowerCase().includes(q)));
+                        const definedSubs = selectedCat.subcategories;
+                        const inThisSub = (p: any) => {
+                          if (norm(p.category) !== norm(selectedCat.name)) return false;
+                          if (selectedSub === UNCATEGORIZED) return !definedSubs.some(s => norm(s) === norm(p.subcategory));
+                          return norm(p.subcategory) === norm(selectedSub);
+                        };
+                        const items = productList.filter(p => inThisSub(p) && (!q || (p.name || '').toLowerCase().includes(q) || (p.sku || '').toLowerCase().includes(q) || (p.hsn_sac || p.hsn_code || '').toLowerCase().includes(q)));
                         if (items.length === 0) return (<tr><td colSpan={6} className="px-4 py-12 text-center"><Package className="w-10 h-10 text-gray-300 mx-auto mb-2" /><p className="text-sm text-gray-500">{itemSearch ? 'No items match your search' : 'No items in this subcategory yet'}</p></td></tr>);
                         return items.map((p, i) => (
                           <tr key={p.id} className="border-b border-gray-100 hover:bg-gray-50">
                             <td className="px-4 py-2.5 text-gray-500">{i + 1}</td>
                             <td className="px-4 py-2.5 font-mono text-xs text-gray-700">{p.sku || '—'}</td>
                             <td className="px-4 py-2.5 font-medium text-gray-900">{p.name}</td>
-                            <td className="px-4 py-2.5 text-gray-600">{p.hsn_code || '—'}</td>
-                            <td className="px-4 py-2.5 text-right text-gray-700">{p.stock ?? 0} {p.unit || ''}</td>
+                            <td className="px-4 py-2.5 text-gray-600">{p.hsn_sac || p.hsn_code || '—'}</td>
+                            <td className="px-4 py-2.5 text-right text-gray-700">{p.current_stock ?? p.stock ?? 0} {p.unit || ''}</td>
                             <td className="px-4 py-2.5 text-right font-medium text-gray-900">₹{(p.selling_price ?? p.unit_price ?? 0).toLocaleString()}</td>
                           </tr>
                         ));
@@ -211,9 +240,13 @@ export default function ProductManagement({ productCategories = [], onCategories
               </div>
               {(() => {
                 const q = subSearch.trim().toLowerCase();
-                const subsWithCounts = selectedCat.subcategories.map(sub => ({ sub, count: sharedProducts.filter(p => p.category === selectedCat.name && p.subcategory === sub).length }));
-                const filtered = subsWithCounts.filter(({ sub, count }) => {
-                  if (q && !sub.toLowerCase().includes(q)) return false;
+                const definedSubs = selectedCat.subcategories;
+                const subsWithCounts = definedSubs.map(sub => ({ sub, label: sub, count: productList.filter(p => norm(p.category) === norm(selectedCat.name) && norm(p.subcategory) === norm(sub)).length }));
+                // Surface products attached to this category but with no matching subcategory.
+                const uncategorizedCount = productList.filter(p => norm(p.category) === norm(selectedCat.name) && !definedSubs.some(s => norm(s) === norm(p.subcategory))).length;
+                if (uncategorizedCount > 0) subsWithCounts.push({ sub: UNCATEGORIZED, label: 'Uncategorized', count: uncategorizedCount });
+                const filtered = subsWithCounts.filter(({ label, count }) => {
+                  if (q && !label.toLowerCase().includes(q)) return false;
                   if (subFilter === 'with-items' && count === 0) return false;
                   if (subFilter === 'empty' && count > 0) return false;
                   return true;
@@ -225,11 +258,11 @@ export default function ProductManagement({ productCategories = [], onCategories
                   return (
                     <div className="flex-1 min-h-0 overflow-auto pr-1">
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 auto-rows-max">
-                        {filtered.map(({ sub, count }) => (
+                        {filtered.map(({ sub, label, count }) => (
                           <button key={sub} type="button" onClick={() => { setSelectedSub(sub); setItemSearch(''); }} className="group text-left bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-violet-300 hover:-translate-y-0.5 transition-all flex items-center gap-3 px-4 py-4">
-                            <div className="w-11 h-11 bg-violet-100 group-hover:bg-violet-200 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"><Tag className="w-5 h-5 text-violet-600" /></div>
+                            <div className={`w-11 h-11 ${sub === UNCATEGORIZED ? 'bg-amber-100 group-hover:bg-amber-200' : 'bg-violet-100 group-hover:bg-violet-200'} rounded-xl flex items-center justify-center flex-shrink-0 transition-colors`}><Tag className={`w-5 h-5 ${sub === UNCATEGORIZED ? 'text-amber-600' : 'text-violet-600'}`} /></div>
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-semibold text-sm text-slate-900 truncate">{sub}</h3>
+                              <h3 className="font-semibold text-sm text-slate-900 truncate">{label}</h3>
                               <p className="text-xs text-slate-500">{count} {count === 1 ? 'item' : 'items'}</p>
                             </div>
                             <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
@@ -252,16 +285,22 @@ export default function ProductManagement({ productCategories = [], onCategories
                           </tr>
                         </thead>
                         <tbody>
-                          {filtered.map(({ sub, count }, i) => (
+                          {filtered.map(({ sub, label, count }, i) => (
                             <tr key={sub} onClick={() => { setSelectedSub(sub); setItemSearch(''); }} className="border-b border-gray-100 hover:bg-blue-50/50 cursor-pointer group">
                               <td className="px-4 py-2.5 text-gray-500">{i + 1}</td>
-                              <td className="px-4 py-2.5"><div className="flex items-center gap-2"><div className="w-7 h-7 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0"><Tag className="w-3.5 h-3.5 text-violet-600" /></div><span className="font-medium text-gray-900">{sub}</span></div></td>
+                              <td className="px-4 py-2.5"><div className="flex items-center gap-2"><div className={`w-7 h-7 ${sub === UNCATEGORIZED ? 'bg-amber-100' : 'bg-violet-100'} rounded-lg flex items-center justify-center flex-shrink-0`}><Tag className={`w-3.5 h-3.5 ${sub === UNCATEGORIZED ? 'text-amber-600' : 'text-violet-600'}`} /></div><span className="font-medium text-gray-900">{label}</span></div></td>
                               <td className="px-4 py-2.5 text-right"><span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 text-xs font-medium"><Package className="w-3 h-3" />{count}</span></td>
                               <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-0.5">
-                                  <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-600 hover:bg-blue-50" title="Add Product" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name, subcategory: sub } })}><Plus className="w-3.5 h-3.5 mr-1" />Add Product</Button>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50" title="Rename" onClick={() => setEditingSub({ parentId: selectedCat.id, oldName: sub, newName: sub, dbId: (selectedCat as any).subDbIds?.[sub] })}><Edit className="w-3.5 h-3.5" /></Button>
-                                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" title="Delete" onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: selectedCat.id, dbId: (selectedCat as any).subDbIds?.[sub] })}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                  {sub === UNCATEGORIZED ? (
+                                    <span className="text-xs text-amber-600 italic mr-1">Assign a subcategory while editing</span>
+                                  ) : (
+                                    <>
+                                      <Button variant="ghost" size="sm" className="h-7 px-2 text-blue-600 hover:bg-blue-50" title="Add Product" onClick={() => navigate('/stock', { state: { addProduct: true, category: selectedCat.name, subcategory: sub } })}><Plus className="w-3.5 h-3.5 mr-1" />Add Product</Button>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-blue-600 hover:bg-blue-50" title="Rename" onClick={() => setEditingSub({ parentId: selectedCat.id, oldName: sub, newName: sub, dbId: (selectedCat as any).subDbIds?.[sub] })}><Edit className="w-3.5 h-3.5" /></Button>
+                                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-red-500 hover:bg-red-50" title="Delete" onClick={() => setDeleteConfirm({ open: true, type: 'subcategory', id: sub, parentId: selectedCat.id, dbId: (selectedCat as any).subDbIds?.[sub] })}><Trash2 className="w-3.5 h-3.5" /></Button>
+                                    </>
+                                  )}
                                   <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-blue-500 ml-1" />
                                 </div>
                               </td>
@@ -353,7 +392,7 @@ export default function ProductManagement({ productCategories = [], onCategories
                     </thead>
                     <tbody>
                       {filtered.map((cat, i) => {
-                        const itemCount = sharedProducts.filter(p => p.category === cat.name).length;
+                        const itemCount = productList.filter(p => norm(p.category) === norm(cat.name)).length;
                         return (
                           <tr key={cat.id} onClick={() => { setSelectedCatId(cat.id); setSelectedSub(null); setSubSearch(''); }} className="border-b border-gray-100 hover:bg-blue-50/50 cursor-pointer group">
                             <td className="px-4 py-2.5 text-gray-500">{i + 1}</td>
@@ -379,7 +418,9 @@ export default function ProductManagement({ productCategories = [], onCategories
           return (
             <div className="flex-1 min-h-0 overflow-auto pr-1">
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 auto-rows-max">
-                {filtered.map(cat => (
+                {filtered.map(cat => {
+                  const itemCount = productList.filter(p => norm(p.category) === norm(cat.name)).length;
+                  return (
                   <button
                     key={cat.id}
                     type="button"
@@ -391,11 +432,12 @@ export default function ProductManagement({ productCategories = [], onCategories
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-semibold text-base text-slate-900 truncate">{cat.name}</h3>
-                      <p className="text-xs text-slate-500">{cat.subcategories.length} {cat.subcategories.length === 1 ? 'subcategory' : 'subcategories'}</p>
+                      <p className="text-xs text-slate-500">{cat.subcategories.length} {cat.subcategories.length === 1 ? 'subcategory' : 'subcategories'} · {itemCount} {itemCount === 1 ? 'item' : 'items'}</p>
                     </div>
                     <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-0.5 transition-all flex-shrink-0" />
                   </button>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );

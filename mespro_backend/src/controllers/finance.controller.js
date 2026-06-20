@@ -475,6 +475,31 @@ module.exports = {
       next(error);
     }
   },
+  // PUT /finance/receipts/:id
+  updateReceipt: async (req, res, next) => {
+    try {
+      const where = applyBusinessScope(req, { id: req.params.id });
+      const receipt = await Payment.findOne({ where });
+      if (!receipt) return ApiResponse.notFound(res, 'Receipt not found');
+      const { id, business_id, ...updates } = req.body;
+      await receipt.update(updates);
+      return ApiResponse.success(res, receipt);
+    } catch (error) {
+      next(error);
+    }
+  },
+  // DELETE /finance/receipts/:id
+  deleteReceipt: async (req, res, next) => {
+    try {
+      const where = applyBusinessScope(req, { id: req.params.id });
+      const receipt = await Payment.findOne({ where });
+      if (!receipt) return ApiResponse.notFound(res, 'Receipt not found');
+      await receipt.destroy();
+      return ApiResponse.success(res, { id: req.params.id }, 'Receipt deleted');
+    } catch (error) {
+      next(error);
+    }
+  },
   // GET /finance/summary
   getSummary: async (req, res, next) => {
     try {

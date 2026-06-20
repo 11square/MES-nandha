@@ -9,7 +9,8 @@ import { useI18n } from '../contexts/I18nContext';
 import { billingService } from '../services/billing.service';
 import { purchaseOrdersService } from '../services/purchaseOrders.service';
 import { stockService } from '../services/stock.service';
-import { 
+import { generateAuditReportPdf } from '../lib/auditReportPdf';
+import {
   Search, 
   FileText,
   TrendingUp,
@@ -109,7 +110,9 @@ export default function AuditModule({}: AuditModuleProps) {
       const rawPOs = posResult.status === 'fulfilled'
         ? (Array.isArray(posResult.value) ? posResult.value : (posResult.value as any)?.items || (posResult.value as any)?.data || [])
         : [];
-      const mappedPOs = rawPOs.map((po: any) => {
+      // Input tax reflects PO invoices only — quotation POs (is_gst === false) are excluded.
+      const invoicePOs = rawPOs.filter((po: any) => po.is_gst !== false);
+      const mappedPOs = invoicePOs.map((po: any) => {
         const totalAmount = parseFloat(po.total_amount) || 0;
         const isGst = po.is_gst !== false;
         const gstRate = isGst ? 0.18 : 0;
@@ -134,7 +137,9 @@ export default function AuditModule({}: AuditModuleProps) {
       const rawBills = billsResult.status === 'fulfilled'
         ? (Array.isArray(billsResult.value) ? billsResult.value : (billsResult.value as any)?.items || (billsResult.value as any)?.data || [])
         : [];
-      const mappedBills = rawBills.map((bill: any) => {
+      // Output tax reflects billing invoices only — quotation bills (numbered QTN…) are excluded.
+      const invoiceBills = rawBills.filter((bill: any) => !String(bill.bill_no || bill.invoice_no || '').toUpperCase().startsWith('QTN'));
+      const mappedBills = invoiceBills.map((bill: any) => {
         const subtotal = parseFloat(bill.subtotal) || 0;
         const totalTax = parseFloat(bill.total_tax) || 0;
         const grandTotal = parseFloat(bill.grand_total) || (subtotal + totalTax);
@@ -156,7 +161,7 @@ export default function AuditModule({}: AuditModuleProps) {
 
       // --- Aggregate sold quantities & values from bill items ---
       const soldByItem: Record<string, { qty: number; value: number }> = {};
-      rawBills.forEach((bill: any) => {
+      invoiceBills.forEach((bill: any) => {
         const billItems = Array.isArray(bill.items) ? bill.items : [];
         billItems.forEach((bi: any) => {
           const name = (bi.name || '').trim().toLowerCase();
@@ -171,8 +176,7 @@ export default function AuditModule({}: AuditModuleProps) {
 
       // --- Aggregate purchased quantities & values from PO items (invoice POs only) ---
       const purchasedByItem: Record<string, { qty: number; value: number }> = {};
-      rawPOs.forEach((po: any) => {
-        if (po.is_gst === false) return;
+      invoicePOs.forEach((po: any) => {
         const poItems = Array.isArray(po.items) ? po.items : [];
         poItems.forEach((pi: any) => {
           const name = (pi.name || '').trim().toLowerCase();
@@ -333,6 +337,42 @@ export default function AuditModule({}: AuditModuleProps) {
     URL.revokeObjectURL(url);
   };
 
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const handleDownloadDetailedReport = async () => {
+    if (isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    try {
+      const monthLabel = `${monthNames[selectedMonth.month]} ${selectedMonth.year}`;
+      await generateAuditReportPdf({
+        monthLabel,
+        totals: {
+          totalPurchaseAmount,
+          totalInputGST,
+          totalSalesAmount,
+          totalOutputGST,
+          gstPayable,
+          netProfit: totalSalesAmount - totalPurchaseAmount,
+          inputCGST,
+          inputSGST,
+          inputIGST,
+          outputCGST,
+          outputSGST,
+          outputIGST,
+          cgstPayable,
+          sgstPayable,
+          igstPayable,
+          totalPurchasedStockValue,
+          totalSoldStockValue,
+        },
+        purchaseOrders,
+        salesBills,
+        stockReconciliation,
+      });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -472,6 +512,10 @@ export default function AuditModule({}: AuditModuleProps) {
           <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleExportReport}>
             <Download className="w-4 h-4 mr-2" />
             {t('exportReport')}
+          </Button>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleDownloadDetailedReport} disabled={isGeneratingPdf}>
+            <FileText className="w-4 h-4 mr-2" />
+            {isGeneratingPdf ? t('generating') : t('auditorReport')}
           </Button>
         </div>
         </div>

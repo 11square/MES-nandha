@@ -80,6 +80,8 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
   const [showAddReceipt, setShowAddReceipt] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
+  const [editingReceiptId, setEditingReceiptId] = useState<string | null>(null);
+  const [deleteReceiptConfirm, setDeleteReceiptConfirm] = useState<{ open: boolean; id: string }>({ open: false, id: '' });
   const [activeTab, setActiveTab] = useState('transactions');
   // Date range filter (reuses Ledger filter for consistency)
   const dateFilter = useLedgerFilter();
@@ -341,23 +343,58 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
       received_by: { required: true },
     });
     if (Object.keys(validationErrors).length) { setRcErrors(validationErrors); return; }
+    const payload = {
+      bill_no: receiptForm.bill_no,
+      client_name: receiptForm.client_name,
+      date: receiptForm.date,
+      amount: parseFloat(receiptForm.amount) || 0,
+      method: receiptForm.method,
+      reference: receiptForm.reference,
+      received_by: receiptForm.received_by,
+      notes: receiptForm.notes,
+    };
     try {
-      await financeService.createReceipt({
-        bill_no: receiptForm.bill_no,
-        client_name: receiptForm.client_name,
-        date: receiptForm.date,
-        amount: parseFloat(receiptForm.amount) || 0,
-        method: receiptForm.method,
-        reference: receiptForm.reference,
-        received_by: receiptForm.received_by,
-        notes: receiptForm.notes,
-      });
-      toast.success('Receipt created successfully');
+      if (editingReceiptId) {
+        await financeService.updateReceipt(editingReceiptId, payload);
+        toast.success('Receipt updated successfully');
+      } else {
+        await financeService.createReceipt(payload);
+        toast.success('Receipt created successfully');
+      }
       await refreshFinance();
       setShowAddReceipt(false);
+      setEditingReceiptId(null);
       resetReceiptForm();
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to create receipt');
+      toast.error(err?.message || (editingReceiptId ? 'Failed to update receipt' : 'Failed to create receipt'));
+    }
+  };
+
+  const handleEditReceiptOpen = (receipt: CashReceipt) => {
+    setReceiptForm({
+      bill_no: receipt.bill_no || '',
+      client_name: receipt.client_name || '',
+      date: receipt.date ? new Date(receipt.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      amount: receipt.amount != null ? String(receipt.amount) : '',
+      method: receipt.method || 'cash',
+      reference: receipt.reference || '',
+      received_by: receipt.received_by || 'Admin',
+      notes: receipt.notes || '',
+    });
+    setEditingReceiptId(String(receipt.id));
+    setRcErrors({});
+    setShowAddReceipt(true);
+  };
+
+  const confirmDeleteReceipt = async () => {
+    try {
+      await financeService.deleteReceipt(deleteReceiptConfirm.id);
+      toast.success('Receipt deleted successfully');
+      await refreshFinance();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete receipt');
+    } finally {
+      setDeleteReceiptConfirm({ open: false, id: '' });
     }
   };
 
@@ -1413,12 +1450,13 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">{t('method')}</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">{t('reference')}</th>
                     <th className="px-6 py-3 text-left text-xs text-gray-600 font-medium">{t('receivedBy')}</th>
+                    <th className="px-6 py-3 text-right text-xs text-gray-600 font-medium">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {receipts.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                      <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                         {t('noReceiptsFound')}
                       </td>
                     </tr>
@@ -1451,6 +1489,24 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
                         </td>
                         <td className="px-6 py-4 font-mono text-sm text-gray-600">{receipt.reference || '-'}</td>
                         <td className="px-6 py-4 text-sm">{receipt.received_by}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                              title="Edit"
+                              onClick={() => handleEditReceiptOpen(receipt)}
+                            >
+                              <Edit className="w-4 h-4 text-gray-600" />
+                            </button>
+                            <button
+                              className="p-1.5 hover:bg-red-50 rounded transition-colors"
+                              title="Delete"
+                              onClick={() => setDeleteReceiptConfirm({ open: true, id: String(receipt.id) })}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-600" />
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -1770,17 +1826,28 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
         onCancel={() => setDeleteConfirm({ open: false, id: '' })}
       />
 
+      <ConfirmDialog
+        open={deleteReceiptConfirm.open}
+        title="Delete Receipt"
+        description="Are you sure you want to delete this receipt? This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteReceipt}
+        onCancel={() => setDeleteReceiptConfirm({ open: false, id: '' })}
+      />
+
       {/* Add Receipt Dialog */}
       <Dialog open={showAddReceipt} onOpenChange={(open: boolean) => {
         setShowAddReceipt(open);
-        if (!open) resetReceiptForm();
+        if (!open) { resetReceiptForm(); setEditingReceiptId(null); }
         setRcErrors({});
       }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-green-600" />
-              {t('addNewReceipt')}
+              {editingReceiptId ? t('editReceipt') : t('addNewReceipt')}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1915,6 +1982,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
           <DialogFooter>
             <Button variant="outline" onClick={() => {
               setShowAddReceipt(false);
+              setEditingReceiptId(null);
               resetReceiptForm();
             }}>
               {t('cancel')}
@@ -1924,7 +1992,7 @@ export default function FinanceManagement({ language = 'en' }: FinanceManagement
               className="bg-green-600 hover:bg-green-700 text-white"
               disabled={!receiptForm.bill_no || !receiptForm.client_name || !receiptForm.amount || !receiptForm.date}
             >
-              {t('addReceipt')}
+              {editingReceiptId ? t('saveChanges') : t('addReceipt')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -129,6 +129,10 @@ export default function VendorDetailPage() {
     return status !== 'received' && status !== 'cancelled';
   });
   const outstandingAmount = outstandingPOs.reduce((s, po) => s + (Number(po.total_amount) || 0), 0);
+  // Split POs into invoices vs quotations (quotation POs are non-GST).
+  const isGstPO = (po: any) => po?.is_gst === true || po?.is_gst === 1 || String(po?.is_gst).toLowerCase() === 'true' || String(po?.is_gst) === '1';
+  const quotationPOs = purchaseOrders.filter((po: any) => !isGstPO(po));
+  const invoicePOs = purchaseOrders.filter((po: any) => isGstPO(po));
   // For a vendor: expense = money we paid them, income = refund/credit from them.
   const expenseTxnTotal = transactions.filter(t => t.type !== 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
   const incomeTxnTotal = transactions.filter(t => t.type === 'income').reduce((s, t) => s + (Number(t.amount) || 0), 0);
@@ -294,8 +298,8 @@ export default function VendorDetailPage() {
       <Tabs defaultValue="details" className="w-full">
         <TabsList className="flex flex-wrap h-auto gap-1 w-full justify-start bg-slate-100 p-1 rounded-lg">
           <TabsTrigger value="details" className="text-xs px-3 py-1.5"><Building2 className="w-3.5 h-3.5 mr-1" /> Details</TabsTrigger>
-          <TabsTrigger value="purchases" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Purchase Orders ({purchaseOrders.length})</TabsTrigger>
-          <TabsTrigger value="outstanding" className="text-xs px-3 py-1.5"><CreditCard className="w-3.5 h-3.5 mr-1" /> Outstanding ({outstandingPOs.length})</TabsTrigger>
+          <TabsTrigger value="purchases" className="text-xs px-3 py-1.5"><FileText className="w-3.5 h-3.5 mr-1" /> Purchase Orders ({invoicePOs.length})</TabsTrigger>
+          <TabsTrigger value="quotations" className="text-xs px-3 py-1.5"><Receipt className="w-3.5 h-3.5 mr-1" /> Quotations ({quotationPOs.length})</TabsTrigger>
           <TabsTrigger value="transactions" className="text-xs px-3 py-1.5"><TrendingUp className="w-3.5 h-3.5 mr-1" /> Ledger ({purchaseOrders.filter((p:any)=>String(p?.status||'').toLowerCase()!=='cancelled' && !p?.is_gst).length + transactions.length})</TabsTrigger>
           <TabsTrigger value="followups" className="text-xs px-3 py-1.5"><MessageSquare className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followups.length})</TabsTrigger>
         </TabsList>
@@ -398,7 +402,7 @@ export default function VendorDetailPage() {
         <TabsContent value="purchases" className="mt-4">
           <Card>
             <CardContent className="p-0">
-              {purchaseOrders.length === 0 ? (
+              {invoicePOs.length === 0 ? (
                 <div className="p-12 text-center text-slate-400">
                   <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
                   <p>No purchase orders found for this vendor</p>
@@ -417,8 +421,95 @@ export default function VendorDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {purchaseOrders.map((po: any, idx: number) => {
+                    {invoicePOs.map((po: any, idx: number) => {
                       const rk = `po-${po.id || idx}`;
+                      const exp = expandedRows.has(rk);
+                      const items = Array.isArray(po.items) ? po.items : [];
+                      return [
+                        <TableRow key={`${rk}-m`}>
+                          <TableCell className="font-mono font-medium text-blue-600">{po.po_number || `PO-${po.id}`}</TableCell>
+                          <TableCell>{po.date ? new Date(po.date).toLocaleDateString('en-IN') : '-'}</TableCell>
+                          <TableCell className="max-w-[150px] truncate">{items.length > 0 ? items.map((i: any) => i.name || i.item_name).join(', ') : (po.notes || '-')}</TableCell>
+                          <TableCell className="text-right font-semibold">{fmt(Number(po.total_amount) || 0)}</TableCell>
+                          <TableCell>{po.expected_delivery ? new Date(po.expected_delivery).toLocaleDateString('en-IN') : '-'}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              po.status === 'received' ? 'bg-emerald-100 text-emerald-700' :
+                              po.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                              po.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
+                              'bg-slate-100 text-slate-700'
+                            }>{po.status}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {items.length > 0 && (
+                              <Button size="sm" variant="ghost" className="h-7 px-2 text-blue-600" onClick={() => toggleRow(rk)}>
+                                {exp ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>,
+                        ...(exp && items.length > 0 ? [
+                          <TableRow key={`${rk}-d`} className="bg-slate-50/80">
+                            <TableCell colSpan={7}>
+                              <div className="rounded-md border bg-white overflow-hidden">
+                                <table className="w-full text-sm">
+                                  <thead className="bg-slate-50">
+                                    <tr className="border-b">
+                                      <th className="text-left px-3 py-2 font-medium text-slate-700">Item</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Qty</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Unit Price</th>
+                                      <th className="text-right px-3 py-2 font-medium text-slate-700">Total</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {items.map((it: any, i: number) => (
+                                      <tr key={i} className="border-b last:border-b-0">
+                                        <td className="px-3 py-2">{it.name || it.item_name || '-'}</td>
+                                        <td className="px-3 py-2 text-right">{it.quantity || 0}</td>
+                                        <td className="px-3 py-2 text-right">{fmt(it.unit_price || it.price)}</td>
+                                        <td className="px-3 py-2 text-right font-medium">{fmt(it.total || it.total_price)}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ] : []),
+                      ];
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ===== QUOTATIONS TAB ===== */}
+        <TabsContent value="quotations" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              {quotationPOs.length === 0 ? (
+                <div className="p-12 text-center text-slate-400">
+                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>No quotations found for this vendor</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>PO Number</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Items</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
+                      <TableHead>Expected Delivery</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Details</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {quotationPOs.map((po: any, idx: number) => {
+                      const rk = `qpo-${po.id || idx}`;
                       const exp = expandedRows.has(rk);
                       const items = Array.isArray(po.items) ? po.items : [];
                       return [
@@ -620,88 +711,6 @@ export default function VendorDetailPage() {
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* ===== OUTSTANDING TAB ===== */}
-        <TabsContent value="outstanding" className="mt-4 space-y-4">
-          {outstandingPOs.length > 0 && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="bg-red-500/10 border-red-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-red-600">Outstanding Amount</span>
-                    <CreditCard className="h-4 w-4 text-red-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-red-700">{fmt(outstandingAmount)}</p>
-                  <p className="text-xs text-red-500 mt-1">{outstandingPOs.length} pending POs</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-orange-500/10 border-orange-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-orange-600">Pending Orders</span>
-                    <Clock className="h-4 w-4 text-orange-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-orange-700">{outstandingPOs.filter(po => po.status === 'pending' || po.status === 'draft').length}</p>
-                  <p className="text-xs text-orange-500 mt-1">awaiting approval</p>
-                </CardContent>
-              </Card>
-              <Card className="bg-blue-500/10 border-blue-200">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-blue-600">In Transit</span>
-                    <Package className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <p className="text-2xl font-bold text-blue-700">{outstandingPOs.filter(po => po.status === 'ordered' || po.status === 'approved').length}</p>
-                  <p className="text-xs text-blue-500 mt-1">ordered / in transit</p>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-          <Card>
-            <CardContent className="p-0">
-              {outstandingPOs.length === 0 ? (
-                <div className="p-12 text-center text-slate-400">
-                  <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>No outstanding orders — all clear!</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>PO Number</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Expected Delivery</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {outstandingPOs.map((po: any) => (
-                      <TableRow key={`out-${po.id}`}>
-                        <TableCell className="font-mono font-medium text-blue-600">{po.po_number || `PO-${po.id}`}</TableCell>
-                        <TableCell>{po.date ? new Date(po.date).toLocaleDateString('en-IN') : '-'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                            {po.expected_delivery ? new Date(po.expected_delivery).toLocaleDateString('en-IN') : '-'}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-red-600">{fmt(Number(po.total_amount) || 0)}</TableCell>
-                        <TableCell>
-                          <Badge className={
-                            po.status === 'ordered' ? 'bg-blue-100 text-blue-700' :
-                            po.status === 'approved' ? 'bg-emerald-100 text-emerald-700' :
-                            'bg-slate-100 text-slate-700'
-                          }>{po.status}</Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               )}
             </CardContent>
           </Card>
