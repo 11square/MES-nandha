@@ -148,6 +148,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
   const [showCreateLead, setShowCreateLead] = useState(false);
+  const [showImportLeads, setShowImportLeads] = useState(false);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [showLeadDetail, setShowLeadDetail] = useState(false);
   const [showDocumentUpload, setShowDocumentUpload] = useState(false);
@@ -689,13 +690,22 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             </Button>
           )}
           {activeTab === 'leads' && (canApprove) && (
-            <Button 
-              className="bg-blue-600 hover:bg-blue-700"
-              onClick={() => setShowCreateLead(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              {t('createLead')}
-            </Button>
+            <>
+              <Button 
+                variant="outline"
+                onClick={() => setShowImportLeads(true)}
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Import
+              </Button>
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700"
+                onClick={() => setShowCreateLead(true)}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                {t('createLead')}
+              </Button>
+            </>
           )}
           {activeTab === 'followups' && (
             <AddActivityDialog leads={leads} onSuccess={refreshLeads} />
@@ -1295,7 +1305,256 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
         }}
         onCancel={() => setPromptDialog({ open: false, leadId: '' })}
       />
+      <ImportLeadsDialog
+        open={showImportLeads}
+        onOpenChange={setShowImportLeads}
+        onSuccess={refreshLeads}
+      />
     </div>
+  );
+}
+
+// ─── CSV helpers ──────────────────────────────────────────────────────────────
+function parseCSV(text: string): string[][] {
+  const lines: string[][] = [];
+  let row: string[] = [];
+  let field = '';
+  let inQuote = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === '"') {
+      if (inQuote && text[i + 1] === '"') { field += '"'; i++; }
+      else { inQuote = !inQuote; }
+    } else if (ch === ',' && !inQuote) {
+      row.push(field.trim()); field = '';
+    } else if ((ch === '\n' || ch === '\r') && !inQuote) {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(field.trim()); field = '';
+      if (row.some(c => c !== '')) lines.push(row);
+      row = [];
+    } else {
+      field += ch;
+    }
+  }
+  row.push(field.trim());
+  if (row.some(c => c !== '')) lines.push(row);
+  return lines;
+}
+
+const CSV_TEMPLATE_HEADERS = [
+  'customer', 'contact', 'mobile', 'email', 'source',
+  'required_date', 'gst_number', 'state', 'district', 'address', 'notes',
+  'product_name', 'category', 'subcategory', 'quantity',
+];
+const CSV_TEMPLATE_ROW = [
+  'ABC Enterprises', 'Ravi Kumar', '9876543210', 'ravi@abc.com', 'Referral',
+  '2026-07-15', '29ABCDE1234F1Z5', 'Tamil Nadu', 'Coimbatore', '123 Main St', 'Urgent order',
+  'A4 Paper Ream', 'Paper', 'A4 Size', '50',
+];
+
+function downloadCSVTemplate() {
+  const lines = [
+    CSV_TEMPLATE_HEADERS.join(','),
+    CSV_TEMPLATE_ROW.map(v => `"${v}"`).join(','),
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'leads_import_template.csv';
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+interface ImportRow {
+  _row: number;
+  customer: string; contact: string; mobile: string; email: string; source: string;
+  required_date: string; gst_number: string; state: string; district: string;
+  address: string; notes: string; product_name: string; category: string;
+  subcategory: string; quantity: string; _errors: string[];
+}
+
+function validateImportRow(row: ImportRow): string[] {
+  const errs: string[] = [];
+  if (!row.customer.trim()) errs.push('Customer name required');
+  if (!row.mobile.trim()) errs.push('Mobile required');
+  else if (!/^\+?\d[\d\s\-]{5,14}$/.test(row.mobile.trim())) errs.push('Invalid mobile');
+  if (row.required_date.trim() && !/^\d{4}-\d{2}-\d{2}$/.test(row.required_date.trim())) errs.push('Date must be YYYY-MM-DD');
+  if (row.gst_number.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/i.test(row.gst_number.trim())) errs.push('Invalid GST format');
+  if (row.quantity.trim() && isNaN(Number(row.quantity))) errs.push('Quantity must be a number');
+  return errs;
+}
+
+function ImportLeadsDialog({ open, onOpenChange, onSuccess }: { open: boolean; onOpenChange: (v: boolean) => void; onSuccess: () => void }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<ImportRow[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [done, setDone] = useState<{ success: number; failed: number } | null>(null);
+  const [fileName, setFileName] = useState('');
+
+  const reset = () => { setRows([]); setDone(null); setFileName(''); if (fileInputRef.current) fileInputRef.current.value = ''; };
+
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setFileName(file.name); setDone(null);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const parsed = parseCSV(text);
+      if (parsed.length < 2) { toast.error('CSV has no data rows'); return; }
+      const headers = parsed[0].map(h => h.toLowerCase().trim());
+      const idx = (name: string) => headers.indexOf(name);
+      const get = (cells: string[], name: string) => cells[idx(name)] ?? '';
+      setRows(parsed.slice(1).map((cells, i) => {
+        const row: ImportRow = {
+          _row: i + 2,
+          customer: get(cells, 'customer'), contact: get(cells, 'contact'),
+          mobile: get(cells, 'mobile'), email: get(cells, 'email'),
+          source: get(cells, 'source'), required_date: get(cells, 'required_date'),
+          gst_number: get(cells, 'gst_number'), state: get(cells, 'state'),
+          district: get(cells, 'district'), address: get(cells, 'address'),
+          notes: get(cells, 'notes'), product_name: get(cells, 'product_name'),
+          category: get(cells, 'category'), subcategory: get(cells, 'subcategory'),
+          quantity: get(cells, 'quantity'), _errors: [],
+        };
+        row._errors = validateImportRow(row);
+        return row;
+      }));
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    const validRows = rows.filter(r => r._errors.length === 0);
+    if (!validRows.length) { toast.error('No valid rows to import'); return; }
+    setImporting(true);
+    let success = 0, failed = 0;
+    for (const row of validRows) {
+      const products = row.product_name.trim() ? [{
+        product: row.product_name.trim(), category: row.category.trim(),
+        subcategory: row.subcategory.trim(), size: row.subcategory.trim(),
+        quantity: Number(row.quantity) || 1, unit_price: 0,
+      }] : [];
+      try {
+        await leadsService.createLead({
+          customer: row.customer.trim(), contact: row.contact.trim(), mobile: row.mobile.trim(),
+          email: row.email.trim(), source: row.source.trim() || 'Other',
+          required_date: row.required_date.trim() || undefined,
+          gst_number: row.gst_number.trim(), state: row.state.trim(),
+          district: row.district.trim(), address: row.address.trim(),
+          notes: row.notes.trim(), description: row.notes.trim(),
+          status: 'New', category: row.category.trim(),
+          product: row.product_name.trim(), size: row.subcategory.trim(),
+          quantity: Number(row.quantity) || 1, products,
+        });
+        success++;
+      } catch { failed++; }
+    }
+    setImporting(false);
+    setDone({ success, failed });
+    if (success > 0) { onSuccess(); toast.success(`${success} lead(s) imported`); }
+    if (failed > 0) toast.error(`${failed} lead(s) failed`);
+  };
+
+  const validCount = rows.filter(r => r._errors.length === 0).length;
+  const errorCount = rows.filter(r => r._errors.length > 0).length;
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="w-5 h-5 text-blue-600" />
+            Import Leads from CSV
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="flex-1 flex flex-col gap-4 min-h-0 overflow-auto py-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">1</div>
+            <div>
+              <p className="font-medium text-blue-900 text-sm">Download the CSV template</p>
+              <p className="text-xs text-blue-700 mt-0.5">Fill in lead data — one row per lead (one product per row).</p>
+              <Button size="sm" variant="outline" className="mt-2 border-blue-300 text-blue-700 hover:bg-blue-100" onClick={downloadCSVTemplate}>
+                <FileText className="w-4 h-4 mr-2" />Download Template
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 flex items-start gap-3">
+            <div className="w-8 h-8 bg-gray-600 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0">2</div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-gray-900 text-sm">Upload your filled CSV file</p>
+              <div className="mt-2 flex items-center gap-3">
+                <input ref={fileInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleFile} />
+                <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                  <Upload className="w-4 h-4 mr-2" />Choose File
+                </Button>
+                {fileName && <span className="text-sm text-gray-600 truncate">{fileName}</span>}
+              </div>
+            </div>
+          </div>
+
+          {rows.length > 0 && !done && (
+            <div className="flex flex-col gap-2 min-h-0">
+              <div className="flex items-center gap-3">
+                <span className="font-medium text-sm text-gray-700">{rows.length} row(s) found</span>
+                {validCount > 0 && <Badge className="bg-green-100 text-green-700 border-0">{validCount} valid</Badge>}
+                {errorCount > 0 && <Badge className="bg-red-100 text-red-700 border-0">{errorCount} with errors</Badge>}
+              </div>
+              <div className="border border-gray-200 rounded-lg overflow-auto max-h-64">
+                <table className="w-full text-xs">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      {['Row','Customer','Mobile','Contact','Source','Required Date','Product','Qty','Status'].map(h => (
+                        <th key={h} className="px-3 py-2 text-left font-semibold text-gray-600 border-b whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(row => (
+                      <tr key={row._row} className={row._errors.length > 0 ? 'bg-red-50' : 'hover:bg-gray-50'}>
+                        <td className="px-3 py-2 border-b text-gray-500">{row._row}</td>
+                        <td className="px-3 py-2 border-b font-medium">{row.customer || <span className="text-red-500 italic">missing</span>}</td>
+                        <td className="px-3 py-2 border-b">{row.mobile}</td>
+                        <td className="px-3 py-2 border-b">{row.contact}</td>
+                        <td className="px-3 py-2 border-b">{row.source}</td>
+                        <td className="px-3 py-2 border-b">{row.required_date}</td>
+                        <td className="px-3 py-2 border-b">{row.product_name}</td>
+                        <td className="px-3 py-2 border-b">{row.quantity}</td>
+                        <td className="px-3 py-2 border-b">
+                          {row._errors.length === 0
+                            ? <span className="text-green-600 font-medium">✓ OK</span>
+                            : <span className="text-red-600 font-medium" title={row._errors.join('; ')}>✕ {row._errors[0]}</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {done && (
+            <div className={`rounded-lg p-5 border text-center ${done.failed === 0 ? 'bg-green-50 border-green-200' : 'bg-amber-50 border-amber-200'}`}>
+              <CheckCircle className={`w-10 h-10 mx-auto mb-2 ${done.failed === 0 ? 'text-green-600' : 'text-amber-600'}`} />
+              <p className="font-semibold text-gray-800">{done.success} lead(s) imported successfully{done.failed > 0 ? `, ${done.failed} skipped` : '.'}</p>
+              {done.failed > 0 && <p className="text-xs text-gray-500 mt-1">Rows with validation errors were skipped.</p>}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => { onOpenChange(false); reset(); }}>Close</Button>
+          {rows.length > 0 && !done && (
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white" onClick={handleImport} disabled={importing || validCount === 0}>
+              {importing ? 'Importing...' : `Import ${validCount} Lead(s)`}
+            </Button>
+          )}
+          {done && <Button variant="outline" onClick={reset}>Import Another File</Button>}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
