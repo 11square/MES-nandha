@@ -2176,7 +2176,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     const taxableAmount = totals.subtotal - totals.totalDiscount;
 
     return (
-      <div className="p-4 space-y-4 max-w-[1200px] mx-auto">
+      <div className="p-4 space-y-4">
         {/* Header */}
         <div className="flex items-center gap-3">
           <Button 
