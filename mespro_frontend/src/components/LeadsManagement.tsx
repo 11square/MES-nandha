@@ -504,7 +504,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   const filteredLeads = dateFilteredLeads.filter(lead => {
     const matchesSearch = lead.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          lead.lead_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         lead.contact.toLowerCase().includes(searchQuery.toLowerCase());
+                         String(lead.contact || '').toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = filterStatus === 'all' 
       || lead.status.toLowerCase() === filterStatus.toLowerCase()
       || (filterStatus.toLowerCase() === 'converted' && lead.conversion_status === 'Converted');
@@ -513,14 +513,13 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
     return matchesSearch && matchesStatus && matchesCity;
   });
 
-  const cityOptions = useMemo(() => {
-    const set = new Set<string>();
-    dateFilteredLeads.forEach(l => {
+  const cityOptions = Array.from(
+    dateFilteredLeads.reduce((set: Set<string>, l: any) => {
       const c = String((l as any).district || (l as any).city || '').trim();
       if (c) set.add(c);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [dateFilteredLeads]);
+      return set;
+    }, new Set<string>())
+  ).sort((a, b) => a.localeCompare(b));
 
   const handleApproveLead = (lead: Lead) => {
     toast.info(`Lead ${lead.lead_number} has been converted to Order!\n\nOrder Number: ORD-${lead.lead_number.split('-')[2]}\n\nYou can view and manage this order in the Orders module.`);
