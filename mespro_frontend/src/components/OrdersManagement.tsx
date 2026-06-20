@@ -1533,7 +1533,6 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
     if (!isDraft) {
       const validationErrors = validateFields(formData, {
         customer: { required: true, min: 2 },
-        contact: { required: true },
         mobile: { required: true, phone: true },
         source: { required: true },
         email: { email: true },
@@ -1744,7 +1743,7 @@ function AddOrderForm({ onClose, categories = [], allProducts = [], onSuccess, l
               <FieldError message={errors.customer} />
             </div>
             <div>
-              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Label className="text-xs text-gray-500">{t('contactPerson')}</Label>
               <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => ({ ...prev, contact: '' })); }} />
               <FieldError message={errors.contact} />
             </div>
@@ -2353,7 +2352,6 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
       { customer: customerName, contact: contactPerson, mobile, email, source, gst_number: gstNumber || '', status },
       {
         customer: { required: true },
-        contact: { required: true },
         mobile: { required: true, phone: true },
         source: { required: true },
         email: { email: true },
@@ -2509,7 +2507,7 @@ function EditOrderForm({ order, categories = [], allProducts = [], onClose, onSu
               <FieldError message={errors.customer} />
             </div>
             <div>
-              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Label className="text-xs text-gray-500">{t('contactPerson')}</Label>
               <Input id="edit-contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactPerson} onChange={(e) => { setContactPerson(e.target.value); setErrors(prev => ({ ...prev, contact: '' })); }} />
               <FieldError message={errors.contact} />
             </div>

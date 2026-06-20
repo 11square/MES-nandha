@@ -143,6 +143,7 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
   const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterCity, setFilterCity] = useState('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
@@ -507,8 +508,19 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
     const matchesStatus = filterStatus === 'all' 
       || lead.status.toLowerCase() === filterStatus.toLowerCase()
       || (filterStatus.toLowerCase() === 'converted' && lead.conversion_status === 'Converted');
-    return matchesSearch && matchesStatus;
+    const leadCity = String((lead as any).district || (lead as any).city || '').trim().toLowerCase();
+    const matchesCity = filterCity === 'all' || leadCity === filterCity.toLowerCase();
+    return matchesSearch && matchesStatus && matchesCity;
   });
+
+  const cityOptions = useMemo(() => {
+    const set = new Set<string>();
+    dateFilteredLeads.forEach(l => {
+      const c = String((l as any).district || (l as any).city || '').trim();
+      if (c) set.add(c);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [dateFilteredLeads]);
 
   const handleApproveLead = (lead: Lead) => {
     toast.info(`Lead ${lead.lead_number} has been converted to Order!\n\nOrder Number: ORD-${lead.lead_number.split('-')[2]}\n\nYou can view and manage this order in the Orders module.`);
@@ -623,6 +635,18 @@ export default function LeadsManagement({ onNavigate, productCategories = [], pr
             <SelectItem value="week">{t('thisWeek') || 'This Week'}</SelectItem>
             <SelectItem value="month">{t('thisMonth') || 'This Month'}</SelectItem>
             <SelectItem value="custom">{t('custom') || 'Custom'}</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterCity} onValueChange={setFilterCity}>
+          <SelectTrigger className="w-44">
+            <MapPin className="w-4 h-4 mr-2" />
+            <SelectValue placeholder={t('city') || 'City'} />
+          </SelectTrigger>
+          <SelectContent className="max-h-64">
+            <SelectItem value="all">{`All ${t('city') || 'Cities'}`}</SelectItem>
+            {cityOptions.map(c => (
+              <SelectItem key={c} value={c.toLowerCase()}>{c}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
         {dateFilter === 'custom' && (
@@ -1567,7 +1591,6 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
     if (!isDraft) {
       const validationErrors = validateFields(formData, {
         customer: { required: true, min: 2, label: 'Business Name' },
-        contact: { required: true, label: 'Contact Person' },
         mobile: { required: true, phone: true, label: 'Mobile' },
       });
       if (addedProducts.length === 0) {
@@ -1731,7 +1754,7 @@ function CreateLeadForm({ onClose, categories = [], allProducts = [], onSuccess 
               <FieldError message={errors.customer} />
             </div>
             <div>
-              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Label className="text-xs text-gray-500">{t('contactPerson')}</Label>
               <Input id="contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactValue} onChange={(e) => { setContactValue(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
               <FieldError message={errors.contact} />
             </div>
@@ -2947,7 +2970,6 @@ function EditLeadForm({ lead, categories = [], allProducts = [], onClose, onSucc
       { customer: customerName, contact: contactPerson, mobile: mobile ? `${countryCode} ${mobile}` : '', email, source: effectiveSource, gst_number: gstNumber || '', status },
       {
         customer: { required: true, min: 2, label: 'Business Name' },
-        contact: { required: true, label: 'Contact Person' },
         mobile: { required: true, phone: true, label: 'Mobile' },
         source: { required: true, label: 'Lead Source' },
         email: { required: true, email: true, label: 'Email' },
@@ -3101,7 +3123,7 @@ function EditLeadForm({ lead, categories = [], allProducts = [], onClose, onSucc
               <FieldError message={errors.customer} />
             </div>
             <div>
-              <Label className="text-xs text-gray-500">{t('contactPerson')} *</Label>
+              <Label className="text-xs text-gray-500">{t('contactPerson')}</Label>
               <Input id="edit-contact" placeholder={t('enterContactPerson')} className="h-8 text-sm" value={contactPerson} onChange={(e) => { setContactPerson(e.target.value); if (errors.contact) setErrors(prev => { const { contact, ...rest } = prev; return rest; }); }} />
               <FieldError message={errors.contact} />
             </div>
