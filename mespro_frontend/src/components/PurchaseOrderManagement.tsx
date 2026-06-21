@@ -83,6 +83,7 @@ type POItemEntryRow = {
   unit: string;
   hsnSac: string;
   gstRate: number;
+  stockItemId?: string | number;
 };
 
 type POItem = {
@@ -97,6 +98,7 @@ type POItem = {
   unit: string;
   hsnSac: string;
   gstRate: number;
+  stockItemId?: string | number;
 };
 
 const calculatePOItemTotal = (quantity: number, unitPrice: number, gstRate: number, isGst: boolean = true) => {
@@ -655,6 +657,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       if (stockMatch) {
         return {
           ...p,
+          stock_item_id: stockMatch.id,
           base_price: (Number(p.base_price) || 0) > 0 ? Number(p.base_price) : (Number(stockMatch.buying_price) || Number(stockMatch.unit_price) || 0),
           selling_price: (Number(p.selling_price) || 0) > 0 ? Number(p.selling_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
           unit_price: (Number(p.unit_price) || 0) > 0 ? Number(p.unit_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
@@ -670,6 +673,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       if (!existingNames.has((s.name || '').toLowerCase())) {
         merged.push({
           id: `STOCK-${s.id}`,
+          stock_item_id: s.id,
           name: s.name,
           category: s.category,
           subcategory: s.subcategory || 'General',
@@ -685,6 +689,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     if (stockItem && !existingNames.has((stockItem.name || '').toLowerCase())) {
       merged.push({
         id: `STOCK-${stockItem.sku || Date.now()}`,
+        stock_item_id: stockItem.id,
         name: stockItem.name,
         category: stockItem.category,
         subcategory: stockItem.subcategory || 'General',
@@ -823,6 +828,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
         ? {
             ...row,
             itemId: String(item.id),
+            stockItemId: item.stock_item_id ?? row.stockItemId,
             itemName: item.name,
             category: catId,
             subcategory: item.subcategory || 'General',
@@ -867,6 +873,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       category: row.category,
       subcategory: row.subcategory,
       product: row.itemId,
+      stockItemId: row.stockItemId,
       productName: row.itemName,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
@@ -924,6 +931,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
       setItemEntryRows([{
         id: 1,
         itemId: stockProductId,
+        stockItemId: stockItem.id,
         itemName: stockItem.name || '',
         category: matchedCategoryId,
         subcategory: subcat,
@@ -1000,6 +1008,7 @@ function AddPOForm({ onClose, onSubmit, language = 'en', stockItem, isInvoice = 
     const itemsArray = addedItems.map((item, index) => ({
       id: index + 1,
       product_id: item.product,
+      stock_item_id: item.stockItemId,
       name: item.productName,
       quantity: item.quantity,
       unit: item.unit || 'pcs',
@@ -1570,6 +1579,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       if (stockMatch) {
         return {
           ...p,
+          stock_item_id: stockMatch.id,
           base_price: (Number(p.base_price) || 0) > 0 ? Number(p.base_price) : (Number(stockMatch.buying_price) || Number(stockMatch.unit_price) || 0),
           selling_price: (Number(p.selling_price) || 0) > 0 ? Number(p.selling_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
           unit_price: (Number(p.unit_price) || 0) > 0 ? Number(p.unit_price) : (Number(stockMatch.selling_price) || Number(stockMatch.unit_price) || 0),
@@ -1583,7 +1593,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     stockItems.forEach((s: any) => {
       if (!existingNames.has((s.name || '').toLowerCase())) {
         merged.push({
-          id: `STOCK-${s.id}`, name: s.name, category: s.category, subcategory: s.subcategory || 'General',
+          id: `STOCK-${s.id}`, stock_item_id: s.id, name: s.name, category: s.category, subcategory: s.subcategory || 'General',
           base_price: Number(s.buying_price) || Number(s.unit_price) || 0,
           selling_price: Number(s.selling_price) || Number(s.unit_price) || 0,
           unit_price: Number(s.selling_price) || Number(s.unit_price) || 0,
@@ -1682,6 +1692,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
         ? {
             ...row,
             itemId: String(item.id),
+            stockItemId: item.stock_item_id ?? row.stockItemId,
             itemName: item.name,
             category: catId,
             subcategory: item.subcategory || 'General',
@@ -1725,6 +1736,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
       category: row.category,
       subcategory: row.subcategory,
       product: row.itemId,
+      stockItemId: row.stockItemId,
       productName: row.itemName,
       quantity: row.quantity,
       unitPrice: row.unitPrice,
@@ -1756,6 +1768,7 @@ function EditPOForm({ po, language = 'en', onClose, onSubmit }: { po: PurchaseOr
     const itemsArray = addedItems.map((item, index) => ({
       id: index + 1,
       product_id: item.product,
+      stock_item_id: item.stockItemId,
       name: item.productName,
       quantity: item.quantity,
       unit: item.unit || 'pcs',

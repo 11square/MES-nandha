@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { PurchaseOrder, PurchaseOrderItem, Vendor, StockItem } = require('../models');
 const createCrudController = require('./base.controller');
 const ApiResponse = require('../utils/ApiResponse');
@@ -12,17 +13,31 @@ const baseController = createCrudController(PurchaseOrder, {
 });
 
 // Resolve the stock item a PO line refers to so the same product is never duplicated.
-// Prefers the selected stock product id; falls back to a trimmed name match (MySQL match is case-insensitive).
+// Prefers the explicit stock item id selected in the dropdown; falls back to a
+// case-insensitive, whitespace-normalised name match (never uses the products-table id,
+// which lives in a different namespace than stock_items ids).
 async function findStockForPoItem(item, businessId, t) {
-  const rawId = item.product_id ?? item.product;
-  const numericId = (rawId !== undefined && rawId !== null && /^\d+$/.test(String(rawId))) ? Number(rawId) : null;
-  if (numericId) {
-    const byId = await StockItem.findOne({ where: { id: numericId, business_id: businessId }, transaction: t });
+  const rawStockId = item.stock_item_id ?? item.stockItemId;
+  const stockId = (rawStockId !== undefined && rawStockId !== null && /^\d+$/.test(String(rawStockId)))
+    ? Number(rawStockId)
+    : null;
+  if (stockId) {
+    const byId = await StockItem.findOne({ where: { id: stockId, business_id: businessId }, transaction: t });
     if (byId) return byId;
   }
-  const itemName = (item.name || '').trim();
+  const itemName = (item.name || '').replace(/\s+/g, ' ').trim();
   if (!itemName) return null;
-  return StockItem.findOne({ where: { name: itemName, business_id: businessId }, transaction: t });
+  return StockItem.findOne({
+    where: sequelize.and(
+      { business_id: businessId },
+      sequelize.where(
+        sequelize.fn('LOWER', sequelize.fn('TRIM', sequelize.col('name'))),
+        Op.eq,
+        itemName.toLowerCase()
+      )
+    ),
+    transaction: t,
+  });
 }
 
 module.exports = {
