@@ -17,6 +17,7 @@ const purchaseOrdersRoutes = require('./purchaseOrders.routes');
 const inventoryRoutes = require('./inventory.routes');
 const stockRoutes = require('./stock.routes');
 const billingRoutes = require('./billing.routes');
+const ewayBillRoutes = require('./ewayBill.routes');
 const dispatchRoutes = require('./dispatch.routes');
 const financeRoutes = require('./finance.routes');
 const staffRoutes = require('./staff.routes');
@@ -48,6 +49,7 @@ router.use('/purchase-orders', authenticate, requireModule('purchase_orders'), p
 router.use('/inventory', authenticate, requireModule('inventory'), inventoryRoutes);
 router.use('/stock', authenticate, requireModule('stock'), stockRoutes);
 router.use('/billing', authenticate, requireModule('billing'), billingRoutes);
+router.use('/eway-bills', authenticate, requireModule('billing'), ewayBillRoutes);
 router.use('/dispatch', authenticate, requireModule('dispatch'), dispatchRoutes);
 router.use('/finance', authenticate, requireModule('finance'), financeRoutes);
 router.use('/staff', authenticate, requireModule('staff'), staffRoutes);

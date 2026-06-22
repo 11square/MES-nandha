@@ -44,6 +44,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(50),
       allowNull: true,
     },
+    pincode: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
     total_orders: {
       type: DataTypes.INTEGER,
       allowNull: false,

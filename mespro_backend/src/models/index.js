@@ -69,6 +69,7 @@ const Document = require('./Document')(sequelize);
 const Business = require('./Business')(sequelize);
 const FeatureSetting = require('./FeatureSetting')(sequelize);
 const FeatureSettingValue = require('./FeatureSettingValue')(sequelize);
+const EwayBill = require('./EwayBill')(sequelize);
 
 // ─── Associations ────────────────────────────────────────────────────────────
 
@@ -222,9 +223,13 @@ Order.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
 Business.hasMany(Bill, { foreignKey: 'business_id', as: 'bills' });
 Bill.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
 
+Bill.hasMany(EwayBill, { foreignKey: 'bill_id', as: 'ewayBills' });
+EwayBill.belongsTo(Bill, { foreignKey: 'bill_id', as: 'bill' });
+Business.hasMany(EwayBill, { foreignKey: 'business_id', as: 'ewayBills' });
+EwayBill.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
+
 Business.hasMany(Dispatch, { foreignKey: 'business_id', as: 'dispatches' });
 Dispatch.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
-
 Business.hasMany(StaffMember, { foreignKey: 'business_id', as: 'staffMembers' });
 StaffMember.belongsTo(Business, { foreignKey: 'business_id', as: 'business' });
 
@@ -322,6 +327,7 @@ const db = {
   Business,
   FeatureSetting,
   FeatureSettingValue,
+  EwayBill,
 };
 
 module.exports = db;

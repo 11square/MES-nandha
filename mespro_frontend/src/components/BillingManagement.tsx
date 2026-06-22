@@ -44,7 +44,8 @@ import {
   Package,
   AlertCircle,
   SendHorizontal,
-  MoreVertical
+  MoreVertical,
+  Truck
 } from 'lucide-react';
 
 interface BillingManagementProps {
@@ -78,6 +79,7 @@ interface Client {
   email: string;
   address: string;
   gstNo?: string;
+  pincode?: string;
 }
 
 interface BillItem {
@@ -105,6 +107,7 @@ interface Bill {
   client_name: string;
   client_address: string;
   client_gst?: string;
+  client_pincode?: string;
   items: BillItem[];
   subtotal: number;
   total_discount: number;
@@ -289,6 +292,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         email: client.email || '',
         address: client.address || '',
         gstNo: client.gst_number || client.gstNo || undefined,
+        pincode: client.pincode || client.pin_code || undefined,
       })));
     }).catch(() => {});
     billingService.getStockItems().then(data => {
@@ -378,7 +382,16 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
     gst: 18,
     invoiceType: 'b2b' as 'b2b' | 'b2c',
     gst_number: '',
+    client_pincode: '',
     place_of_supply: '33-Tamil Nadu',
+    transport_mode: '',
+    transport_distance: '',
+    vehicle_no: '',
+    vehicle_type: '',
+    transporter_id: '',
+    transporter_name: '',
+    transport_doc_no: '',
+    transport_doc_date: '',
     due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     terms_conditions: 'Thanks for doing business with us!',
   });
@@ -629,7 +642,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
 
   // Handle selecting a client from dropdown
   const handleSelectClient = (client: Client) => {
-    setBillForm(prev => ({ ...prev, client_id: client.id, gst_number: client.gstNo || '', invoiceType: client.gstNo?.trim() ? 'b2b' : 'b2c' }));
+    setBillForm(prev => ({ ...prev, client_id: client.id, gst_number: client.gstNo || '', client_pincode: client.pincode || prev.client_pincode || '', invoiceType: client.gstNo?.trim() ? 'b2b' : 'b2c' }));
     setClientSearchQuery(client.name);
     setClientMobile(client.phone || '');
     setShowClientDropdown(false);
@@ -1054,6 +1067,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         place_of_supply: billForm.place_of_supply,
         terms_conditions: billForm.terms_conditions,
         state: billForm.place_of_supply,
+        transport_mode: billForm.transport_mode || null,
+        transport_distance: billForm.transport_distance ? Number(billForm.transport_distance) : null,
+        vehicle_no: billForm.vehicle_no || null,
+        vehicle_type: billForm.vehicle_type || null,
+        transporter_id: billForm.transporter_id || null,
+        transporter_name: billForm.transporter_name || null,
+        transport_doc_no: billForm.transport_doc_no || null,
+        transport_doc_date: billForm.transport_doc_date || null,
       });
       toast.success(isDraft ? 'Bill saved as draft!' : 'Bill created successfully!');
       billSubmittedRef.current = true;
@@ -1126,7 +1147,16 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       gst: 18,
       invoiceType: 'b2b',
       gst_number: '',
+      client_pincode: '',
       place_of_supply: '33-Tamil Nadu',
+      transport_mode: '',
+      transport_distance: '',
+      vehicle_no: '',
+      vehicle_type: '',
+      transporter_id: '',
+      transporter_name: '',
+      transport_doc_no: '',
+      transport_doc_date: '',
       due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       terms_conditions: 'Thanks for doing business with us!',
     });
@@ -1884,7 +1914,16 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
       gst: bill.gst_rate,
       invoiceType: bill.client_gst ? 'b2b' : 'b2c',
       gst_number: bill.client_gst || '',
+      client_pincode: (bill as any).client_pincode || '',
       place_of_supply: (bill as any).place_of_supply || '33-Tamil Nadu',
+      transport_mode: (bill as any).transport_mode || '',
+      transport_distance: (bill as any).transport_distance != null ? String((bill as any).transport_distance) : '',
+      vehicle_no: (bill as any).vehicle_no || '',
+      vehicle_type: (bill as any).vehicle_type || '',
+      transporter_id: (bill as any).transporter_id || '',
+      transporter_name: (bill as any).transporter_name || '',
+      transport_doc_no: (bill as any).transport_doc_no || '',
+      transport_doc_date: (bill as any).transport_doc_date || '',
       due_date: bill.due_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       terms_conditions: (bill as any).terms_conditions || 'Thanks for doing business with us!',
     });
@@ -1937,6 +1976,7 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         client_name: client.name,
         client_address: client.address || '',
         client_gst: billForm.gst_number || client.gstNo || '',
+        client_pincode: billForm.client_pincode || (client as any).pincode || '',
         items: billForm.items,
         subtotal: Math.round(totals.subtotal * 100) / 100,
         total_discount: Math.round(totals.totalDiscount * 100) / 100,
@@ -1945,6 +1985,14 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
         payment_type: billForm.payment_type,
         notes: billForm.notes,
         gst_rate: billForm.items.length > 0 ? Math.max(...billForm.items.map(i => i.tax || 0)) : 0,
+        transport_mode: billForm.transport_mode || null,
+        transport_distance: billForm.transport_distance ? Number(billForm.transport_distance) : null,
+        vehicle_no: billForm.vehicle_no || null,
+        vehicle_type: billForm.vehicle_type || null,
+        transporter_id: billForm.transporter_id || null,
+        transporter_name: billForm.transporter_name || null,
+        transport_doc_no: billForm.transport_doc_no || null,
+        transport_doc_date: billForm.transport_doc_date || null,
       });
       toast.success('Bill updated successfully!');
       setActiveTab((billForm.bill_number || '').startsWith('QTN') ? 'non-gst-bills' : 'gst-bills');
@@ -2371,6 +2419,10 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
                       <Label className="text-xs text-gray-500">GSTIN</Label>
                       <Input type="text" placeholder="e.g. 33AUJPM8458P1ZR" value={billForm.gst_number} onChange={(e) => { const val = e.target.value.toUpperCase(); setBillForm(prev => ({ ...prev, gst_number: val, invoiceType: val.trim() ? 'b2b' : 'b2c' })); }} className="h-8 text-sm font-mono" maxLength={15} />
                     </div>
+                    <div>
+                      <Label className="text-xs text-gray-500">Pincode</Label>
+                      <Input type="text" inputMode="numeric" placeholder="e.g. 641001" value={billForm.client_pincode} onChange={(e) => setBillForm(prev => ({ ...prev, client_pincode: e.target.value.replace(/[^0-9]/g, '') }))} className="h-8 text-sm" maxLength={6} />
+                    </div>
                   </div>
                   {/* Selected client info display */}
                   {(() => {
@@ -2389,6 +2441,62 @@ const BillingManagement: React.FC<BillingManagementProps> = ({ orderForBilling, 
               </CardContent>
             </Card>
           </div>
+
+          {/* Transport Details (for e-Way Bill) — invoices only */}
+          <Card className="shadow-sm mb-4" style={{ display: isQuotation ? 'none' : undefined }}>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm font-semibold text-gray-700 uppercase tracking-wide flex items-center gap-2">
+                <Truck className="w-4 h-4" /> Transport Details
+                <span className="text-[10px] font-normal normal-case text-gray-400">(optional — used for e-Way Bill)</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
+                <div>
+                  <Label className="text-xs text-gray-500">Transport Mode</Label>
+                  <select value={billForm.transport_mode} onChange={(e) => setBillForm(prev => ({ ...prev, transport_mode: e.target.value }))} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                    <option value="">—</option>
+                    <option value="1">Road</option>
+                    <option value="2">Rail</option>
+                    <option value="3">Air</option>
+                    <option value="4">Ship</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Distance (km)</Label>
+                  <Input type="text" inputMode="numeric" placeholder="0 = auto" value={billForm.transport_distance} onChange={(e) => setBillForm(prev => ({ ...prev, transport_distance: e.target.value.replace(/[^0-9]/g, '') }))} className="h-8 text-sm" maxLength={5} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Vehicle No.</Label>
+                  <Input type="text" placeholder="e.g. TN01AB1234" value={billForm.vehicle_no} onChange={(e) => setBillForm(prev => ({ ...prev, vehicle_no: e.target.value.toUpperCase() }))} className="h-8 text-sm font-mono" maxLength={15} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Vehicle Type</Label>
+                  <select value={billForm.vehicle_type} onChange={(e) => setBillForm(prev => ({ ...prev, vehicle_type: e.target.value }))} className="w-full h-8 px-2 border border-gray-300 rounded-md text-xs">
+                    <option value="">—</option>
+                    <option value="R">Regular</option>
+                    <option value="O">Over Dimensional Cargo</option>
+                  </select>
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Transporter ID</Label>
+                  <Input type="text" placeholder="GSTIN/TRANSIN" value={billForm.transporter_id} onChange={(e) => setBillForm(prev => ({ ...prev, transporter_id: e.target.value.toUpperCase() }))} className="h-8 text-sm font-mono" maxLength={15} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Transporter Name</Label>
+                  <Input type="text" placeholder="Transporter" value={billForm.transporter_name} onChange={(e) => setBillForm(prev => ({ ...prev, transporter_name: e.target.value }))} className="h-8 text-sm" maxLength={100} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Transport Doc No.</Label>
+                  <Input type="text" placeholder="LR/RR/Airway no." value={billForm.transport_doc_no} onChange={(e) => setBillForm(prev => ({ ...prev, transport_doc_no: e.target.value }))} className="h-8 text-sm" maxLength={30} />
+                </div>
+                <div>
+                  <Label className="text-xs text-gray-500">Transport Doc Date</Label>
+                  <Input type="date" value={billForm.transport_doc_date} onChange={(e) => setBillForm(prev => ({ ...prev, transport_doc_date: e.target.value }))} className="h-8 text-sm" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Addon Form - Only show when showAddonForm is true */}
           {showAddonForm && (

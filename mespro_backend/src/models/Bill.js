@@ -38,6 +38,10 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(20),
       allowNull: true,
     },
+    client_pincode: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+    },
     subtotal: {
       type: DataTypes.DECIMAL(15, 2),
       allowNull: false,
@@ -113,6 +117,42 @@ module.exports = (sequelize) => {
     },
     place_of_supply: {
       type: DataTypes.STRING(60),
+      allowNull: true,
+    },
+    // ── Transport details (used for e-Way Bill generation) ──────────────────
+    transporter_id: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    transporter_name: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    // Distance in km between consignor and consignee pincodes (0 = auto).
+    transport_distance: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    // 1=Road, 2=Rail, 3=Air, 4=Ship.
+    transport_mode: {
+      type: DataTypes.STRING(5),
+      allowNull: true,
+    },
+    vehicle_no: {
+      type: DataTypes.STRING(20),
+      allowNull: true,
+    },
+    // R=Regular, O=Over Dimensional Cargo.
+    vehicle_type: {
+      type: DataTypes.STRING(5),
+      allowNull: true,
+    },
+    transport_doc_no: {
+      type: DataTypes.STRING(30),
+      allowNull: true,
+    },
+    transport_doc_date: {
+      type: DataTypes.DATEONLY,
       allowNull: true,
     },
     business_id: {
