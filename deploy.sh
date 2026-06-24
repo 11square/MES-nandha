@@ -16,20 +16,24 @@ git stash 2>/dev/null || true
 git pull origin main
 
 # Install backend deps
-echo "[2/5] Installing backend dependencies..."
+echo "[2/6] Installing backend dependencies..."
 cd $APP_DIR/mespro_backend
 npm install --production
 
+# Run database migrations (idempotent — safe to run every deploy)
+echo "[3/6] Running database migrations..."
+npx sequelize-cli db:migrate
+
 # Install frontend deps & build
-echo "[3/5] Installing frontend dependencies..."
+echo "[4/6] Installing frontend dependencies..."
 cd $APP_DIR/mespro_frontend
 npm install
 
-echo "[4/5] Building frontend..."
+echo "[5/6] Building frontend..."
 npx vite build --outDir build
 
 # Restart services
-echo "[5/5] Restarting services..."
+echo "[6/6] Restarting services..."
 pm2 restart mespro-backend
 pm2 save
 systemctl reload nginx
