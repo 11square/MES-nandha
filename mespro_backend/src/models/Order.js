@@ -51,7 +51,7 @@ module.exports = (sequelize) => {
       allowNull: true,
     },
     size: {
-      type: DataTypes.STRING(30),
+      type: DataTypes.STRING(100),
       allowNull: true,
     },
     quantity: {
